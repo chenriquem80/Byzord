@@ -1,4 +1,4 @@
-export type UserRole = "Administrador" | "Vendedor" | "Estoquista" | "Financeiro";
+export type UserRole = "ADMIN" | "GERENTE" | "ATENDENTE" | "ESTOQUISTA";
 export type ProductStatus = "ativo" | "inativo";
 export type GlassType =
   | "Parabrisa"
@@ -28,10 +28,12 @@ export interface Store {
 export interface User {
   id: string;
   name: string;
+  email: string;
   role: UserRole;
   storeId: string;
   storeName: string;
   allowCostView: boolean;
+  mustChangePassword?: boolean;
 }
 
 export interface VehicleCompatibility {

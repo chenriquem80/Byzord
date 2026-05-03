@@ -119,11 +119,17 @@ export function StockPage() {
   return (
     <div className="space-y-6">
             <SectionCard
-        title="Busca rápida"
-        description="Fluxo inspirado no app de balcão: poucos campos e resultado direto."
+        title="Busca de Produto"
+        description="Filtre por nome, código ou ano para consultar o estoque em todas as lojas."
       >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Gol G5" />
+          <div className="xl:col-span-2">
+            <Input 
+              value={query} 
+              onChange={(e) => setQuery(e.target.value)} 
+              placeholder="Digite o nome do produto (ex: Parabrisa Gol)" 
+            />
+          </div>
           <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="Ano" />
           <Select value={modelFilter} onChange={(e) => setModelFilter(e.target.value)} placeholder="Modelo">
             {[...new Set(products.flatMap((item) => item.compatibilities.map((compatibility) => compatibility.model)))].map((model) => (

@@ -6,15 +6,42 @@ create table if not exists stores (
   created_at timestamptz not null default now()
 );
 
-create table if not exists users (
-  id uuid primary key default gen_random_uuid(),
+-- Tabela de perfis vinculada ao auth.users do Supabase
+create table if not exists profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
   name text not null,
-  email text unique,
-  role text not null check (role in ('Administrador', 'Vendedor', 'Estoquista', 'Financeiro')),
+  email text unique not null,
+  role text not null check (role in ('ADMIN', 'GERENTE', 'ATENDENTE', 'ESTOQUISTA')),
   store_id uuid references stores(id),
   allow_cost_view boolean not null default false,
+  must_change_password boolean not null default true,
+  status text not null default 'ativo' check (status in ('ativo', 'inativo')),
   created_at timestamptz not null default now()
 );
+
+-- Habilitar RLS
+alter table profiles enable row level security;
+
+-- Políticas básicas de RLS
+create policy "Perfis visíveis para usuários autenticados" on profiles
+  for select using (auth.role() = 'authenticated');
+
+create policy "Usuários podem atualizar seu próprio perfil" on profiles
+  for update using (auth.uid() = id);
+
+-- Trigger para criar perfil automaticamente no signup
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, name, email, role)
+  values (new.id, new.raw_user_meta_data->>'name', new.email, 'ATENDENTE');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
 create table if not exists suppliers (
   id uuid primary key default gen_random_uuid(),
@@ -100,7 +127,7 @@ create table if not exists purchases (
   invoice_number text,
   purchase_date date not null,
   note text,
-  created_by uuid references users(id),
+  created_by uuid references profiles(id),
   created_at timestamptz not null default now()
 );
 
@@ -122,7 +149,7 @@ create table if not exists sales (
   customer_vehicle text,
   plate text,
   note text,
-  created_by uuid references users(id),
+  created_by uuid references profiles(id),
   created_at timestamptz not null default now()
 );
 
@@ -148,7 +175,7 @@ create table if not exists stock_movements (
   reference_purchase_id uuid references purchases(id),
   reference_sale_id uuid references sales(id),
   note text,
-  created_by uuid references users(id),
+  created_by uuid references profiles(id),
   created_at timestamptz not null default now()
 );
 
@@ -170,7 +197,7 @@ create table if not exists labels (
   product_id uuid not null references products(id) on delete cascade,
   payload jsonb not null,
   printed_at timestamptz,
-  created_by uuid references users(id)
+  created_by uuid references profiles(id)
 );
 
 create table if not exists purchase_orders (
@@ -182,13 +209,13 @@ create table if not exists purchase_orders (
   previous_cost numeric(12,2),
   note text,
   status text not null default 'aberto' check (status in ('aberto', 'enviado', 'recebido', 'cancelado')),
-  created_by uuid references users(id),
+  created_by uuid references profiles(id),
   created_at timestamptz not null default now()
 );
 
 create table if not exists audit_logs (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references users(id),
+  user_id uuid references profiles(id),
   action text not null,
   table_name text not null,
   record_id uuid,
@@ -221,3 +248,4 @@ create table if not exists market_price_queries (
 create index if not exists idx_market_price_cache_product_id on market_price_cache(product_id);
 create index if not exists idx_market_price_cache_expires_at on market_price_cache(expires_at);
 create index if not exists idx_market_price_queries_product_id on market_price_queries(product_id);
+

@@ -5,37 +5,77 @@ import { getIcon } from "@/components/shared/icon-map";
 import { homeModules } from "@/data/mock-data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
+import { UserRole } from "@/types/domain";
 
-const menuItems = [
-  { title: "Dashboard", route: "/app", icon: "LayoutDashboard" },
+interface MenuItem {
+  title: string;
+  route: string;
+  icon: string;
+  allowedRoles?: UserRole[];
+  children?: MenuItem[];
+}
+
+const menuItems: MenuItem[] = [
+  { title: "Inicial", route: "/app", icon: "LayoutDashboard" },
   { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
-  { title: "Produto", route: "/app/produtos", icon: "Boxes" },
+  { title: "Produto", route: "/app/produtos", icon: "Boxes", allowedRoles: ["ADMIN", "GERENTE"] },
   {
     title: "Estoque",
     route: "/app/estoque",
     icon: "Package",
     children: [
-      { title: "Entrada", route: "/app/entrada", icon: "PackagePlus" },
+      { title: "Consulta", route: "/app/estoque", icon: "Search" },
+      { title: "Entrada", route: "/app/entrada", icon: "PackagePlus", allowedRoles: ["ADMIN", "GERENTE", "ESTOQUISTA"] },
       { title: "Saída", route: "/app/saida", icon: "ShoppingCart" },
     ],
   },
-  { title: "Pedido", route: "/app/pedido", icon: "FileText" },
+  { title: "Pedido", route: "/app/pedido", icon: "FileText", allowedRoles: ["ADMIN", "GERENTE"] },
   { title: "Clientes", route: "/app/clientes", icon: "Users" },
-  { title: "Fornecedores", route: "/app/fornecedores", icon: "Truck" },
-  { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3" },
+  { title: "Fornecedores", route: "/app/fornecedores", icon: "Truck", allowedRoles: ["ADMIN", "GERENTE"] },
+  { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3", allowedRoles: ["ADMIN", "GERENTE"] },
   { title: "Configuração", route: "/app/configuracoes", icon: "Settings" },
+  { title: "Usuários", route: "/app/usuarios", icon: "UserCog", allowedRoles: ["ADMIN"] },
   { title: "Sair", route: "/login", icon: "LogOut" },
-] as const;
+];
 
 export function AppShell() {
+  const { user, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [stockMenuOpen, setStockMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
+  const filteredMenuItems = useMemo(() => {
+    return menuItems.filter(item => {
+      if (item.allowedRoles && user && !item.allowedRoles.includes(user.role)) {
+        return false;
+      }
+      return true;
+    }).map(item => {
+      if (item.children) {
+        return {
+          ...item,
+          children: item.children.filter(child => {
+            if (child.allowedRoles && user && !child.allowedRoles.includes(user.role)) {
+              return false;
+            }
+            return true;
+          })
+        };
+      }
+      return item;
+    });
+  }, [user]);
+
+  async function handleLogout() {
+    await signOut();
+    navigate("/login");
+  }
+
   const currentModule = useMemo(
     () => {
-      for (const item of menuItems) {
+      for (const item of filteredMenuItems) {
         if (item.route === location.pathname) {
           return item;
         }
@@ -67,6 +107,8 @@ export function AppShell() {
             stockMenuOpen={stockMenuOpen}
             onToggleStockMenu={() => setStockMenuOpen((value) => !value)}
             onOpenAttendance={() => navigate("/app/atendimento")}
+            filteredMenuItems={filteredMenuItems}
+            handleLogout={handleLogout}
           />
         </aside>
 
@@ -102,6 +144,8 @@ export function AppShell() {
                       setMobileOpen(false);
                       navigate("/app/atendimento");
                     }}
+                    filteredMenuItems={filteredMenuItems}
+                    handleLogout={handleLogout}
                   />
                 </div>
               </>
@@ -121,10 +165,14 @@ function SidebarContent({
   stockMenuOpen,
   onToggleStockMenu,
   onOpenAttendance,
+  filteredMenuItems,
+  handleLogout,
 }: {
   stockMenuOpen: boolean;
   onToggleStockMenu: () => void;
   onOpenAttendance: () => void;
+  filteredMenuItems: MenuItem[];
+  handleLogout: () => void;
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -144,9 +192,23 @@ function SidebarContent({
       </div>
 
       <nav className="mt-8 flex-1 space-y-2">
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const Icon = getIcon(item.icon);
-          const isStockGroup = "children" in item;
+          const isStockGroup = item.children && item.children.length > 0;
+          
+          if (item.title === "Sair") {
+            return (
+              <button
+                key={item.route}
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-100 transition hover:bg-white/20 hover:text-white"
+              >
+                <Icon className="size-5" />
+                {item.title}
+              </button>
+            );
+          }
+
           return (
             <div key={item.route} className="space-y-2">
               {isStockGroup ? (
@@ -231,20 +293,40 @@ function MobileNav({
   stockMenuOpen,
   onToggleStockMenu,
   onOpenAttendance,
+  filteredMenuItems,
+  handleLogout,
 }: {
   close: () => void;
   stockMenuOpen: boolean;
   onToggleStockMenu: () => void;
   onOpenAttendance: () => void;
+  filteredMenuItems: MenuItem[];
+  handleLogout: () => void;
 }) {
   return (
     <div className="space-y-3">
       <Button size="lg" className="w-full" onClick={onOpenAttendance}>
         Abrir atendimento
       </Button>
-      {menuItems.map((item) => {
+      {filteredMenuItems.map((item) => {
         const Icon = getIcon(item.icon);
-        const isStockGroup = "children" in item;
+        const isStockGroup = item.children && item.children.length > 0;
+
+        if (item.title === "Sair") {
+          return (
+            <button
+              key={item.route}
+              onClick={() => {
+                close();
+                handleLogout();
+              }}
+              className="flex w-full items-center gap-3 rounded-2xl border border-border bg-slate-50 p-4 shadow-sm"
+            >
+              <Icon className="size-5 text-primary" />
+              <span className="font-semibold text-slate-900">{item.title}</span>
+            </button>
+          );
+        }
 
         return (
           <div key={item.route} className="space-y-2">

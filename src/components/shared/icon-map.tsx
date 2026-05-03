@@ -16,6 +16,7 @@ import {
   ShoppingCart,
   Truck,
   Users,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ const icons: Record<string, LucideIcon> = {
   Users,
   BarChart3,
   Settings,
+  UserCog,
 };
 
 export function getIcon(name: string) {

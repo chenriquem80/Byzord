@@ -1,6 +1,7 @@
 import { Suspense, lazy, type ReactNode } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
+import { AuthGuard } from "@/components/shared/auth-guard";
 
 const LoginPage = lazy(() => import("@/pages/login-page").then((module) => ({ default: module.LoginPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard-page").then((module) => ({ default: module.DashboardPage })));
@@ -19,6 +20,10 @@ const SuppliersPage = lazy(() => import("@/pages/suppliers/suppliers-page").then
 const CustomersPage = lazy(() => import("@/pages/customers/customers-page").then((module) => ({ default: module.CustomersPage })));
 const ReportsPage = lazy(() => import("@/pages/reports/reports-page").then((module) => ({ default: module.ReportsPage })));
 const SettingsPage = lazy(() => import("@/pages/settings/settings-page").then((module) => ({ default: module.SettingsPage })));
+const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password-page").then((module) => ({ default: module.ForgotPasswordPage })));
+const ChangePasswordPage = lazy(() => import("@/pages/change-password-page").then((module) => ({ default: module.ChangePasswordPage })));
+const UserManagementPage = lazy(() => import("@/pages/settings/user-management-page").then((module) => ({ default: module.UserManagementPage })));
+const RegisterPage = lazy(() => import("@/pages/register-page").then((module) => ({ default: module.RegisterPage })));
 
 function withSuspense(component: ReactNode) {
   return (
@@ -108,8 +113,28 @@ export const router = createBrowserRouter([
     element: withSuspense(<LoginPage />),
   },
   {
+    path: "/register",
+    element: withSuspense(<RegisterPage />),
+  },
+  {
+    path: "/forgot-password",
+    element: withSuspense(<ForgotPasswordPage />),
+  },
+  {
+    path: "/change-password",
+    element: withSuspense(
+      <AuthGuard>
+        <ChangePasswordPage />
+      </AuthGuard>
+    ),
+  },
+  {
     path: "/app",
-    element: <AppShell />,
+    element: (
+      <AuthGuard>
+        <AppShell />
+      </AuthGuard>
+    ),
     children: [
       { index: true, element: withSuspense(<DashboardPage />) },
       { path: "atendimento", element: withSuspense(<AttendancePage />) },
@@ -117,17 +142,18 @@ export const router = createBrowserRouter([
       { path: "estoque", element: withSuspense(<StockPage />) },
       { path: "saida", element: withSuspense(<ExitPage />) },
       { path: "orcamento", element: withSuspense(<QuotesPage />) },
-      { path: "entrada", element: withSuspense(<EntryPage />) },
+      { path: "entrada", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE", "ESTOQUISTA"]}><EntryPage /></AuthGuard>) },
       { path: "registro", element: withSuspense(<RecordsPage />) },
-      { path: "pedido", element: withSuspense(<OrdersPage />) },
-      { path: "etiquetagem", element: withSuspense(<LabelsPage />) },
-      { path: "reposicao", element: withSuspense(<ReplenishmentPage />) },
-      { path: "produtos", element: withSuspense(<ProductsPage />) },
-      { path: "veiculos", element: withSuspense(<VehiclesPage />) },
-      { path: "fornecedores", element: withSuspense(<SuppliersPage />) },
+      { path: "pedido", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><OrdersPage /></AuthGuard>) },
+      { path: "etiquetagem", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE", "ESTOQUISTA"]}><LabelsPage /></AuthGuard>) },
+      { path: "reposicao", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><ReplenishmentPage /></AuthGuard>) },
+      { path: "produtos", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><ProductsPage /></AuthGuard>) },
+      { path: "veiculos", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><VehiclesPage /></AuthGuard>) },
+      { path: "fornecedores", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><SuppliersPage /></AuthGuard>) },
       { path: "clientes", element: withSuspense(<CustomersPage />) },
-      { path: "relatorios", element: withSuspense(<ReportsPage />) },
+      { path: "relatorios", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><ReportsPage /></AuthGuard>) },
       { path: "configuracoes", element: withSuspense(<SettingsPage />) },
+      { path: "usuarios", element: withSuspense(<AuthGuard allowedRoles={["ADMIN"]}><UserManagementPage /></AuthGuard>) },
     ],
   },
   {

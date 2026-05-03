@@ -1,13 +1,48 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { currentUser, stores } from "@/data/mock-data";
+import { supabase } from "@/lib/database";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [storeId, setStoreId] = useState(currentUser.storeId);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    if (!supabase) {
+      setError("Erro: Supabase não está configurado. Verifique o arquivo .env");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      navigate("/app");
+    } catch (err: any) {
+      console.error("Erro de login:", err);
+      if (err.message === "Invalid login credentials") {
+        setError("E-mail ou senha incorretos.");
+      } else if (err.message === "Email not confirmed") {
+        setError("Por favor, confirme seu e-mail antes de entrar (verifique sua caixa de entrada).");
+      } else {
+        setError(err.message || "Erro ao entrar no sistema. Tente novamente.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 md:p-8">
@@ -30,7 +65,7 @@ export function LoginPage() {
         </div>
 
         <div className="flex items-center p-8 md:p-12">
-          <div className="mx-auto w-full max-w-xl space-y-8">
+          <form onSubmit={handleLogin} className="mx-auto w-full max-w-xl space-y-8">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
                 Entrar no sistema
@@ -43,38 +78,54 @@ export function LoginPage() {
 
             <div className="grid gap-5">
               <div>
-                <p className="mb-2 text-sm font-medium text-slate-700">Usuário</p>
-                <Input defaultValue={currentUser.name} placeholder="Digite seu usuário" />
+                <p className="mb-2 text-sm font-medium text-slate-700">E-mail</p>
+                <Input 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  placeholder="seu@email.com" 
+                  required
+                />
               </div>
               <div>
-                <p className="mb-2 text-sm font-medium text-slate-700">Senha</p>
-                <Input type="password" defaultValue="123456" placeholder="Digite sua senha" />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium text-slate-700">Loja</p>
-                <Select value={storeId} onChange={(event) => setStoreId(event.target.value)}>
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.name}
-                    </option>
-                  ))}
-                </Select>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-700">Senha</p>
+                  <Link to="/forgot-password" size="sm" className="text-xs text-primary hover:underline">
+                    Esqueci minha senha
+                  </Link>
+                </div>
+                <Input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  required
+                />
               </div>
             </div>
 
+            {error && (
+              <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-600">
+                {error}
+              </p>
+            )}
+
             <div className="space-y-4">
               <Button
+                type="submit"
                 size="lg"
                 className="h-14 w-full rounded-2xl"
-                onClick={() => navigate("/app")}
+                disabled={loading}
               >
-                Entrar
+                {loading ? "Entrando..." : "Entrar"}
               </Button>
-              <p className="text-center text-sm text-slate-500">
-                Ambiente demonstrativo com fluxo de login e acesso ao painel.
-              </p>
+              <div className="text-center">
+                <Link to="/register" className="text-sm font-medium text-slate-500 hover:text-primary">
+                  Primeiro acesso? Crie sua conta admin
+                </Link>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>
