@@ -1,16 +1,13 @@
-import { Printer } from "lucide-react";
+
 import { SectionCard } from "@/components/shared/section-card";
-import { Button } from "@/components/ui/button";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { labels } from "@/data/mock-data";
 
 export function LabelsPage() {
   return (
     <div className="space-y-6">
-                  Imprimir etiquetas
-          </Button>
-        }
-      />
+
 
       <SectionCard title="Pré-visualização" description="Formato vertical pronto para impressão rápida na entrada e no balcão.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

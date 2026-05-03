@@ -1,11 +1,11 @@
-import { BellRing, ShieldCheck } from "lucide-react";
+import { BellRing } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { SectionCard } from "@/components/shared/section-card";
 import { StatCard } from "@/components/shared/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { attendanceQueue, currentUser, dashboardMetrics, purchaseOrders, stockMovements, stores } from "@/data/mock-data";
+import { attendanceQueue, dashboardMetrics, purchaseOrders, stockMovements, stores } from "@/data/mock-data";
 
 export function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState("2026-05-02");
