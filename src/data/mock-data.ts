@@ -21,7 +21,7 @@ export const stores: Store[] = [
 export const currentUser: User = {
   id: "usr-01",
   name: "Renato Nakamura",
-  role: "Administrador",
+  role: "ADMIN",
   storeId: "store-1",
   storeName: "Taubaté",
   allowCostView: true,

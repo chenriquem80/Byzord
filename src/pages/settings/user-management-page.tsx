@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, UserMinus, UserCheck, Shield, Mail } from "lucide-react";
+import { Plus, Search, UserMinus, UserCheck, Shield } from "lucide-react";
 import { supabase } from "@/lib/database";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
-import { User, UserRole, Store } from "@/types/domain";
+import { User, UserRole } from "@/types/domain";
 import { stores as mockStores } from "@/data/mock-data";
 
 export function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -128,7 +128,7 @@ export function UserManagementPage() {
     {
       header: "Perfil",
       cell: ({ row }: any) => (
-        <Badge variant="outline" className="bg-slate-100 font-medium">
+        <Badge className="bg-slate-100 font-medium">
           {row.original.role}
         </Badge>
       ),

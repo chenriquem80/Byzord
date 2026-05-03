@@ -81,7 +81,7 @@ export function AppShell() {
         }
 
         if ("children" in item) {
-          const child = item.children.find((entry) => entry.route === location.pathname);
+          const child = item.children?.find((entry) => entry.route === location.pathname);
           if (child) {
             return child;
           }
@@ -253,7 +253,7 @@ function SidebarContent({
 
               {isStockGroup && stockMenuOpen ? (
                 <div className="ml-6 space-y-1 border-l border-white/25 pl-4">
-                  {item.children.map((child) => {
+                  {item.children?.map((child) => {
                     const ChildIcon = getIcon(child.icon);
                     return (
                       <NavLink
@@ -360,7 +360,7 @@ function MobileNav({
 
             {isStockGroup && stockMenuOpen ? (
               <div className="ml-4 space-y-2 border-l border-slate-200 pl-4">
-                {item.children.map((child) => {
+                {item.children?.map((child) => {
                   const ChildIcon = getIcon(child.icon);
                   return (
                     <Link

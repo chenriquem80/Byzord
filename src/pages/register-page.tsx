@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
 import { supabase } from "@/lib/database";
-import { Select } from "@/components/ui/select";
-import { stores as mockStores } from "@/data/mock-data";
 
 export function RegisterPage() {
   const navigate = useNavigate();
