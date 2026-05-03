@@ -21,6 +21,7 @@ export const stores: Store[] = [
 export const currentUser: User = {
   id: "usr-01",
   name: "Renato Nakamura",
+  email: "renato@autovitrais.com.br",
   role: "ADMIN",
   storeId: "store-1",
   storeName: "Taubaté",
