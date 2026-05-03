@@ -10,6 +10,11 @@ export function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+
     if (!supabase) {
       setMessage({ type: "error", text: "Supabase não configurado." });
       setLoading(false);
