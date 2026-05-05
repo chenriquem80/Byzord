@@ -30,12 +30,6 @@ export function DashboardPage() {
     <div className="space-y-6">
 
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {dashboardMetrics.map((metric) => (
-          <StatCard key={metric.label} {...metric} />
-        ))}
-      </div>
-
       <SectionCard
         title="Resumo por loja"
         description="Visual rápido para comparar o saldo operacional entre as unidades."
@@ -151,6 +145,12 @@ export function DashboardPage() {
           ))}
         </div>
       </SectionCard>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {dashboardMetrics.map((metric) => (
+          <StatCard key={metric.label} {...metric} />
+        ))}
+      </div>
     </div>
   );
 }
