@@ -111,7 +111,8 @@ export function ProductsPage() {
   const isEditing = currentProduct !== null;
 
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(productSchema) as any,
     defaultValues: currentProduct ? buildFormValues(currentProduct) : getEmptyFormValues(),
   });
 
@@ -248,7 +249,7 @@ export function ProductsPage() {
             {savedMessage && (
               <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span>
             )}
-            <Button size="lg" onClick={form.handleSubmit(handleSave)}>
+            <Button size="lg" onClick={form.handleSubmit(handleSave as any)}>
               Salvar produto
             </Button>
           </div>
