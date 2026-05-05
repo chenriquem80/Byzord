@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Search } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
@@ -27,12 +28,13 @@ interface StockRow {
 }
 
 export function StockPage() {
-  const [query, setQuery] = useState("Gol G5");
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
   const [year, setYear] = useState("");
   const [modelFilter, setModelFilter] = useState("");
   const [glassType, setGlassType] = useState("");
   const [feature, setFeature] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const rows = useMemo<StockRow[]>(() => {
     return products
@@ -98,11 +100,6 @@ export function StockPage() {
       { accessorKey: "code", header: "Código" },
       { accessorKey: "manufacturer", header: "Fabricante" },
       {
-        accessorKey: "cost",
-        header: "Custo",
-        cell: ({ row }) => formatCurrency(row.original.cost),
-      },
-      {
         accessorKey: "price",
         header: "Preço venda",
         cell: ({ row }) => formatCurrency(row.original.price),
@@ -111,6 +108,20 @@ export function StockPage() {
         accessorKey: "lastPurchaseDate",
         header: "Última compra",
         cell: ({ row }) => formatMonthYear(row.original.lastPurchaseDate),
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`/app/produtos?id=${row.original.product.id}`)}
+          >
+            <Pencil className="size-3" />
+            Alterar
+          </Button>
+        ),
       },
     ],
     [],
@@ -152,10 +163,6 @@ export function StockPage() {
               </option>
             ))}
           </Select>
-          <Button size="lg" className="w-full">
-            <Search className="size-4" />
-            Pesquisar
-          </Button>
         </div>
       </SectionCard>
 

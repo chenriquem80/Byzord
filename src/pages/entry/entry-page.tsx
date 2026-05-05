@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Search } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,8 +63,9 @@ const badgeClass: Record<EntryStatus, string> = {
 };
 
 export function EntryPage() {
+  const navigate = useNavigate();
   const [showNewEntry, setShowNewEntry] = useState(false);
-  const [codeQuery, setCodeQuery] = useState("VK.PB.103.101");
+  const [codeQuery, setCodeQuery] = useState("Parabrisa Gol G5");
   const [selectedProductId, setSelectedProductId] = useState(products[0].id);
   const [selectedManufacturer, setSelectedManufacturer] = useState(
     products[0].manufacturers[0].manufacturer,
@@ -115,10 +117,10 @@ export function EntryPage() {
 
   function handleCodeSearch() {
     const foundProduct =
-      products.find(
-        (item) =>
-          item.internalCode.toLowerCase() === codeQuery.toLowerCase() ||
-          item.supplierCode.toLowerCase() === codeQuery.toLowerCase(),
+      products.find((item) =>
+        `${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`
+          .toLowerCase()
+          .includes(codeQuery.toLowerCase()),
       ) ?? products[0];
 
     setSelectedProductId(foundProduct.id);
@@ -145,6 +147,12 @@ export function EntryPage() {
                     <SectionCard
             title="Lista de entradas"
             description="Consulte os lançamentos com status finalizada, pendente ou cancelada."
+            action={
+              <Button onClick={() => setShowNewEntry(true)}>
+                <Plus className="mr-2 size-4" />
+                Adicionar Item
+              </Button>
+            }
           >
             <div className="space-y-3">
               {entryList.map((entry) => (
@@ -171,7 +179,7 @@ export function EntryPage() {
       {showNewEntry ? (
         <SectionCard
           title="Nova entrada"
-          description="Digite o código do produto, carregue os dados e distribua a quantidade entre as duas lojas."
+          description="Digite a descrição do produto, carregue os dados e distribua a quantidade entre as duas lojas."
           action={
             <Button variant="outline" onClick={() => setShowNewEntry(false)}>
               Fechar
@@ -182,17 +190,21 @@ export function EntryPage() {
             <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
               <div className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-                  <FormField label="Código do produto">
+                  <FormField label="Descrição do produto">
                     <Input
                       value={codeQuery}
                       onChange={(event) => setCodeQuery(event.target.value)}
-                      placeholder="Digite o código"
+                      placeholder="Digite a descrição (ex: Parabrisa Gol G5)"
                     />
                   </FormField>
-                  <div className="flex items-end">
+                  <div className="flex items-end gap-3">
                     <Button size="lg" className="w-full md:w-auto" onClick={handleCodeSearch}>
                       <Search className="size-4" />
-                      Buscar código
+                      Buscar
+                    </Button>
+                    <Button size="lg" variant="outline" className="w-full md:w-auto" onClick={() => navigate("/app/produtos")}>
+                      <Plus className="size-4" />
+                      Novo Item
                     </Button>
                   </div>
                 </div>

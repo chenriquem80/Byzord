@@ -1,4 +1,5 @@
 import {
+  ArrowLeftRight,
   BarChart3,
   Boxes,
   Calculator,
@@ -12,6 +13,7 @@ import {
   PackagePlus,
   QrCode,
   RefreshCcw,
+  Search,
   Settings,
   ShoppingCart,
   Truck,
@@ -21,9 +23,11 @@ import {
 } from "lucide-react";
 
 const icons: Record<string, LucideIcon> = {
+  ArrowLeftRight,
   Package,
   ShoppingCart,
   PackagePlus,
+  Search,
   ClipboardList,
   FileText,
   LayoutDashboard,

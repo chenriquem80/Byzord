@@ -19,7 +19,6 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { title: "Inicial", route: "/app", icon: "LayoutDashboard" },
   { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
-  { title: "Produto", route: "/app/produtos", icon: "Boxes", allowedRoles: ["ADMIN", "GERENTE"] },
   {
     title: "Estoque",
     route: "/app/estoque",
@@ -28,6 +27,7 @@ const menuItems: MenuItem[] = [
       { title: "Consulta", route: "/app/estoque", icon: "Search" },
       { title: "Entrada", route: "/app/entrada", icon: "PackagePlus", allowedRoles: ["ADMIN", "GERENTE", "ESTOQUISTA"] },
       { title: "Saída", route: "/app/saida", icon: "ShoppingCart" },
+      { title: "Transferir", route: "/app/transferencia", icon: "ArrowLeftRight", allowedRoles: ["ADMIN", "GERENTE", "ESTOQUISTA"] },
     ],
   },
   { title: "Pedido", route: "/app/pedido", icon: "FileText", allowedRoles: ["ADMIN", "GERENTE"] },
@@ -278,12 +278,6 @@ function SidebarContent({
         })}
       </nav>
 
-      <div className="mt-8 rounded-[28px] bg-white/20 p-5 text-sm text-white">
-        <p className="font-semibold">Operação protegida</p>
-        <p className="mt-2 text-slate-100">
-          Logs, permissões por perfil e base pronta para Supabase/PostgreSQL.
-        </p>
-      </div>
     </div>
   );
 }

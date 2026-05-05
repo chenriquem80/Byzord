@@ -23,6 +23,7 @@ const SettingsPage = lazy(() => import("@/pages/settings/settings-page").then((m
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password-page").then((module) => ({ default: module.ForgotPasswordPage })));
 const ChangePasswordPage = lazy(() => import("@/pages/change-password-page").then((module) => ({ default: module.ChangePasswordPage })));
 const UserManagementPage = lazy(() => import("@/pages/settings/user-management-page").then((module) => ({ default: module.UserManagementPage })));
+const TransferPage = lazy(() => import("@/pages/transfer/transfer-page").then((module) => ({ default: module.TransferPage })));
 const RegisterPage = lazy(() => import("@/pages/register-page").then((module) => ({ default: module.RegisterPage })));
 
 function withSuspense(component: ReactNode) {
@@ -154,6 +155,7 @@ export const router = createBrowserRouter([
       { path: "relatorios", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><ReportsPage /></AuthGuard>) },
       { path: "configuracoes", element: withSuspense(<SettingsPage />) },
       { path: "usuarios", element: withSuspense(<AuthGuard allowedRoles={["ADMIN"]}><UserManagementPage /></AuthGuard>) },
+      { path: "transferencia", element: withSuspense(<TransferPage />) },
     ],
   },
   {

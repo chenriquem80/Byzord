@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import type { ColumnDef } from "@tanstack/react-table";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { products, stores, suppliers } from "@/data/mock-data";
 import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
@@ -20,6 +20,7 @@ type ProductFormValues = {
   supplierCode: string;
   barcode: string;
   name: string;
+  productType: "N" | "R" | "B";
   glassType: string;
   feature: string;
   manufacturer: string;
@@ -36,39 +37,151 @@ type ProductFormValues = {
   notes?: string;
 };
 
+function generateUniqueBarcode(): string {
+  const existing = new Set(products.map((p) => p.barcode));
+  let code: string;
+  do {
+    code = "789" + String(Math.floor(Math.random() * 10_000_000_000)).padStart(10, "0");
+  } while (existing.has(code));
+  return code;
+}
+
+function getEmptyFormValues(): ProductFormValues {
+  return {
+    internalCode: "",
+    supplierCode: "",
+    barcode: generateUniqueBarcode(),
+    name: "",
+    productType: "N",
+    glassType: "",
+    feature: "",
+    manufacturer: "",
+    brand: "",
+    description: "",
+    location: "",
+    quantity: 0,
+    minimum: 0,
+    cost: 0,
+    price: 0,
+    lastPurchaseDate: "",
+    lastSupplier: "",
+    status: "ativo",
+    notes: "",
+  };
+}
+
+function buildFormValues(p: Product): ProductFormValues {
+  const inventory = p.manufacturers[0].inventories[0];
+  return {
+    internalCode: p.internalCode,
+    supplierCode: p.supplierCode,
+    barcode: p.barcode,
+    name: p.name,
+    productType: (p as any).productType ?? "N",
+    glassType: p.glassType,
+    feature: p.feature,
+    manufacturer: p.manufacturers[0].manufacturer,
+    brand: p.brand,
+    description: p.description,
+    location: inventory.location,
+    quantity: p.manufacturers.reduce(
+      (sum, item) => sum + item.inventories.reduce((storeSum, inv) => storeSum + inv.stock, 0),
+      0,
+    ),
+    minimum: inventory.minQuantity,
+    cost: p.manufacturers[0].cost,
+    price: p.manufacturers[0].price,
+    lastPurchaseDate: p.manufacturers[0].lastPurchaseDate,
+    lastSupplier: p.manufacturers[0].supplier,
+    status: p.status,
+    notes: p.notes,
+  };
+}
+
 export function ProductsPage() {
-  const firstProduct = products[0];
-  const firstInventory = firstProduct.manufacturers[0].inventories[0];
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const productId = searchParams.get("id");
+  const [savedMessage, setSavedMessage] = useState(false);
+
+  const currentProduct = productId
+    ? (products.find((p) => p.id === productId) ?? null)
+    : null;
+
+  const isEditing = currentProduct !== null;
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: {
-      internalCode: firstProduct.internalCode,
-      supplierCode: firstProduct.supplierCode,
-      barcode: firstProduct.barcode,
-      name: firstProduct.name,
-      glassType: firstProduct.glassType,
-      feature: firstProduct.feature,
-      manufacturer: firstProduct.manufacturers[0].manufacturer,
-      brand: firstProduct.brand,
-      description: firstProduct.description,
-      location: firstInventory.location,
-      quantity: firstProduct.manufacturers.reduce(
-        (sum, item) => sum + item.inventories.reduce((storeSum, inventory) => storeSum + inventory.stock, 0),
-        0,
-      ),
-      minimum: firstInventory.minQuantity,
-      cost: firstProduct.manufacturers[0].cost,
-      price: firstProduct.manufacturers[0].price,
-      lastPurchaseDate: firstProduct.manufacturers[0].lastPurchaseDate,
-      lastSupplier: firstProduct.manufacturers[0].supplier,
-      status: firstProduct.status,
-      notes: firstProduct.notes,
-    },
+    defaultValues: currentProduct ? buildFormValues(currentProduct) : getEmptyFormValues(),
   });
+
+  useEffect(() => {
+    form.reset(currentProduct ? buildFormValues(currentProduct) : getEmptyFormValues());
+  }, [productId]);
 
   const watchedCost = form.watch("cost");
   const watchedPrice = form.watch("price");
   const margin = watchedCost ? ((watchedPrice - watchedCost) / watchedCost) * 100 : 0;
+
+  function handleSave(values: ProductFormValues) {
+    if (isEditing) {
+      const index = products.findIndex((p) => p.id === currentProduct.id);
+      if (index !== -1) {
+        products[index] = {
+          ...products[index],
+          internalCode: values.internalCode,
+          supplierCode: values.supplierCode,
+          barcode: values.barcode,
+          name: values.name,
+          glassType: values.glassType as Product["glassType"],
+          feature: values.feature as Product["feature"],
+          brand: values.brand,
+          description: values.description,
+          status: values.status,
+          notes: values.notes ?? "",
+        };
+      }
+    } else {
+      const newId = `prd-${Date.now()}`;
+      const newProduct: Product = {
+        id: newId,
+        internalCode: values.internalCode,
+        supplierCode: values.supplierCode,
+        barcode: values.barcode,
+        name: values.name,
+        glassType: values.glassType as Product["glassType"],
+        feature: values.feature as Product["feature"],
+        brand: values.brand,
+        description: values.description,
+        photos: [],
+        status: values.status,
+        notes: values.notes ?? "",
+        manufacturers: [
+          {
+            id: `mf-${Date.now()}`,
+            manufacturer: values.manufacturer,
+            cost: Number(values.cost),
+            price: Number(values.price),
+            lastPurchaseDate: values.lastPurchaseDate,
+            supplier: values.lastSupplier,
+            inventories: stores.map((store, index) => ({
+              id: `inv-${Date.now()}-${index}`,
+              storeId: store.id,
+              storeName: store.name,
+              location: values.location,
+              stock: index === 0 ? Number(values.quantity) : 0,
+              minQuantity: Number(values.minimum),
+            })),
+          },
+        ],
+        compatibilities: [],
+      };
+      products.push(newProduct);
+      navigate(`/app/produtos?id=${newId}`);
+    }
+    setSavedMessage(true);
+    setTimeout(() => setSavedMessage(false), 3000);
+  }
 
   const columns = useMemo<ColumnDef<Product>[]>(
     () => [
@@ -126,143 +239,189 @@ export function ProductsPage() {
 
   return (
     <div className="space-y-6">
-            <SectionCard
-        title="Cadastro"
-        description="Estrutura pronta para conexão com Supabase/PostgreSQL e histórico por fabricante."
-        action={<Button size="lg">Salvar produto</Button>}
+      {/* Dados do Produto */}
+      <SectionCard
+        title={isEditing ? "Editar Produto" : "Novo Produto"}
+        description="Informações básicas de identificação e classificação."
+        action={
+          <div className="flex items-center gap-3">
+            {savedMessage && (
+              <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span>
+            )}
+            <Button size="lg" onClick={form.handleSubmit(handleSave)}>
+              Salvar produto
+            </Button>
+          </div>
+        }
       >
-        <Tabs defaultValue="dados">
-          <TabsList>
-            <TabsTrigger value="dados">Dados do produto</TabsTrigger>
-            <TabsTrigger value="estoque">Estoque</TabsTrigger>
-            <TabsTrigger value="preco">Preço</TabsTrigger>
-            <TabsTrigger value="compatibilidade">Veículos compatíveis</TabsTrigger>
-            <TabsTrigger value="compras">Histórico de compras</TabsTrigger>
-            <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
-            <TabsTrigger value="fotos">Fotos</TabsTrigger>
-            <TabsTrigger value="observacoes">Observações</TabsTrigger>
-          </TabsList>
+        <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {/* Nome em linha completa no topo */}
+          <FormField label="Nome do produto" error={form.formState.errors.name?.message} className="md:col-span-2 xl:col-span-4">
+            <Input {...form.register("name")} placeholder="Ex: Parabrisa Gol G5 2008/2011" />
+          </FormField>
 
-          <TabsContent value="dados">
-            <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <FormField label="Código interno" error={form.formState.errors.internalCode?.message}>
-                <Input {...form.register("internalCode")} />
-              </FormField>
-              <FormField label="Código fornecedor" error={form.formState.errors.supplierCode?.message}>
-                <Input {...form.register("supplierCode")} />
-              </FormField>
-              <FormField label="Código de barras" error={form.formState.errors.barcode?.message}>
-                <Input {...form.register("barcode")} />
-              </FormField>
-              <FormField label="Nome do produto" error={form.formState.errors.name?.message} className="xl:col-span-2">
-                <Input {...form.register("name")} />
-              </FormField>
-              <FormField label="Tipo de vidro" error={form.formState.errors.glassType?.message}>
-                <Select {...form.register("glassType")}>
-                  {["Parabrisa", "Vigia", "Porta dianteira", "Porta traseira", "Lateral fixa", "Quebra-vento", "Teto solar"].map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-              <FormField label="Característica" error={form.formState.errors.feature?.message}>
-                <Select {...form.register("feature")}>
-                  {["Verde", "Verde sensor", "Degradê", "Degradê sensor", "Incolor", "Térmico"].map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-              <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
-                <Select {...form.register("manufacturer")}>
-                  {["AGC", "Pilkington", "Saint-Gobain", "Fanavid", "XYG", "Outro"].map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-              <FormField label="Marca" error={form.formState.errors.brand?.message}>
-                <Input {...form.register("brand")} />
-              </FormField>
-              <FormField label="Descrição" error={form.formState.errors.description?.message} className="md:col-span-2 xl:col-span-4">
-                <Textarea {...form.register("description")} />
-              </FormField>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="estoque">
-            <div className="mb-6 grid gap-4 md:grid-cols-2">
-              {stores.map((store) => {
-                const inventories = firstProduct.manufacturers.flatMap((manufacturer) =>
-                  manufacturer.inventories.filter((inventory) => inventory.storeId === store.id),
-                );
-                const storeStock = inventories.reduce((sum, inventory) => sum + inventory.stock, 0);
-                const minimum = inventories.reduce((sum, inventory) => sum + inventory.minQuantity, 0);
-
-                return (
-                  <div key={store.id} className="rounded-2xl border border-border bg-slate-50 p-4">
-                    <p className="font-semibold text-slate-900">{store.name}</p>
-                    <p className="mt-2 text-sm text-slate-600">Saldo atual: {storeStock} un.</p>
-                    <p className="text-sm text-slate-600">Mínimo sugerido: {minimum} un.</p>
-                    <p className="text-sm text-slate-600">
-                      Localizações: {inventories.map((inventory) => inventory.location).join(" • ")}
-                    </p>
-                  </div>
-                );
-              })}
+          {/* Linha de códigos + tipo */}
+          <FormField label="Código interno" error={form.formState.errors.internalCode?.message}>
+            <Input {...form.register("internalCode")} />
+          </FormField>
+          <FormField label="Código de barras">
+            <Input {...form.register("barcode")} readOnly className="bg-slate-50 text-slate-500" />
+          </FormField>
+          <FormField label="Tipo">
+            <div className="flex gap-2">
+              {(["N", "R", "B"] as const).map((opt) => (
+                <label
+                  key={opt}
+                  className={`flex flex-1 cursor-pointer items-center justify-center rounded-2xl border-2 py-2 text-sm font-semibold transition-colors ${
+                    form.watch("productType") === opt
+                      ? "border-primary bg-primary text-white"
+                      : "border-border bg-white text-slate-700 hover:border-primary/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value={opt}
+                    {...form.register("productType")}
+                    className="sr-only"
+                  />
+                  {opt}
+                </label>
+              ))}
             </div>
+          </FormField>
+          <FormField label="Marca" error={form.formState.errors.brand?.message}>
+            <Input {...form.register("brand")} />
+          </FormField>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <FormField label="Localização" error={form.formState.errors.location?.message}>
-                <Input {...form.register("location")} />
-              </FormField>
-              <FormField label="Quantidade atual" error={form.formState.errors.quantity?.message}>
-                <Input type="number" {...form.register("quantity")} />
-              </FormField>
-              <FormField label="Quantidade mínima" error={form.formState.errors.minimum?.message}>
-                <Input type="number" {...form.register("minimum")} />
-              </FormField>
-              <FormField label="Status" error={form.formState.errors.status?.message}>
-                <Select {...form.register("status")}>
-                  <option value="ativo">Ativo</option>
-                  <option value="inativo">Inativo</option>
-                </Select>
-              </FormField>
-            </div>
-          </TabsContent>
+          {/* Linha de classificação */}
+          <FormField label="Tipo de vidro" error={form.formState.errors.glassType?.message}>
+            <Select {...form.register("glassType")}>
+              <option value="">Selecione</option>
+              {["Parabrisa", "Vigia", "Porta dianteira", "Porta traseira", "Lateral fixa", "Quebra-vento", "Teto solar"].map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Característica" error={form.formState.errors.feature?.message}>
+            <Select {...form.register("feature")}>
+              <option value="">Selecione</option>
+              {["Verde", "Verde sensor", "Degradê", "Degradê sensor", "Incolor", "Térmico"].map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
+            <Select {...form.register("manufacturer")}>
+              <option value="">Selecione</option>
+              {["AGC", "Pilkington", "Saint-Gobain", "Fanavid", "XYG", "Outro"].map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </Select>
+          </FormField>
 
-          <TabsContent value="preco">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <FormField label="Preço de custo" error={form.formState.errors.cost?.message}>
-                <Input type="number" step="0.01" {...form.register("cost")} />
-              </FormField>
-              <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
-                <Input type="number" step="0.01" {...form.register("price")} />
-              </FormField>
-              <FormField label="Margem automática">
-                <Input value={formatPercentage(margin)} disabled />
-              </FormField>
-              <FormField label="Última data de compra" error={form.formState.errors.lastPurchaseDate?.message}>
-                <Input type="date" {...form.register("lastPurchaseDate")} />
-              </FormField>
-              <FormField label="Último fornecedor" error={form.formState.errors.lastSupplier?.message}>
-                <Select {...form.register("lastSupplier")}>
-                  {suppliers.map((item) => (
-                    <option key={item.id} value={item.name}>
-                      {item.name}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-            </div>
-          </TabsContent>
+          <FormField label="Descrição" error={form.formState.errors.description?.message} className="md:col-span-2 xl:col-span-4">
+            <Textarea {...form.register("description")} />
+          </FormField>
+        </form>
+      </SectionCard>
 
-          <TabsContent value="compatibilidade">
+      {/* Estoque */}
+      <SectionCard
+        title="Estoque"
+        description="Saldo atual por loja, localização e quantidades mínimas."
+      >
+        {isEditing && (
+          <div className="mb-6 grid gap-4 md:grid-cols-2">
+            {stores.map((store) => {
+              const inventories = currentProduct.manufacturers.flatMap((manufacturer) =>
+                manufacturer.inventories.filter((inventory) => inventory.storeId === store.id),
+              );
+              const storeStock = inventories.reduce((sum, inventory) => sum + inventory.stock, 0);
+              const minimum = inventories.reduce((sum, inventory) => sum + inventory.minQuantity, 0);
+
+              return (
+                <div key={store.id} className="rounded-2xl border border-border bg-slate-50 p-4">
+                  <p className="font-semibold text-slate-900">{store.name}</p>
+                  <p className="mt-2 text-sm text-slate-600">Saldo atual: {storeStock} un.</p>
+                  <p className="text-sm text-slate-600">Mínimo sugerido: {minimum} un.</p>
+                  <p className="text-sm text-slate-600">
+                    Localizações: {inventories.map((inventory) => inventory.location).join(" • ")}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <FormField label="Loja destino">
+            <Select defaultValue={stores[0].id}>
+              {stores.map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name} — {store.city}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Localização" error={form.formState.errors.location?.message}>
+            <Input {...form.register("location")} />
+          </FormField>
+          <FormField label="Quantidade atual" error={form.formState.errors.quantity?.message}>
+            <Input type="number" {...form.register("quantity")} />
+          </FormField>
+          <FormField label="Quantidade mínima" error={form.formState.errors.minimum?.message}>
+            <Input type="number" {...form.register("minimum")} />
+          </FormField>
+          <FormField label="Status" error={form.formState.errors.status?.message}>
+            <Select {...form.register("status")}>
+              <option value="ativo">Ativo</option>
+              <option value="inativo">Inativo</option>
+            </Select>
+          </FormField>
+        </div>
+      </SectionCard>
+
+      {/* Preço */}
+      <SectionCard
+        title="Preço"
+        description="Custos, preço de venda, margem e histórico de compra."
+      >
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <FormField label="Preço de custo" error={form.formState.errors.cost?.message}>
+            <Input type="number" step="0.01" {...form.register("cost")} />
+          </FormField>
+          <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
+            <Input type="number" step="0.01" {...form.register("price")} />
+          </FormField>
+          <FormField label="Margem automática">
+            <Input value={formatPercentage(margin)} disabled />
+          </FormField>
+          <FormField label="Última data de compra" error={form.formState.errors.lastPurchaseDate?.message}>
+            <Input type="date" {...form.register("lastPurchaseDate")} />
+          </FormField>
+          <FormField label="Último fornecedor" error={form.formState.errors.lastSupplier?.message}>
+            <Select {...form.register("lastSupplier")}>
+              <option value="">Selecione</option>
+              {suppliers.map((item) => (
+                <option key={item.id} value={item.name}>
+                  {item.name}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+        </div>
+      </SectionCard>
+
+      {/* Seções apenas para produtos existentes */}
+      {isEditing && (
+        <>
+          {/* Veículos Compatíveis */}
+          <SectionCard
+            title="Veículos Compatíveis"
+            description="Lista de modelos e versões que utilizam este produto."
+          >
             <div className="space-y-3">
-              {firstProduct.compatibilities.map((item) => (
+              {currentProduct.compatibilities.map((item) => (
                 <div key={item.id} className="rounded-2xl border border-border bg-slate-50 p-4">
                   <p className="font-semibold text-slate-900">
                     {item.automaker} {item.model} {item.generation}
@@ -275,11 +434,15 @@ export function ProductsPage() {
               ))}
               <Button variant="outline">Adicionar compatibilidade</Button>
             </div>
-          </TabsContent>
+          </SectionCard>
 
-          <TabsContent value="compras">
+          {/* Histórico de Compras */}
+          <SectionCard
+            title="Histórico de Compras"
+            description="Registro por fabricante com quantidades, custo e preço de venda."
+          >
             <div className="space-y-3">
-              {firstProduct.manufacturers.map((item) => (
+              {currentProduct.manufacturers.map((item) => (
                 <div key={item.id} className="grid gap-3 rounded-2xl border border-border bg-white p-4 md:grid-cols-5">
                   <p className="font-semibold text-slate-900">{item.manufacturer}</p>
                   <p className="text-slate-600">
@@ -291,39 +454,54 @@ export function ProductsPage() {
                 </div>
               ))}
             </div>
-          </TabsContent>
+          </SectionCard>
 
-          <TabsContent value="movimentacoes">
-            <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-              Estrutura pronta para puxar entradas, saídas, ajustes, perdas e devoluções por produto.
-            </p>
-          </TabsContent>
+          {/* Fotos e Observações */}
+          <div className="grid gap-6 xl:grid-cols-2">
+            <SectionCard
+              title="Fotos"
+              description="Imagens do produto para referência visual."
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                {currentProduct.photos.map((photo) => (
+                  <div key={photo} className="rounded-3xl border border-dashed border-border bg-slate-50 p-10 text-center text-sm text-slate-500">
+                    Foto do produto
+                  </div>
+                ))}
+                <Button variant="outline" className="h-full min-h-40 border-dashed">
+                  Adicionar foto
+                </Button>
+              </div>
+            </SectionCard>
 
-          <TabsContent value="fotos">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {firstProduct.photos.map((photo) => (
-                <div key={photo} className="rounded-3xl border border-dashed border-border bg-slate-50 p-10 text-center text-sm text-slate-500">
-                  Foto do produto
-                </div>
-              ))}
-              <Button variant="outline" className="h-full min-h-40 border-dashed">
-                Adicionar foto
-              </Button>
-            </div>
-          </TabsContent>
+            <SectionCard
+              title="Observações"
+              description="Anotações e informações adicionais sobre o produto."
+            >
+              <FormField label="Observações">
+                <Textarea {...form.register("notes")} className="min-h-40" />
+              </FormField>
+            </SectionCard>
+          </div>
+        </>
+      )}
 
-          <TabsContent value="observacoes">
-            <FormField label="Observações">
-              <Textarea {...form.register("notes")} />
-            </FormField>
-          </TabsContent>
-        </Tabs>
-      </SectionCard>
+      {/* Observações para novo produto */}
+      {!isEditing && (
+        <SectionCard
+          title="Observações"
+          description="Anotações e informações adicionais sobre o produto."
+        >
+          <FormField label="Observações">
+            <Textarea {...form.register("notes")} className="min-h-40" />
+          </FormField>
+        </SectionCard>
+      )}
 
+      {/* Lista de Produtos */}
       <SectionCard title="Lista de produtos" description="Visão resumida para conferência e manutenção.">
         <DataTable columns={columns} data={products} />
       </SectionCard>
     </div>
   );
 }
-

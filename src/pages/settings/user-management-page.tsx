@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, Search, UserMinus, UserCheck, Shield } from "lucide-react";
-import { supabase } from "@/lib/database";
+import { supabase, supabaseAdmin } from "@/lib/database";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,10 +26,13 @@ export function UserManagementPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // Form states
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<UserRole>("ATENDENTE");
   const [newStoreId, setNewStoreId] = useState(mockStores[0].id);
 
@@ -85,18 +88,84 @@ export function UserManagementPage() {
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
-    // In a real app, we'd use a Supabase Edge Function or a backend to create the auth user
-    // Since we are in a demo/prototype, we'll simulate it or use signup if allowed.
-    // For this implementation, I'll show how it would be done.
-    
-    const generatedPassword = Math.random().toString(36).slice(-8);
-    setTempPassword(generatedPassword);
-    
-    // Simulating creation logic
-    alert(`Usuário criado! Senha temporária: ${generatedPassword}\n(Em produção, isso usaria uma Edge Function para criar o usuário no auth.users)`);
-    
-    setIsCreateModalOpen(false);
-    fetchUsers();
+    setCreateError(null);
+
+    if (newPassword.length < 6) {
+      setCreateError("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+
+    if (!supabase) {
+      setIsCreateModalOpen(false);
+      setTempPassword(newPassword);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Tenta usar o admin API se a service role key estiver configurada
+      if (supabaseAdmin) {
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: newEmail,
+          password: newPassword,
+          email_confirm: true,
+          user_metadata: { name: newName },
+        });
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("Usuário não foi criado.");
+
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: authData.user.id,
+          name: newName,
+          email: newEmail,
+          role: newRole,
+          store_id: newStoreId,
+          allow_cost_view: newRole === "ADMIN" || newRole === "GERENTE",
+          status: "ativo",
+          must_change_password: false,
+        });
+        if (profileError) throw profileError;
+      } else {
+        // Fallback: signUp com cliente temporário (não desloga o admin atual)
+        const tempClient = (await import("@supabase/supabase-js")).createClient(
+          import.meta.env.VITE_SUPABASE_URL,
+          import.meta.env.VITE_SUPABASE_ANON_KEY,
+          { auth: { persistSession: false, autoRefreshToken: false } },
+        );
+        const { data: authData, error: authError } = await tempClient.auth.signUp({
+          email: newEmail,
+          password: newPassword,
+          options: { data: { name: newName } },
+        });
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("Usuário não foi criado.");
+
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: authData.user.id,
+          name: newName,
+          email: newEmail,
+          role: newRole,
+          store_id: newStoreId,
+          allow_cost_view: newRole === "ADMIN" || newRole === "GERENTE",
+          status: "ativo",
+          must_change_password: false,
+        });
+        if (profileError) throw profileError;
+      }
+
+      setIsCreateModalOpen(false);
+      setTempPassword(newPassword);
+      setNewName("");
+      setNewEmail("");
+      setNewPassword("");
+      setNewRole("ATENDENTE");
+      setNewStoreId(mockStores[0].id);
+      fetchUsers();
+    } catch (err: any) {
+      setCreateError(err.message ?? "Erro ao criar usuário.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function toggleUserStatus(user: User) {
@@ -210,25 +279,34 @@ export function UserManagementPage() {
           <DialogHeader>
             <DialogTitle>Novo Usuário</DialogTitle>
             <DialogDescription>
-              Crie um novo acesso para a plataforma. Uma senha temporária será gerada.
+              Preencha os dados e defina a senha de acesso do colaborador.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateUser} className="mt-4 space-y-4">
             <FormField label="Nome completo">
-              <Input 
-                value={newName} 
-                onChange={(e) => setNewName(e.target.value)} 
-                placeholder="Ex: João Silva" 
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Ex: João Silva"
                 required
               />
             </FormField>
             <FormField label="E-mail">
-              <Input 
-                type="email" 
-                value={newEmail} 
-                onChange={(e) => setNewEmail(e.target.value)} 
-                placeholder="joao@autovitrais.com.br" 
+              <Input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="joao@autovitrais.com.br"
+                required
+              />
+            </FormField>
+            <FormField label="Senha">
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
                 required
               />
             </FormField>
@@ -250,8 +328,11 @@ export function UserManagementPage() {
               </FormField>
             </div>
 
-            <Button type="submit" className="w-full py-6">
-              Criar Usuário e Gerar Senha
+            {createError && (
+              <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600">{createError}</p>
+            )}
+            <Button type="submit" className="w-full py-6" disabled={isSubmitting}>
+              {isSubmitting ? "Criando..." : "Criar Usuário"}
             </Button>
           </form>
         </DialogContent>
