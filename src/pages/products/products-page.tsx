@@ -22,6 +22,7 @@ type ProductFormValues = {
   barcode: string;
   name: string;
   isTypeB: boolean;
+  isTypeR: boolean;
   glassType: string;
   feature: string;
   manufacturer: string;
@@ -54,6 +55,7 @@ function getEmptyFormValues(): ProductFormValues {
     barcode: generateUniqueBarcode(),
     name: "",
     isTypeB: false,
+    isTypeR: false,
     glassType: "",
     feature: "",
     manufacturer: "",
@@ -79,6 +81,7 @@ function buildFormValues(p: Product): ProductFormValues {
     barcode: p.barcode,
     name: p.name,
     isTypeB: (p as any).isTypeB ?? false,
+    isTypeR: (p as any).isTypeR ?? false,
     glassType: p.glassType,
     feature: p.feature,
     manufacturer: p.manufacturers[0].manufacturer,
@@ -150,6 +153,7 @@ export function ProductsPage() {
               status: values.status,
               notes: values.notes ?? "",
               is_type_b: values.isTypeB,
+              is_type_r: values.isTypeR,
             })
             .eq("id", currentProduct.id);
           if (error) throw error;
@@ -167,6 +171,7 @@ export function ProductsPage() {
               status: values.status,
               notes: values.notes ?? "",
               is_type_b: values.isTypeB,
+              is_type_r: values.isTypeR,
             })
             .select("id")
             .single();
@@ -380,10 +385,16 @@ export function ProductsPage() {
               ))}
             </Select>
           </FormField>
-          <FormField label="B">
+          <FormField label="Especial">
             <label className="flex h-full cursor-pointer items-center gap-2">
               <input type="checkbox" {...form.register("isTypeB")} className="size-4 accent-primary" />
-              <span className="text-sm font-semibold text-slate-700">B</span>
+              <span className="text-sm font-semibold text-slate-700">Especial</span>
+            </label>
+          </FormField>
+          <FormField label="R">
+            <label className="flex h-full cursor-pointer items-center gap-2">
+              <input type="checkbox" {...form.register("isTypeR")} className="size-4 accent-primary" />
+              <span className="text-sm font-semibold text-slate-700">R</span>
             </label>
           </FormField>
         </form>

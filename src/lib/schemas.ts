@@ -6,6 +6,7 @@ export const productSchema = z.object({
   barcode: z.string().min(8, "Informe o código de barras."),
   name: z.string().min(3, "Informe o nome do produto."),
   isTypeB: z.boolean().default(false),
+  isTypeR: z.boolean().default(false),
   glassType: z.string().min(1, "Selecione o tipo de vidro."),
   feature: z.string().min(1, "Selecione a característica."),
   manufacturer: z.string().min(1, "Selecione o fabricante."),
