@@ -344,22 +344,12 @@ export function ProductsPage() {
             <Input {...form.register("name")} placeholder="Ex: Parabrisa Gol G5 2008/2011" />
           </FormField>
 
-          {/* Linha de códigos + tipo */}
+          {/* Linha de códigos */}
           <FormField label="Código interno" error={form.formState.errors.internalCode?.message}>
             <Input {...form.register("internalCode")} />
           </FormField>
           <FormField label="Código de barras">
             <Input {...form.register("barcode")} readOnly className="bg-slate-50 text-slate-500" />
-          </FormField>
-          <FormField label="B">
-            <label className={`flex h-full cursor-pointer items-center justify-center rounded-2xl border-2 py-2 text-sm font-semibold transition-colors ${
-              form.watch("isTypeB")
-                ? "border-primary bg-primary text-white"
-                : "border-border bg-white text-slate-700 hover:border-primary/50"
-            }`}>
-              <input type="checkbox" {...form.register("isTypeB")} className="sr-only" />
-              B
-            </label>
           </FormField>
           <FormField label="Marca" error={form.formState.errors.brand?.message}>
             <Input {...form.register("brand")} />
@@ -390,9 +380,15 @@ export function ProductsPage() {
               ))}
             </Select>
           </FormField>
-
-          <FormField label="Descrição" error={form.formState.errors.description?.message} className="md:col-span-2 xl:col-span-4">
-            <Textarea {...form.register("description")} />
+          <FormField label="B">
+            <label className={`flex h-full cursor-pointer items-center justify-center rounded-2xl border-2 py-2 text-sm font-bold transition-colors ${
+              form.watch("isTypeB")
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-white text-slate-700 hover:border-primary/50"
+            }`}>
+              <input type="checkbox" {...form.register("isTypeB")} className="sr-only" />
+              B
+            </label>
           </FormField>
         </form>
       </SectionCard>
