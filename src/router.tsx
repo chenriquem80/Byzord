@@ -2,6 +2,7 @@ import { Suspense, lazy, type ReactNode } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
 import { AuthGuard } from "@/components/shared/auth-guard";
+import { getAllowedRoles } from "@/lib/permissions";
 
 const LoginPage = lazy(() => import("@/pages/login-page").then((module) => ({ default: module.LoginPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard-page").then((module) => ({ default: module.DashboardPage })));
@@ -138,24 +139,24 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: withSuspense(<DashboardPage />) },
-      { path: "atendimento", element: withSuspense(<AttendancePage />) },
       { path: "home", element: <Navigate to="/app" replace /> },
-      { path: "estoque", element: withSuspense(<StockPage />) },
-      { path: "saida", element: withSuspense(<ExitPage />) },
-      { path: "orcamento", element: withSuspense(<QuotesPage />) },
-      { path: "entrada", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE", "ESTOQUISTA"]}><EntryPage /></AuthGuard>) },
-      { path: "registro", element: withSuspense(<RecordsPage />) },
-      { path: "pedido", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><OrdersPage /></AuthGuard>) },
-      { path: "etiquetagem", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE", "ESTOQUISTA"]}><LabelsPage /></AuthGuard>) },
-      { path: "reposicao", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><ReplenishmentPage /></AuthGuard>) },
-      { path: "produtos", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><ProductsPage /></AuthGuard>) },
-      { path: "veiculos", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><VehiclesPage /></AuthGuard>) },
-      { path: "fornecedores", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><SuppliersPage /></AuthGuard>) },
-      { path: "clientes", element: withSuspense(<CustomersPage />) },
-      { path: "relatorios", element: withSuspense(<AuthGuard allowedRoles={["ADMIN", "GERENTE"]}><ReportsPage /></AuthGuard>) },
-      { path: "configuracoes", element: withSuspense(<SettingsPage />) },
-      { path: "usuarios", element: withSuspense(<AuthGuard allowedRoles={["ADMIN"]}><UserManagementPage /></AuthGuard>) },
-      { path: "transferencia", element: withSuspense(<TransferPage />) },
+      { path: "atendimento", element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/atendimento")}><AttendancePage /></AuthGuard>) },
+      { path: "estoque",     element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/estoque")}><StockPage /></AuthGuard>) },
+      { path: "saida",       element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/saida")}><ExitPage /></AuthGuard>) },
+      { path: "orcamento",   element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/orcamento")}><QuotesPage /></AuthGuard>) },
+      { path: "entrada",     element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/entrada")}><EntryPage /></AuthGuard>) },
+      { path: "registro",    element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/registro")}><RecordsPage /></AuthGuard>) },
+      { path: "pedido",      element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/pedido")}><OrdersPage /></AuthGuard>) },
+      { path: "etiquetagem", element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/etiquetagem")}><LabelsPage /></AuthGuard>) },
+      { path: "reposicao",   element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/reposicao")}><ReplenishmentPage /></AuthGuard>) },
+      { path: "produtos",    element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/produtos")}><ProductsPage /></AuthGuard>) },
+      { path: "veiculos",    element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/veiculos")}><VehiclesPage /></AuthGuard>) },
+      { path: "fornecedores",element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/fornecedores")}><SuppliersPage /></AuthGuard>) },
+      { path: "clientes",    element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/clientes")}><CustomersPage /></AuthGuard>) },
+      { path: "relatorios",  element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/relatorios")}><ReportsPage /></AuthGuard>) },
+      { path: "configuracoes",element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/configuracoes")}><SettingsPage /></AuthGuard>) },
+      { path: "usuarios",    element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/usuarios")}><UserManagementPage /></AuthGuard>) },
+      { path: "transferencia",element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/transferencia")}><TransferPage /></AuthGuard>) },
     ],
   },
   {

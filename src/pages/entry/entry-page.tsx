@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Plus, Search } from "lucide-react";
 import Barcode from "react-barcode";
 import { SectionCard } from "@/components/shared/section-card";
@@ -20,6 +21,7 @@ import { formatCurrency } from "@/lib/format";
 
 
 export function EntryPage() {
+  const { readOnly } = usePermissions();
   const navigate = useNavigate();
   const [showNewEntry] = useState(true);
   const [codeQuery, setCodeQuery] = useState("Parabrisa Gol G5");
@@ -231,14 +233,16 @@ export function EntryPage() {
                   })}
                 </div>
 
-                <div className="flex flex-col gap-3 md:flex-row">
-                  <Button size="lg" variant="outline">
-                    Salvar
-                  </Button>
-                  <Button size="lg" onClick={handleFinalize} disabled={totalQuantity <= 0}>
-                    Finalizar
-                  </Button>
-                </div>
+                {!readOnly && (
+                  <div className="flex flex-col gap-3 md:flex-row">
+                    <Button size="lg" variant="outline">
+                      Salvar
+                    </Button>
+                    <Button size="lg" onClick={handleFinalize} disabled={totalQuantity <= 0}>
+                      Finalizar
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">

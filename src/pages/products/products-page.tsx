@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useForm } from "react-hook-form";
 import type { ColumnDef } from "@tanstack/react-table";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -103,6 +104,7 @@ function buildFormValues(p: Product): ProductFormValues {
 }
 
 export function ProductsPage() {
+  const { readOnly } = usePermissions();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("id");
@@ -337,9 +339,11 @@ export function ProductsPage() {
             {saveError && (
               <span className="text-sm font-medium text-rose-600">{saveError}</span>
             )}
-            <Button size="lg" onClick={form.handleSubmit(handleSave as any, handleValidationError)}>
-              Salvar produto
-            </Button>
+            {!readOnly && (
+              <Button size="lg" onClick={form.handleSubmit(handleSave as any, handleValidationError)}>
+                Salvar produto
+              </Button>
+            )}
           </div>
         }
       >

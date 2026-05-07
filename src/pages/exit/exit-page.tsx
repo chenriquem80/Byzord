@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, X } from "lucide-react";
@@ -34,6 +35,7 @@ type SaleFormValues = {
 };
 
 export function ExitPage() {
+  const { readOnly } = usePermissions();
   const form = useForm<SaleFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(saleSchema) as any,
@@ -256,11 +258,13 @@ export function ExitPage() {
           <FormField label="Observação" className="md:col-span-2 xl:col-span-4">
             <Textarea {...form.register("note")} />
           </FormField>
+          {!readOnly && (
           <div className="xl:col-span-4">
             <Button size="lg" disabled={!selectedInventory || selectedInventory.stock <= 0}>
               Confirmar saída
             </Button>
           </div>
+          )}
         </form>
       </SectionCard>
 
