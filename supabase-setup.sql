@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   status        TEXT NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo','inativo')),
   notes         TEXT DEFAULT '',
   is_type_b     BOOLEAN NOT NULL DEFAULT FALSE,
+  is_type_r     BOOLEAN NOT NULL DEFAULT FALSE,
   photos        TEXT[] DEFAULT '{}',
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
