@@ -381,13 +381,9 @@ export function ProductsPage() {
             </Select>
           </FormField>
           <FormField label="B">
-            <label className={`flex h-full cursor-pointer items-center justify-center rounded-2xl border-2 py-2 text-sm font-bold transition-colors ${
-              form.watch("isTypeB")
-                ? "border-primary bg-primary text-white"
-                : "border-border bg-white text-slate-700 hover:border-primary/50"
-            }`}>
-              <input type="checkbox" {...form.register("isTypeB")} className="sr-only" />
-              B
+            <label className="flex h-full cursor-pointer items-center gap-2">
+              <input type="checkbox" {...form.register("isTypeB")} className="size-4 accent-primary" />
+              <span className="text-sm font-semibold text-slate-700">B</span>
             </label>
           </FormField>
         </form>
