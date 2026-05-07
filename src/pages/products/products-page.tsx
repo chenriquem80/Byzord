@@ -573,10 +573,6 @@ export function ProductsPage() {
         </SectionCard>
       )}
 
-      {/* Lista de Produtos */}
-      <SectionCard title="Lista de produtos" description="Visão resumida para conferência e manutenção.">
-        <DataTable columns={columns} data={products} />
-      </SectionCard>
     </div>
   );
 }
