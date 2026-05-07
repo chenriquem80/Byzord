@@ -386,16 +386,16 @@ export function ProductsPage() {
             </Select>
           </FormField>
           <FormField label="Especial">
-            <label className="flex h-full cursor-pointer items-center gap-2">
-              <input type="checkbox" {...form.register("isTypeB")} className="size-4 accent-primary" />
-              <span className="text-sm font-semibold text-slate-700">Especial</span>
-            </label>
-          </FormField>
-          <FormField label="R">
-            <label className="flex h-full cursor-pointer items-center gap-2">
-              <input type="checkbox" {...form.register("isTypeR")} className="size-4 accent-primary" />
-              <span className="text-sm font-semibold text-slate-700">R</span>
-            </label>
+            <div className="flex h-full items-center gap-4">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" {...form.register("isTypeB")} className="size-4 accent-primary" />
+                <span className="text-sm font-semibold text-slate-700">B</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" {...form.register("isTypeR")} className="size-4 accent-primary" />
+                <span className="text-sm font-semibold text-slate-700">R</span>
+              </label>
+            </div>
           </FormField>
         </form>
       </SectionCard>
