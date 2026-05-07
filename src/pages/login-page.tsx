@@ -119,11 +119,6 @@ export function LoginPage() {
               >
                 {loading ? "Entrando..." : "Entrar"}
               </Button>
-              <div className="text-center">
-                <Link to="/register" className="text-sm font-medium text-slate-500 hover:text-primary">
-                  Primeiro acesso? Crie sua conta admin
-                </Link>
-              </div>
             </div>
           </form>
         </div>
