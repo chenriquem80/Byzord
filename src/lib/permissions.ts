@@ -22,9 +22,32 @@ export type AppPage =
   | "/app/registro"
   | "/app/usuarios";
 
+export const PAGE_LABELS: Record<AppPage, string> = {
+  "/app":               "Dashboard",
+  "/app/atendimento":   "Atendimento",
+  "/app/estoque":       "Estoque",
+  "/app/entrada":       "Entrada",
+  "/app/saida":         "Saída",
+  "/app/orcamento":     "Orçamento",
+  "/app/pedido":        "Pedido",
+  "/app/etiquetagem":   "Etiquetagem",
+  "/app/reposicao":     "Reposição",
+  "/app/produtos":      "Produtos",
+  "/app/veiculos":      "Veículos",
+  "/app/fornecedores":  "Fornecedores",
+  "/app/clientes":      "Clientes",
+  "/app/relatorios":    "Relatórios",
+  "/app/configuracoes": "Configurações",
+  "/app/transferencia": "Transferência",
+  "/app/registro":      "Registro",
+  "/app/usuarios":      "Usuários",
+};
+
+export const ALL_PAGES = Object.keys(PAGE_LABELS) as AppPage[];
+
 export type RolePermissionMap = Record<AppPage, PagePermission>;
 
-export const ROLE_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
+const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   ADMIN: {
     "/app":               "write",
     "/app/atendimento":   "write",
@@ -107,8 +130,30 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   },
 };
 
+const STORAGE_KEY = "byzord_role_permissions";
+
+function loadOverrides(): Partial<Record<UserRole, Partial<RolePermissionMap>>> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function getRolePermissions(role: UserRole): RolePermissionMap {
+  const overrides = loadOverrides();
+  return { ...DEFAULT_PERMISSIONS[role], ...(overrides[role] ?? {}) };
+}
+
+export function saveRolePermissions(role: UserRole, map: RolePermissionMap): void {
+  const overrides = loadOverrides();
+  overrides[role] = map;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+}
+
 export function getPagePermission(role: UserRole, page: AppPage): PagePermission {
-  return ROLE_PERMISSIONS[role][page] ?? "none";
+  return getRolePermissions(role)[page] ?? "none";
 }
 
 export function canAccessPage(role: UserRole, page: AppPage): boolean {
@@ -120,7 +165,9 @@ export function canEditPage(role: UserRole, page: AppPage): boolean {
 }
 
 export function getAllowedRoles(page: AppPage): UserRole[] {
-  return (Object.keys(ROLE_PERMISSIONS) as UserRole[]).filter(
+  return (Object.keys(DEFAULT_PERMISSIONS) as UserRole[]).filter(
     (role) => canAccessPage(role, page),
   );
 }
+
+export const ROLE_PERMISSIONS = DEFAULT_PERMISSIONS;
