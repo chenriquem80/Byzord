@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { products, stores, suppliers } from "@/data/mock-data";
 import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
+import { supabase } from "@/lib/database";
 import { productSchema } from "@/lib/schemas";
 import type { Product } from "@/types/domain";
 
@@ -20,7 +21,7 @@ type ProductFormValues = {
   supplierCode: string;
   barcode: string;
   name: string;
-  productType: "N" | "R" | "B";
+  isTypeB: boolean;
   glassType: string;
   feature: string;
   manufacturer: string;
@@ -52,7 +53,7 @@ function getEmptyFormValues(): ProductFormValues {
     supplierCode: "",
     barcode: generateUniqueBarcode(),
     name: "",
-    productType: "N",
+    isTypeB: false,
     glassType: "",
     feature: "",
     manufacturer: "",
@@ -77,7 +78,7 @@ function buildFormValues(p: Product): ProductFormValues {
     supplierCode: p.supplierCode,
     barcode: p.barcode,
     name: p.name,
-    productType: (p as any).productType ?? "N",
+    isTypeB: (p as any).isTypeB ?? false,
     glassType: p.glassType,
     feature: p.feature,
     manufacturer: p.manufacturers[0].manufacturer,
@@ -103,6 +104,7 @@ export function ProductsPage() {
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("id");
   const [savedMessage, setSavedMessage] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const currentProduct = productId
     ? (products.find((p) => p.id === productId) ?? null)
@@ -124,64 +126,142 @@ export function ProductsPage() {
   const watchedPrice = form.watch("price");
   const margin = watchedCost ? ((watchedPrice - watchedCost) / watchedCost) * 100 : 0;
 
-  function handleSave(values: ProductFormValues) {
-    if (isEditing) {
-      const index = products.findIndex((p) => p.id === currentProduct.id);
-      if (index !== -1) {
-        products[index] = {
-          ...products[index],
-          internalCode: values.internalCode,
-          supplierCode: values.supplierCode,
-          barcode: values.barcode,
-          name: values.name,
-          glassType: values.glassType as Product["glassType"],
-          feature: values.feature as Product["feature"],
-          brand: values.brand,
-          description: values.description,
-          status: values.status,
-          notes: values.notes ?? "",
-        };
+  function handleValidationError() {
+    setSaveError("Preencha todos os campos obrigatórios antes de salvar.");
+    setTimeout(() => setSaveError(null), 4000);
+  }
+
+  async function handleSave(values: ProductFormValues) {
+    setSaveError(null);
+
+    try {
+      if (supabase) {
+        if (isEditing) {
+          const { error } = await supabase
+            .from("products")
+            .update({
+              internal_code: values.internalCode,
+              barcode: values.barcode,
+              name: values.name,
+              glass_type: values.glassType,
+              feature: values.feature,
+              brand: values.brand,
+              description: values.description,
+              status: values.status,
+              notes: values.notes ?? "",
+              is_type_b: values.isTypeB,
+            })
+            .eq("id", currentProduct.id);
+          if (error) throw error;
+        } else {
+          const { data: inserted, error: insertError } = await supabase
+            .from("products")
+            .insert({
+              internal_code: values.internalCode,
+              barcode: values.barcode,
+              name: values.name,
+              glass_type: values.glassType,
+              feature: values.feature,
+              brand: values.brand,
+              description: values.description,
+              status: values.status,
+              notes: values.notes ?? "",
+              is_type_b: values.isTypeB,
+            })
+            .select("id")
+            .single();
+          if (insertError) throw insertError;
+
+          const productDbId = inserted.id;
+
+          const { data: mf, error: mfError } = await supabase
+            .from("product_manufacturers")
+            .insert({
+              product_id: productDbId,
+              manufacturer: values.manufacturer,
+              cost: Number(values.cost),
+              price: Number(values.price),
+              last_purchase_date: values.lastPurchaseDate,
+              supplier: values.lastSupplier,
+            })
+            .select("id")
+            .single();
+          if (mfError) throw mfError;
+
+          const inventoryRows = stores.map((store, i) => ({
+            manufacturer_id: mf.id,
+            store_id: store.id,
+            location: values.location,
+            stock: i === 0 ? Number(values.quantity) : 0,
+            min_quantity: Number(values.minimum),
+          }));
+          const { error: invError } = await supabase
+            .from("product_store_inventory")
+            .insert(inventoryRows);
+          if (invError) throw invError;
+
+          navigate(`/app/produtos?id=${productDbId}`);
+        }
+      } else {
+        // Sem Supabase: salva só em memória (dados perdidos ao recarregar)
+        if (isEditing) {
+          const index = products.findIndex((p) => p.id === currentProduct.id);
+          if (index !== -1) {
+            products[index] = {
+              ...products[index],
+              internalCode: values.internalCode,
+              barcode: values.barcode,
+              name: values.name,
+              glassType: values.glassType as Product["glassType"],
+              feature: values.feature as Product["feature"],
+              brand: values.brand,
+              description: values.description,
+              status: values.status,
+              notes: values.notes ?? "",
+            };
+          }
+        } else {
+          const newId = `prd-${Date.now()}`;
+          products.push({
+            id: newId,
+            internalCode: values.internalCode,
+            supplierCode: "",
+            barcode: values.barcode,
+            name: values.name,
+            glassType: values.glassType as Product["glassType"],
+            feature: values.feature as Product["feature"],
+            brand: values.brand,
+            description: values.description,
+            photos: [],
+            status: values.status,
+            notes: values.notes ?? "",
+            manufacturers: [{
+              id: `mf-${Date.now()}`,
+              manufacturer: values.manufacturer,
+              cost: Number(values.cost),
+              price: Number(values.price),
+              lastPurchaseDate: values.lastPurchaseDate,
+              supplier: values.lastSupplier,
+              inventories: stores.map((store, i) => ({
+                id: `inv-${Date.now()}-${i}`,
+                storeId: store.id,
+                storeName: store.name,
+                location: values.location,
+                stock: i === 0 ? Number(values.quantity) : 0,
+                minQuantity: Number(values.minimum),
+              })),
+            }],
+            compatibilities: [],
+          });
+          navigate(`/app/produtos?id=${newId}`);
+        }
       }
-    } else {
-      const newId = `prd-${Date.now()}`;
-      const newProduct: Product = {
-        id: newId,
-        internalCode: values.internalCode,
-        supplierCode: values.supplierCode,
-        barcode: values.barcode,
-        name: values.name,
-        glassType: values.glassType as Product["glassType"],
-        feature: values.feature as Product["feature"],
-        brand: values.brand,
-        description: values.description,
-        photos: [],
-        status: values.status,
-        notes: values.notes ?? "",
-        manufacturers: [
-          {
-            id: `mf-${Date.now()}`,
-            manufacturer: values.manufacturer,
-            cost: Number(values.cost),
-            price: Number(values.price),
-            lastPurchaseDate: values.lastPurchaseDate,
-            supplier: values.lastSupplier,
-            inventories: stores.map((store, index) => ({
-              id: `inv-${Date.now()}-${index}`,
-              storeId: store.id,
-              storeName: store.name,
-              location: values.location,
-              stock: index === 0 ? Number(values.quantity) : 0,
-              minQuantity: Number(values.minimum),
-            })),
-          },
-        ],
-        compatibilities: [],
-      };
-      products.push(newProduct);
-      navigate(`/app/produtos?id=${newId}`);
+
+      setSavedMessage(true);
+      setTimeout(() => setSavedMessage(false), 3000);
+    } catch (err: any) {
+      setSaveError(err.message ?? "Erro ao salvar produto.");
     }
-    setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 3000);
   }
 
   const columns = useMemo<ColumnDef<Product>[]>(
@@ -249,7 +329,10 @@ export function ProductsPage() {
             {savedMessage && (
               <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span>
             )}
-            <Button size="lg" onClick={form.handleSubmit(handleSave as any)}>
+            {saveError && (
+              <span className="text-sm font-medium text-rose-600">{saveError}</span>
+            )}
+            <Button size="lg" onClick={form.handleSubmit(handleSave as any, handleValidationError)}>
               Salvar produto
             </Button>
           </div>
@@ -268,27 +351,15 @@ export function ProductsPage() {
           <FormField label="Código de barras">
             <Input {...form.register("barcode")} readOnly className="bg-slate-50 text-slate-500" />
           </FormField>
-          <FormField label="Tipo">
-            <div className="flex gap-2">
-              {(["N", "R", "B"] as const).map((opt) => (
-                <label
-                  key={opt}
-                  className={`flex flex-1 cursor-pointer items-center justify-center rounded-2xl border-2 py-2 text-sm font-semibold transition-colors ${
-                    form.watch("productType") === opt
-                      ? "border-primary bg-primary text-white"
-                      : "border-border bg-white text-slate-700 hover:border-primary/50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    value={opt}
-                    {...form.register("productType")}
-                    className="sr-only"
-                  />
-                  {opt}
-                </label>
-              ))}
-            </div>
+          <FormField label="B">
+            <label className={`flex h-full cursor-pointer items-center justify-center rounded-2xl border-2 py-2 text-sm font-semibold transition-colors ${
+              form.watch("isTypeB")
+                ? "border-primary bg-primary text-white"
+                : "border-border bg-white text-slate-700 hover:border-primary/50"
+            }`}>
+              <input type="checkbox" {...form.register("isTypeB")} className="sr-only" />
+              B
+            </label>
           </FormField>
           <FormField label="Marca" error={form.formState.errors.brand?.message}>
             <Input {...form.register("brand")} />

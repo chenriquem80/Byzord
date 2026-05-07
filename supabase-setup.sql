@@ -105,3 +105,70 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+
+-- ------------------------------------------------------------
+-- 6. TABELA: products
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.products (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  internal_code TEXT NOT NULL,
+  barcode       TEXT,
+  name          TEXT NOT NULL,
+  glass_type    TEXT,
+  feature       TEXT,
+  brand         TEXT,
+  description   TEXT,
+  status        TEXT NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo','inativo')),
+  notes         TEXT DEFAULT '',
+  is_type_b     BOOLEAN NOT NULL DEFAULT FALSE,
+  photos        TEXT[] DEFAULT '{}',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated read products" ON public.products;
+DROP POLICY IF EXISTS "Authenticated insert products" ON public.products;
+DROP POLICY IF EXISTS "Authenticated update products" ON public.products;
+
+CREATE POLICY "Authenticated read products"   ON public.products FOR SELECT TO authenticated USING (TRUE);
+CREATE POLICY "Authenticated insert products" ON public.products FOR INSERT TO authenticated WITH CHECK (TRUE);
+CREATE POLICY "Authenticated update products" ON public.products FOR UPDATE TO authenticated USING (TRUE) WITH CHECK (TRUE);
+
+
+-- ------------------------------------------------------------
+-- 7. TABELA: product_manufacturers
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.product_manufacturers (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id         UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+  manufacturer       TEXT NOT NULL,
+  cost               NUMERIC(10,2) NOT NULL DEFAULT 0,
+  price              NUMERIC(10,2) NOT NULL DEFAULT 0,
+  last_purchase_date DATE,
+  supplier           TEXT,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.product_manufacturers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated all product_manufacturers" ON public.product_manufacturers TO authenticated USING (TRUE) WITH CHECK (TRUE);
+
+
+-- ------------------------------------------------------------
+-- 8. TABELA: product_store_inventory
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.product_store_inventory (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  manufacturer_id UUID NOT NULL REFERENCES public.product_manufacturers(id) ON DELETE CASCADE,
+  store_id        TEXT NOT NULL REFERENCES public.stores(id),
+  location        TEXT DEFAULT '',
+  stock           INTEGER NOT NULL DEFAULT 0,
+  min_quantity    INTEGER NOT NULL DEFAULT 0,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.product_store_inventory ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated all product_store_inventory" ON public.product_store_inventory TO authenticated USING (TRUE) WITH CHECK (TRUE);
