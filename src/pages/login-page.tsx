@@ -88,19 +88,19 @@ export function LoginPage() {
                 />
               </div>
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-700">Senha</p>
+                <p className="mb-2 text-sm font-medium text-slate-700">Senha</p>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+                <div className="mt-2 text-right">
                   <Link to="/forgot-password" className="text-xs text-primary hover:underline">
                     Esqueci minha senha
                   </Link>
                 </div>
-                <Input 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="••••••••" 
-                  required
-                />
               </div>
             </div>
 
