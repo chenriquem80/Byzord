@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,53 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { labels, products, stores, suppliers } from "@/data/mock-data";
 import { formatCurrency } from "@/lib/format";
 
-type EntryStatus = "finalizada" | "pendente" | "cancelada";
-
-interface EntryListItem {
-  id: string;
-  createdAt: string;
-  productCode: string;
-  productName: string;
-  supplier: string;
-  status: EntryStatus;
-}
-
-const entryList: EntryListItem[] = [
-  {
-    id: "ent-001",
-    createdAt: "2026-05-02 08:15",
-    productCode: "VK.PB.103.101",
-    productName: "Parabrisa Gol G5 2008/2011",
-    supplier: "Pilkington Brasil",
-    status: "finalizada",
-  },
-  {
-    id: "ent-002",
-    createdAt: "2026-05-02 09:40",
-    productCode: "FT.VG.204.201",
-    productName: "Vigia Fiat Uno Vivace 2011/2014",
-    supplier: "Glass Parts",
-    status: "pendente",
-  },
-  {
-    id: "ent-003",
-    createdAt: "2026-05-01 17:30",
-    productCode: "GM.PD.311.050",
-    productName: "Porta Dianteira Onix 2013/2019",
-    supplier: "Casa do Vidro",
-    status: "cancelada",
-  },
-];
-
-const badgeClass: Record<EntryStatus, string> = {
-  finalizada: "bg-emerald-100 text-emerald-700",
-  pendente: "bg-amber-100 text-amber-700",
-  cancelada: "bg-rose-100 text-rose-700",
-};
 
 export function EntryPage() {
   const navigate = useNavigate();
-  const [showNewEntry, setShowNewEntry] = useState(false);
+  const [showNewEntry, setShowNewEntry] = useState(true);
   const [codeQuery, setCodeQuery] = useState("Parabrisa Gol G5");
   const [selectedProductId, setSelectedProductId] = useState(products[0].id);
   const [selectedManufacturer, setSelectedManufacturer] = useState(
@@ -142,49 +98,10 @@ export function EntryPage() {
 
   return (
     <div className="space-y-6">
-      {!showNewEntry ? (
-        <>
-                    <SectionCard
-            title="Lista de entradas"
-            description="Consulte os lançamentos com status finalizada, pendente ou cancelada."
-            action={
-              <Button onClick={() => setShowNewEntry(true)}>
-                <Plus className="mr-2 size-4" />
-                Adicionar Item
-              </Button>
-            }
-          >
-            <div className="space-y-3">
-              {entryList.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 md:flex-row md:items-center md:justify-between"
-                >
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      {entry.productCode} • {entry.productName}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {entry.createdAt} • {entry.supplier}
-                    </p>
-                  </div>
-                  <Badge className={badgeClass[entry.status]}>{entry.status}</Badge>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        </>
-      ) : null}
-
       {showNewEntry ? (
         <SectionCard
           title="Nova entrada"
           description="Digite a descrição do produto, carregue os dados e distribua a quantidade entre as duas lojas."
-          action={
-            <Button variant="outline" onClick={() => setShowNewEntry(false)}>
-              Fechar
-            </Button>
-          }
         >
           <div className="space-y-6">
             <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
