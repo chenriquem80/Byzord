@@ -94,6 +94,10 @@ export function AppShell() {
   );
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [location.pathname]);
+
+  useEffect(() => {
     if (location.pathname === "/app/estoque" || location.pathname === "/app/entrada" || location.pathname === "/app/saida") {
       setStockMenuOpen(true);
     }
