@@ -1,4 +1,6 @@
 
+import Barcode from "react-barcode";
+
 import { SectionCard } from "@/components/shared/section-card";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,10 +37,18 @@ export function LabelsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 rounded-[14px] border-2 border-slate-950 p-4 text-center">
-                    <div className="mx-auto grid aspect-square w-full max-w-[150px] place-items-center bg-[linear-gradient(90deg,#000_12%,transparent_12%,transparent_24%,#000_24%,#000_36%,transparent_36%,transparent_48%,#000_48%,#000_60%,transparent_60%,transparent_72%,#000_72%,#000_84%,transparent_84%),linear-gradient(#000_12%,transparent_12%,transparent_24%,#000_24%,#000_36%,transparent_36%,transparent_48%,#000_48%,#000_60%,transparent_60%,transparent_72%,#000_72%,#000_84%,transparent_84%)] bg-[length:26px_26px]" />
-                    <p className="mt-3 text-[11px] uppercase tracking-[0.16em] text-slate-500">{label.storeName}</p>
-                  </div>
+                  {label.barcode && (
+                    <div className="mt-6 flex justify-center rounded-[14px] border-2 border-slate-950 p-3">
+                      <Barcode
+                        value={label.barcode}
+                        format="EAN13"
+                        width={1.5}
+                        height={60}
+                        fontSize={12}
+                        margin={0}
+                      />
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
