@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
+import Barcode from "react-barcode";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -273,9 +274,19 @@ export function EntryPage() {
                       </div>
                     </div>
 
-                    <div className="mt-6 rounded-[14px] border-2 border-slate-950 p-4 text-center">
-                      <div className="mx-auto grid aspect-square w-full max-w-[150px] place-items-center bg-[linear-gradient(90deg,#000_12%,transparent_12%,transparent_24%,#000_24%,#000_36%,transparent_36%,transparent_48%,#000_48%,#000_60%,transparent_60%,transparent_72%,#000_72%,#000_84%,transparent_84%),linear-gradient(#000_12%,transparent_12%,transparent_24%,#000_24%,#000_36%,transparent_36%,transparent_48%,#000_48%,#000_60%,transparent_60%,transparent_72%,#000_72%,#000_84%,transparent_84%)] bg-[length:26px_26px]" />
-                      <p className="mt-3 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                    <div className="mt-6 rounded-[14px] border-2 border-slate-950 p-3 text-center">
+                      <div className="flex justify-center overflow-hidden">
+                        <Barcode
+                          value={selectedProduct.barcode || "0000000000000"}
+                          format="EAN13"
+                          width={1.6}
+                          height={60}
+                          fontSize={11}
+                          margin={0}
+                          background="transparent"
+                        />
+                      </div>
+                      <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
                         {currentLabel.storeName}
                       </p>
                     </div>
