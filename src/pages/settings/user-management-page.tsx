@@ -200,9 +200,9 @@ export function UserManagementPage() {
   }
 
   const PERMISSION_OPTIONS: { value: PagePermission; label: string; color: string }[] = [
-    { value: "write", label: "Edição",   color: "text-emerald-700 bg-emerald-50" },
-    { value: "read",  label: "Consulta", color: "text-blue-700 bg-blue-50" },
-    { value: "none",  label: "Sem acesso", color: "text-slate-500 bg-slate-100" },
+    { value: "write", label: "✏️ Edição",      color: "text-emerald-700 bg-emerald-50" },
+    { value: "read",  label: "👁️ Consulta",    color: "text-blue-700 bg-blue-50" },
+    { value: "none",  label: "🚫 Sem acesso",  color: "text-slate-500 bg-slate-100" },
   ];
 
   const columns = [
