@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,7 @@ import { formatCurrency } from "@/lib/format";
 
 export function EntryPage() {
   const navigate = useNavigate();
-  const [showNewEntry, setShowNewEntry] = useState(true);
+  const [showNewEntry] = useState(true);
   const [codeQuery, setCodeQuery] = useState("Parabrisa Gol G5");
   const [selectedProductId, setSelectedProductId] = useState(products[0].id);
   const [selectedManufacturer, setSelectedManufacturer] = useState(
