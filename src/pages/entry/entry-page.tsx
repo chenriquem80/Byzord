@@ -40,6 +40,8 @@ export function EntryPage() {
   });
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [showLabel, setShowLabel] = useState(false);
+  const [searchResults, setSearchResults] = useState<typeof products>([]);
+  const [productSelected, setProductSelected] = useState(false);
 
   const selectedProduct = useMemo(
     () => products.find((item) => item.id === selectedProductId) ?? products[0],
@@ -76,17 +78,24 @@ export function EntryPage() {
   );
 
   function handleCodeSearch() {
-    const foundProduct =
-      products.find((item) =>
-        `${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`
-          .toLowerCase()
-          .includes(codeQuery.toLowerCase()),
-      ) ?? products[0];
+    if (!codeQuery.trim()) return;
+    const results = products.filter((item) =>
+      `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`
+        .toLowerCase()
+        .includes(codeQuery.toLowerCase()),
+    );
+    setSearchResults(results);
+    setProductSelected(false);
+  }
 
-    setSelectedProductId(foundProduct.id);
-    setSelectedManufacturer(foundProduct.manufacturers[0].manufacturer);
-    setSelectedSupplier(foundProduct.manufacturers[0].supplier);
-    setCost(String(foundProduct.manufacturers[0].cost));
+  function handleSelectProduct(product: typeof products[0]) {
+    setSelectedProductId(product.id);
+    setSelectedManufacturer(product.manufacturers[0].manufacturer);
+    setSelectedSupplier(product.manufacturers[0].supplier);
+    setCost(String(product.manufacturers[0].cost));
+    setStoreQuantities({ "store-1": "0", "store-2": "0" });
+    setSearchResults([]);
+    setProductSelected(true);
   }
 
   function updateStoreQuantity(storeId: string, value: string) {
@@ -114,7 +123,8 @@ export function EntryPage() {
                   <FormField label="Descrição do produto">
                     <Input
                       value={codeQuery}
-                      onChange={(event) => setCodeQuery(event.target.value)}
+                      onChange={(event) => { setCodeQuery(event.target.value); setProductSelected(false); setSearchResults([]); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleCodeSearch()}
                       placeholder="Digite a descrição (ex: Parabrisa Gol G5)"
                     />
                   </FormField>
@@ -130,9 +140,55 @@ export function EntryPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.15em] text-slate-500">
-                    Produto encontrado
+                {/* Resultados da busca */}
+                {searchResults.length > 0 && (
+                  <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+                    <p className="border-b border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {searchResults.length} produto{searchResults.length > 1 ? "s" : ""} encontrado{searchResults.length > 1 ? "s" : ""} — selecione um
+                    </p>
+                    <div className="divide-y divide-border">
+                      {searchResults.map((product) => {
+                        const totalStock = product.manufacturers.reduce(
+                          (sum, m) => sum + m.inventories.reduce((s, inv) => s + inv.stock, 0),
+                          0,
+                        );
+                        return (
+                          <button
+                            key={product.id}
+                            type="button"
+                            onClick={() => handleSelectProduct(product)}
+                            className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
+                          >
+                            <div>
+                              <p className="font-semibold text-slate-900">
+                                {product.internalCode} • {product.name}
+                              </p>
+                              <p className="text-sm text-slate-500">
+                                {product.glassType} • {product.feature} • {product.brand}
+                              </p>
+                            </div>
+                            <span className={`ml-4 shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${totalStock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                              {totalStock} un.
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {searchResults.length === 0 && codeQuery.trim() && !productSelected && (
+                  <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                    Nenhum produto encontrado para "<strong>{codeQuery}</strong>". Tente outros termos ou cadastre um novo item.
+                  </p>
+                )}
+
+                {/* Formulário e distribuição — só após selecionar produto */}
+                {productSelected && (
+                <>
+                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+                    Produto selecionado
                   </p>
                   <p className="mt-2 text-xl font-semibold text-slate-900">
                     {selectedProduct.internalCode} • {selectedProduct.name}
@@ -243,6 +299,8 @@ export function EntryPage() {
                       Finalizar
                     </Button>
                   </div>
+                )}
+                </>
                 )}
               </div>
 
