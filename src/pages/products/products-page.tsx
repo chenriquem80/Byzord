@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useForm } from "react-hook-form";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -131,9 +130,28 @@ export function ProductsPage() {
   const watchedPrice = form.watch("price");
   const margin = watchedCost ? ((watchedPrice - watchedCost) / watchedCost) * 100 : 0;
 
-  function handleValidationError() {
-    setSaveError("Preencha todos os campos obrigatórios antes de salvar.");
-    setTimeout(() => setSaveError(null), 4000);
+  const fieldLabels: Partial<Record<keyof ProductFormValues, string>> = {
+    name: "Nome do produto",
+    internalCode: "Código interno",
+    brand: "Marca",
+    glassType: "Tipo de vidro",
+    feature: "Característica",
+    manufacturer: "Fabricante",
+    location: "Localização",
+    quantity: "Quantidade atual",
+    minimum: "Quantidade mínima",
+    cost: "Preço de custo",
+    price: "Preço de venda",
+    lastPurchaseDate: "Última data de compra",
+    lastSupplier: "Último fornecedor",
+  };
+
+  function handleValidationError(errors: FieldErrors<ProductFormValues>) {
+    const missing = (Object.keys(errors) as (keyof ProductFormValues)[])
+      .map((key) => fieldLabels[key] ?? key)
+      .join(" • ");
+    setSaveError(`Campos obrigatórios não preenchidos: ${missing}`);
+    setTimeout(() => setSaveError(null), 6000);
   }
 
   async function handleSave(values: ProductFormValues) {
@@ -271,59 +289,6 @@ export function ProductsPage() {
     }
   }
 
-  const columns = useMemo<ColumnDef<Product>[]>(
-    () => [
-      { accessorKey: "internalCode", header: "Código" },
-      { accessorKey: "name", header: "Produto" },
-      { accessorKey: "glassType", header: "Tipo" },
-      { accessorKey: "feature", header: "Característica" },
-      {
-        id: "stock",
-        header: "Total",
-        cell: ({ row }) =>
-          row.original.manufacturers.reduce(
-            (sum, item) => sum + item.inventories.reduce((storeSum, inventory) => storeSum + inventory.stock, 0),
-            0,
-          ),
-      },
-      {
-        id: "store1",
-        header: stores[0].code,
-        cell: ({ row }) =>
-          row.original.manufacturers.reduce(
-            (sum, item) =>
-              sum + (item.inventories.find((inventory) => inventory.storeId === stores[0].id)?.stock ?? 0),
-            0,
-          ),
-      },
-      {
-        id: "store2",
-        header: stores[1].code,
-        cell: ({ row }) =>
-          row.original.manufacturers.reduce(
-            (sum, item) =>
-              sum + (item.inventories.find((inventory) => inventory.storeId === stores[1].id)?.stock ?? 0),
-            0,
-          ),
-      },
-      {
-        id: "cost",
-        header: "Custo",
-        cell: ({ row }) => formatCurrency(row.original.manufacturers[0].cost),
-      },
-      {
-        id: "price",
-        header: "Venda",
-        cell: ({ row }) => formatCurrency(row.original.manufacturers[0].price),
-      },
-      {
-        id: "lastPurchase",
-        header: "Últ. compra",
-        cell: ({ row }) => formatMonthYear(row.original.manufacturers[0].lastPurchaseDate),
-      },
-    ],
-    [],
-  );
 
   return (
     <div className="space-y-6">
@@ -340,7 +305,7 @@ export function ProductsPage() {
               <span className="text-sm font-medium text-rose-600">{saveError}</span>
             )}
             {!readOnly && (
-              <Button size="lg" onClick={form.handleSubmit(handleSave as any, handleValidationError)}>
+              <Button size="lg" onClick={form.handleSubmit(handleSave as any, handleValidationError as any)}>
                 Salvar produto
               </Button>
             )}
@@ -390,7 +355,7 @@ export function ProductsPage() {
             </Select>
           </FormField>
           <FormField label="Especial">
-            <div className="flex h-full items-center gap-4">
+            <div className="flex flex-col justify-center gap-2 rounded-xl border border-border bg-white px-4 py-2 shadow-sm">
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="checkbox" {...form.register("isTypeB")} className="size-4 accent-primary" />
                 <span className="text-sm font-semibold text-slate-700">B</span>
