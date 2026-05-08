@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
-import { Plus, Search } from "lucide-react";
+import { Plus, Printer, Search } from "lucide-react";
 import Barcode from "react-barcode";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ export function EntryPage() {
     "store-2": "0",
   });
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [showLabel, setShowLabel] = useState(false);
 
   const selectedProduct = useMemo(
     () => products.find((item) => item.id === selectedProductId) ?? products[0],
@@ -246,56 +247,78 @@ export function EntryPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="rounded-2xl border border-border bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-700">Resumo da entrada</p>
-                  <p className="mt-3 text-3xl font-bold text-slate-950">{totalQuantity} un.</p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Quantidade total somada entre Taubaté e Pinda.
-                  </p>
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-slate-50 p-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Resumo da entrada
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-slate-950">{totalQuantity} un.</p>
+                    <p className="text-xs text-slate-400">Taubaté + Pinda</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={showLabel ? "default" : "outline"}
+                    onClick={() => setShowLabel((v) => !v)}
+                  >
+                    <Printer className="size-4" />
+                    Imprimir etiqueta
+                  </Button>
                 </div>
 
-                <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
-                  <div className="mx-auto w-full max-w-[280px] rounded-[22px] bg-white p-5 text-slate-950 shadow-sm">
-                    <p className="text-[13px] font-medium">Codigo:</p>
-                    <p className="mt-2 break-all text-[30px] font-semibold leading-none tracking-tight">
-                      {currentLabel.productCode}
-                    </p>
+                {showLabel && (
+                  <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
+                    <div className="mx-auto w-full max-w-[280px] rounded-[22px] bg-white p-5 text-slate-950 shadow-sm">
+                      <p className="text-[13px] font-medium">Codigo:</p>
+                      <p className="mt-2 break-all text-[30px] font-semibold leading-none tracking-tight">
+                        {currentLabel.productCode}
+                      </p>
 
-                    <div className="mt-7 space-y-3">
-                      <div>
-                        <p className="text-[13px] font-medium">Estocagem:</p>
-                        <p className="mt-1 text-[28px] font-semibold leading-none">
-                          {currentLabel.location}
+                      <div className="mt-7 space-y-3">
+                        <div>
+                          <p className="text-[13px] font-medium">Estocagem:</p>
+                          <p className="mt-1 text-[28px] font-semibold leading-none">
+                            {currentLabel.location}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1 text-[18px] leading-tight">
+                          <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
+                          <p>{currentLabel.yearRange}</p>
+                          <p>{currentLabel.feature}</p>
+                          <p>{currentLabel.manufacturer}</p>
+                          <p>{currentLabel.purchaseSummary}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 rounded-[14px] border-2 border-slate-950 p-3 text-center">
+                        <div className="flex justify-center overflow-hidden">
+                          <Barcode
+                            value={selectedProduct.barcode || "0000000000000"}
+                            format="EAN13"
+                            width={1.6}
+                            height={60}
+                            fontSize={11}
+                            margin={0}
+                            background="transparent"
+                          />
+                        </div>
+                        <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                          {currentLabel.storeName}
                         </p>
                       </div>
-
-                      <div className="space-y-1 text-[18px] leading-tight">
-                        <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
-                        <p>{currentLabel.yearRange}</p>
-                        <p>{currentLabel.feature}</p>
-                        <p>{currentLabel.manufacturer}</p>
-                        <p>{currentLabel.purchaseSummary}</p>
-                      </div>
                     </div>
 
-                    <div className="mt-6 rounded-[14px] border-2 border-slate-950 p-3 text-center">
-                      <div className="flex justify-center overflow-hidden">
-                        <Barcode
-                          value={selectedProduct.barcode || "0000000000000"}
-                          format="EAN13"
-                          width={1.6}
-                          height={60}
-                          fontSize={11}
-                          margin={0}
-                          background="transparent"
-                        />
-                      </div>
-                      <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                        {currentLabel.storeName}
-                      </p>
+                    <div className="mt-4 flex gap-2">
+                      <Button className="flex-1" onClick={() => window.print()}>
+                        <Printer className="size-4" />
+                        Imprimir
+                      </Button>
+                      <Button variant="outline" onClick={() => setShowLabel(false)}>
+                        Fechar
+                      </Button>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

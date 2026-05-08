@@ -3,6 +3,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, X } from "lucide-react";
+import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,8 +59,7 @@ export function ExitPage() {
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const animationRef = useRef<number>(0);
+  const scannerControlsRef = useRef<IScannerControls | null>(null);
 
   const selectedProduct = useMemo(
     () => products.find((item) => item.id === form.watch("productId")) ?? products[0],
@@ -80,10 +80,13 @@ export function ExitPage() {
   );
 
   function stopScanner() {
-    cancelAnimationFrame(animationRef.current);
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
+    if (scannerControlsRef.current) {
+      scannerControlsRef.current.stop();
+      scannerControlsRef.current = null;
+    }
+    if (videoRef.current?.srcObject) {
+      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+      videoRef.current.srcObject = null;
     }
     setScannerOpen(false);
     setScannerError(null);
@@ -93,66 +96,83 @@ export function ExitPage() {
   useEffect(() => {
     if (!scannerOpen) return;
 
-    async function initCamera() {
-      setScannerError(null);
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-        }
+    const codeReader = new BrowserMultiFormatReader();
+    let active = true;
+    let mediaStream: MediaStream | null = null;
 
-        if (!("BarcodeDetector" in window)) {
-          setScannerError("Seu navegador não suporta leitura de código de barras. Use Chrome ou Edge.");
+    async function start() {
+      if (!videoRef.current) return;
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
+
+        if (!active || !videoRef.current) {
+          mediaStream.getTracks().forEach((t) => t.stop());
           return;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const detector = new (window as any).BarcodeDetector({
-          formats: ["ean_13", "ean_8", "code_128", "code_39", "qr_code"],
-        });
+        videoRef.current.srcObject = mediaStream;
 
-        async function detect() {
-          if (videoRef.current && videoRef.current.readyState >= 2) {
-            try {
-              const barcodes = await detector.detect(videoRef.current);
-              if (barcodes.length > 0) {
-                const code: string = barcodes[0].rawValue;
-                setScannedCode(code);
-                const found = products.find((p) => p.barcode === code);
-                if (found) {
-                  form.setValue("productId", found.id);
-                  form.setValue("manufacturer", found.manufacturers[0].manufacturer);
-                  form.setValue("price", found.manufacturers[0].price);
-                  stopScanner();
-                  return;
-                } else {
-                  setScannerError(`Código "${code}" não encontrado no cadastro.`);
-                }
-              }
-            } catch {
-              // detector error, continue
-            }
-          }
-          animationRef.current = requestAnimationFrame(detect);
+        try {
+          await videoRef.current.play();
+        } catch {
+          // autoPlay attribute já cuida disso na maioria dos casos
         }
 
-        animationRef.current = requestAnimationFrame(detect);
-      } catch {
-        setScannerError("Não foi possível acessar a câmera. Verifique as permissões.");
+        const controls = await codeReader.decodeFromVideoElement(
+          videoRef.current,
+          (result, _err) => {
+            if (!active || !result) return;
+            const code = result.getText();
+            const found = products.find((p) => p.barcode === code);
+            if (found) {
+              form.setValue("productId", found.id);
+              form.setValue("manufacturer", found.manufacturers[0].manufacturer);
+              form.setValue("price", found.manufacturers[0].price);
+              controls.stop();
+              scannerControlsRef.current = null;
+              setScannerOpen(false);
+            } else {
+              setScannedCode(code);
+              setScannerError(`Código "${code}" não encontrado no cadastro.`);
+            }
+          },
+        );
+
+        if (active) {
+          scannerControlsRef.current = controls;
+        } else {
+          controls.stop();
+        }
+      } catch (err) {
+        if (!active) return;
+        const name = (err as Error)?.name ?? "";
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setScannerError("Permissão de câmera negada. Habilite-a nas configurações do navegador.");
+        } else if (name === "NotFoundError") {
+          setScannerError("Nenhuma câmera encontrada neste dispositivo.");
+        } else {
+          setScannerError("Não foi possível iniciar a câmera. Verifique as permissões.");
+        }
       }
     }
 
-    initCamera();
+    start();
 
     return () => {
-      cancelAnimationFrame(animationRef.current);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
+      active = false;
+      if (scannerControlsRef.current) {
+        scannerControlsRef.current.stop();
+        scannerControlsRef.current = null;
+      }
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((t) => t.stop());
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
     };
   }, [scannerOpen]);
