@@ -60,14 +60,40 @@ export function UserManagementPage() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: profiles, error } = await supabase
         .from("profiles")
         .select(`*, stores (name)`);
-
       if (error) throw error;
 
-      if (data) {
-        setUsers(data.map(item => ({
+      // Se o cliente admin estiver disponível, busca todos os usuários do Auth
+      // e cruza com os profiles — garante que usuários sem profile apareçam na lista
+      if (supabaseAdmin) {
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+        if (!authError && authData?.users) {
+          const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+          setUsers(
+            authData.users.map((authUser) => {
+              const profile = profileMap.get(authUser.id);
+              return {
+                id: authUser.id,
+                name: profile?.name ?? authUser.user_metadata?.name ?? authUser.email?.split("@")[0] ?? "—",
+                email: authUser.email ?? "",
+                role: (profile?.role as UserRole) ?? "ATENDENTE",
+                storeId: profile?.store_id ?? mockStores[0].id,
+                storeName: profile?.stores?.name ?? "Sem loja",
+                allowCostView: profile?.allow_cost_view ?? false,
+                status: profile?.status ?? "ativo",
+                mustChangePassword: profile?.must_change_password ?? true,
+              };
+            }),
+          );
+          return;
+        }
+      }
+
+      // Fallback: apenas profiles
+      if (profiles) {
+        setUsers(profiles.map((item: any) => ({
           id: item.id,
           name: item.name,
           email: item.email,
