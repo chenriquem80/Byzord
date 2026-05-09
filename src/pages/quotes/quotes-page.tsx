@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { products } from "@/data/mock-data";
 import { formatCurrency } from "@/lib/format";
 import { MarketPriceComparison } from "@/components/shared/market-price-comparison";
-import { Search, Calculator } from "lucide-react";
+import { Search, Calculator, Eye, EyeOff } from "lucide-react";
 
 export function QuotesPage() {
   const [selectedProductId, setSelectedProductId] = useState<string>(products[0].id);
@@ -14,6 +14,7 @@ export function QuotesPage() {
     products[0].manufacturers[0].manufacturer
   );
   const [customPrice, setCustomPrice] = useState<number>(products[0].manufacturers[0].price);
+  const [showValues, setShowValues] = useState(true);
 
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedProductId) || products[0],
@@ -91,20 +92,34 @@ export function QuotesPage() {
           </FormField>
         </div>
 
-        <div className="mt-6 grid gap-4 rounded-3xl bg-slate-50 p-6 md:grid-cols-3">
-          <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Custo Interno</p>
-            <p className="text-xl font-black text-slate-900">{formatCurrency(manufacturerData.cost)}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Margem Atual</p>
-            <p className="text-xl font-black text-emerald-600">
-              {(( (customPrice - manufacturerData.cost) / customPrice ) * 100).toFixed(1)}%
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Lucro Bruto</p>
-            <p className="text-xl font-black text-slate-900">{formatCurrency(customPrice - manufacturerData.cost)}</p>
+        <div className="relative mt-6 rounded-3xl bg-slate-50 p-6">
+          <button
+            type="button"
+            onClick={() => setShowValues((v) => !v)}
+            className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
+            title={showValues ? "Ocultar valores" : "Mostrar valores"}
+          >
+            {showValues ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Custo Interno</p>
+              <p className="text-xl font-black text-slate-900">
+                {showValues ? formatCurrency(manufacturerData.cost) : "••••••"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Margem Atual</p>
+              <p className="text-xl font-black text-emerald-600">
+                {showValues ? `${(((customPrice - manufacturerData.cost) / customPrice) * 100).toFixed(1)}%` : "••••••"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Lucro Bruto</p>
+              <p className="text-xl font-black text-slate-900">
+                {showValues ? formatCurrency(customPrice - manufacturerData.cost) : "••••••"}
+              </p>
+            </div>
           </div>
         </div>
       </SectionCard>

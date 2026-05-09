@@ -532,14 +532,26 @@ export function ProductsPage() {
 
       {/* Observações para novo produto */}
       {!isEditing && (
-        <SectionCard
-          title="Observações"
-          description="Anotações e informações adicionais sobre o produto."
-        >
+        <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
           <FormField label="Observações">
             <Textarea {...form.register("notes")} className="min-h-40" />
           </FormField>
-        </SectionCard>
+        </div>
+      )}
+
+      {/* Botão de salvar no final da página */}
+      {!readOnly && (
+        <div className="flex items-center justify-end gap-3 pb-4">
+          {savedMessage && (
+            <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span>
+          )}
+          {saveError && (
+            <span className="text-sm font-medium text-rose-600">{saveError}</span>
+          )}
+          <Button size="lg" onClick={form.handleSubmit(handleSave as any, handleValidationError as any)}>
+            {isEditing ? "Salvar alterações" : "Confirmar cadastro"}
+          </Button>
+        </div>
       )}
 
     </div>
