@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Plus, Printer, Search } from "lucide-react";
@@ -24,7 +24,7 @@ export function EntryPage() {
   const { readOnly } = usePermissions();
   const navigate = useNavigate();
   const [showNewEntry] = useState(true);
-  const [codeQuery, setCodeQuery] = useState("Parabrisa Gol G5");
+  const [codeQuery, setCodeQuery] = useState("");
   const [selectedProductId, setSelectedProductId] = useState(products[0].id);
   const [selectedManufacturer, setSelectedManufacturer] = useState(
     products[0].manufacturers[0].manufacturer,
@@ -42,6 +42,8 @@ export function EntryPage() {
   const [showLabel, setShowLabel] = useState(false);
   const [searchResults, setSearchResults] = useState<typeof products>([]);
   const [productSelected, setProductSelected] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const entryFormRef = useRef<HTMLDivElement>(null);
 
   const selectedProduct = useMemo(
     () => products.find((item) => item.id === selectedProductId) ?? products[0],
@@ -86,6 +88,7 @@ export function EntryPage() {
     );
     setSearchResults(results);
     setProductSelected(false);
+    setHasSearched(true);
   }
 
   function handleSelectProduct(product: typeof products[0]) {
@@ -96,6 +99,7 @@ export function EntryPage() {
     setStoreQuantities({ "store-1": "0", "store-2": "0" });
     setSearchResults([]);
     setProductSelected(true);
+    setTimeout(() => entryFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
   function updateStoreQuantity(storeId: string, value: string) {
@@ -177,7 +181,7 @@ export function EntryPage() {
                   </div>
                 )}
 
-                {searchResults.length === 0 && codeQuery.trim() && !productSelected && (
+                {hasSearched && searchResults.length === 0 && !productSelected && (
                   <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
                     Nenhum produto encontrado para "<strong>{codeQuery}</strong>". Tente outros termos ou cadastre um novo item.
                   </p>
@@ -186,7 +190,7 @@ export function EntryPage() {
                 {/* Formulário e distribuição — só após selecionar produto */}
                 {productSelected && (
                 <>
-                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+                <div ref={entryFormRef} className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">
                     Produto selecionado
                   </p>
