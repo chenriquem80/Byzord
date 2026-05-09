@@ -207,7 +207,6 @@ export function ProductsPage() {
             .from("products")
             .update({
               internal_code: values.internalCode,
-              supplier_code: values.supplierCode ?? "",
               barcode: values.barcode,
               name: values.name,
               glass_type: values.glassType,
@@ -226,7 +225,6 @@ export function ProductsPage() {
             .from("products")
             .insert({
               internal_code: values.internalCode,
-              supplier_code: values.supplierCode ?? "",
               barcode: values.barcode,
               name: values.name,
               glass_type: values.glassType,
