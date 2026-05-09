@@ -586,27 +586,25 @@ export function ProductsPage() {
       )}
 
       {/* Botão de salvar no final da página */}
-      {!readOnly && (
-        <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-            <div>
-              {savedMessage && (
-                <span className="text-sm font-medium text-emerald-600">✓ Salvo com sucesso!</span>
-              )}
-              {saveError && (
-                <span className="text-sm font-medium text-rose-600">{saveError}</span>
-              )}
-            </div>
-            <Button
-              size="lg"
-              className="w-full sm:w-auto"
-              onClick={form.handleSubmit(handleSave as any, handleValidationError as any)}
-            >
-              {isEditing ? "Salvar alterações" : "Salvar item no estoque"}
-            </Button>
+      <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+          <div>
+            {savedMessage && (
+              <span className="text-sm font-medium text-emerald-600">✓ Salvo com sucesso!</span>
+            )}
+            {saveError && (
+              <span className="text-sm font-medium text-rose-600">{saveError}</span>
+            )}
           </div>
+          <Button
+            size="lg"
+            className="w-full sm:w-auto"
+            onClick={form.handleSubmit(handleSave as any, handleValidationError as any)}
+          >
+            {isEditing ? "Salvar alterações" : "Salvar item no estoque"}
+          </Button>
         </div>
-      )}
+      </div>
 
     </div>
   );
