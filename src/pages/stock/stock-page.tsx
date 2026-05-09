@@ -31,10 +31,10 @@ function dbToProduct(row: any, dbStores: any[]): Product {
     manufacturers: (row.product_manufacturers ?? []).map((mf: any) => ({
       id: mf.id,
       manufacturer: mf.manufacturer ?? "",
-      cost: mf.current_cost ?? 0,
-      price: mf.sale_price ?? 0,
+      cost: mf.cost ?? 0,
+      price: mf.price ?? 0,
       lastPurchaseDate: mf.last_purchase_date ?? "",
-      supplier: "",
+      supplier: mf.supplier ?? "",
       inventories: (mf.product_store_inventory ?? []).map((inv: any) => {
         const store = dbStores.find((s) => s.id === inv.store_id);
         return {
@@ -42,8 +42,8 @@ function dbToProduct(row: any, dbStores: any[]): Product {
           storeId: inv.store_id,
           storeName: store?.name ?? "",
           location: inv.location ?? "",
-          stock: inv.stock_quantity ?? 0,
-          minQuantity: inv.minimum_quantity ?? 0,
+          stock: inv.stock ?? 0,
+          minQuantity: inv.min_quantity ?? 0,
         };
       }),
     })),
@@ -82,8 +82,8 @@ export function StockPage() {
         supabase.from("products").select(`
           id, internal_code, barcode, name, glass_type, feature, brand, description, status, notes,
           product_manufacturers (
-            id, manufacturer, current_cost, sale_price, last_purchase_date,
-            product_store_inventory ( id, store_id, location, stock_quantity, minimum_quantity )
+            id, manufacturer, cost, price, last_purchase_date, supplier,
+            product_store_inventory ( id, store_id, location, stock, min_quantity )
           )
         `),
       ]);

@@ -272,9 +272,10 @@ export function ProductsPage() {
             .insert({
               product_id: productDbId,
               manufacturer: values.manufacturer,
-              current_cost: Number(values.cost),
-              sale_price: Number(values.price),
+              cost: Number(values.cost),
+              price: Number(values.price),
               last_purchase_date: values.lastPurchaseDate || null,
+              supplier: values.lastSupplier,
             })
             .select("id")
             .single();
@@ -282,11 +283,11 @@ export function ProductsPage() {
 
           const activeStores = dbStores.length > 0 ? dbStores : stores;
           const inventoryRows = activeStores.map((store: any, i: number) => ({
-            product_manufacturer_id: mf.id,
+            manufacturer_id: mf.id,
             store_id: store.id,
             location: values.location,
-            stock_quantity: i === 0 ? Number(values.quantity) : 0,
-            minimum_quantity: Number(values.minimum),
+            stock: i === 0 ? Number(values.quantity) : 0,
+            min_quantity: Number(values.minimum),
           }));
           const { error: invError } = await supabase
             .from("product_store_inventory")
