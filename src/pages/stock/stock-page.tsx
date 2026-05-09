@@ -14,42 +14,6 @@ import { products as mockProducts, stores as mockStores } from "@/data/mock-data
 import { supabase } from "@/lib/database";
 import type { Product } from "@/types/domain";
 
-function dbToProduct(row: any, dbStores: any[]): Product {
-  return {
-    id: row.id,
-    internalCode: row.internal_code ?? "",
-    supplierCode: "",
-    barcode: row.barcode ?? "",
-    name: row.name ?? "",
-    glassType: row.glass_type ?? "",
-    feature: row.feature ?? "",
-    brand: row.brand ?? "",
-    description: row.description ?? "",
-    photos: [],
-    status: row.status ?? "ativo",
-    notes: row.notes ?? "",
-    manufacturers: (row.product_manufacturers ?? []).map((mf: any) => ({
-      id: mf.id,
-      manufacturer: mf.manufacturer ?? "",
-      cost: mf.cost ?? mf.current_cost ?? 0,
-      price: mf.price ?? mf.sale_price ?? 0,
-      lastPurchaseDate: mf.last_purchase_date ?? "",
-      supplier: mf.supplier ?? "",
-      inventories: (mf.product_store_inventory ?? []).map((inv: any) => {
-        const store = dbStores.find((s) => s.id === inv.store_id);
-        return {
-          id: inv.id,
-          storeId: inv.store_id,
-          storeName: store?.name ?? "",
-          location: inv.location ?? "",
-          stock: inv.stock ?? inv.stock_quantity ?? 0,
-          minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
-        };
-      }),
-    })),
-    compatibilities: [],
-  };
-}
 
 interface StockRow {
   product: Product;
@@ -77,28 +41,75 @@ export function StockPage() {
   useEffect(() => {
     async function fetchData() {
       if (!supabase) { setLoading(false); return; }
-      const [{ data: storesData }, { data: productsData, error: productsError }] = await Promise.all([
+
+      const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
         supabase.from("stores").select("*"),
-        supabase.from("products").select(`
-          id, internal_code, barcode, name, glass_type, feature, brand, description, status, notes,
-          product_manufacturers (
-            *,
-            product_store_inventory ( * )
-          )
-        `),
+        supabase.from("products").select("*"),
+        supabase.from("product_manufacturers").select("*"),
+        supabase.from("product_store_inventory").select("*"),
       ]);
-      if (productsError) console.error("Erro ao buscar produtos:", productsError);
-      const stores = storesData ?? [];
+
+      const stores = storesResp.data ?? [];
+      const rawProducts = productsResp.data ?? [];
+      const rawMf = mfResp.data ?? [];
+      const rawInv = invResp.data ?? [];
+
       setDbStores(stores);
-      const hasRealProducts = productsData && productsData.some(
-        (p: any) => p.product_manufacturers?.length > 0
-      );
-      if (hasRealProducts) {
-        setDbProducts(productsData!.map((p) => dbToProduct(p, stores)));
-      } else {
-        // Supabase vazio ou apenas produtos parciais — mantém null para exibir mock
+
+      if (rawProducts.length === 0 || rawMf.length === 0) {
         setDbProducts(null);
+        setLoading(false);
+        return;
       }
+
+      const mapped: Product[] = rawProducts.map((p: any) => {
+        const mfs = rawMf.filter((mf: any) => mf.product_id === p.id);
+        const manufacturers = mfs.map((mf: any) => {
+          const mfId = mf.id;
+          const invs = rawInv.filter(
+            (inv: any) => inv.manufacturer_id === mfId || inv.product_manufacturer_id === mfId
+          );
+          const store = stores.find((s: any) => s.id === mf.store_id);
+          return {
+            id: mf.id,
+            manufacturer: mf.manufacturer ?? "",
+            cost: mf.cost ?? mf.current_cost ?? 0,
+            price: mf.price ?? mf.sale_price ?? 0,
+            lastPurchaseDate: mf.last_purchase_date ?? "",
+            supplier: mf.supplier ?? "",
+            inventories: invs.map((inv: any) => {
+              const invStore = stores.find((s: any) => s.id === inv.store_id);
+              return {
+                id: inv.id,
+                storeId: inv.store_id,
+                storeName: invStore?.name ?? store?.name ?? "",
+                location: inv.location ?? "",
+                stock: inv.stock ?? inv.stock_quantity ?? 0,
+                minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
+              };
+            }),
+          };
+        });
+
+        return {
+          id: p.id,
+          internalCode: p.internal_code ?? "",
+          supplierCode: "",
+          barcode: p.barcode ?? "",
+          name: p.name ?? "",
+          glassType: p.glass_type ?? "",
+          feature: p.feature ?? "",
+          brand: p.brand ?? "",
+          description: p.description ?? "",
+          photos: [],
+          status: p.status ?? "ativo",
+          notes: p.notes ?? "",
+          manufacturers,
+          compatibilities: [],
+        };
+      });
+
+      setDbProducts(mapped);
       setLoading(false);
     }
     fetchData();
