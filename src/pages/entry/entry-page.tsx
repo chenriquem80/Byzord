@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
-import { Plus, Printer, Search, X } from "lucide-react";
+import { Check, Plus, Printer, Search, X } from "lucide-react";
 import Barcode from "react-barcode";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -39,8 +39,9 @@ export function EntryPage() {
   const [searchResults, setSearchResults] = useState<SearchRow[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [entryItems, setEntryItems] = useState<EntryItem[]>([]);
+  const [pendingAdd, setPendingAdd] = useState<{ rowKey: string; quantity: string } | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState(suppliers[0].name);
-  const [purchaseDate, setPurchaseDate] = useState("2026-05-02");
+  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [note, setNote] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
@@ -88,11 +89,12 @@ export function EntryPage() {
     setHasSearched(true);
   }
 
-  function handleAddItem(row: SearchRow) {
+  function handleAddItem(row: SearchRow, initialQty: string) {
     const key = `${row.product.id}-${row.mf.id}-${Date.now()}`;
     const quantities: Record<string, string> = {};
-    stores.forEach((store) => { quantities[store.id] = "0"; });
+    stores.forEach((store, i) => { quantities[store.id] = i === 0 ? (initialQty || "0") : "0"; });
     setEntryItems((prev) => [...prev, { key, product: row.product, mf: row.mf, quantities }]);
+    setPendingAdd(null);
     setTimeout(() => entryListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
@@ -160,6 +162,8 @@ export function EntryPage() {
                   <div className="divide-y divide-border">
                     {searchResults.map((row, i) => {
                       const added = isAlreadyAdded(row);
+                      const rowKey = `${row.product.id}-${row.mf.id}`;
+                      const isPending = pendingAdd?.rowKey === rowKey;
                       return (
                         <div
                           key={`${row.product.id}-${i}`}
@@ -176,19 +180,45 @@ export function EntryPage() {
                               Fabricante: {row.mf.manufacturer} • Custo: {formatCurrency(row.mf.cost)}
                             </p>
                           </div>
-                          <div className="ml-4 flex shrink-0 items-center gap-3">
+                          <div className="ml-4 flex shrink-0 items-center gap-2">
                             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${row.totalStock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
                               {row.totalStock} un.
                             </span>
-                            <Button
-                              size="sm"
-                              variant={added ? "outline" : "default"}
-                              disabled={added}
-                              onClick={() => handleAddItem(row)}
-                            >
-                              <Plus className="size-3.5" />
-                              {added ? "Adicionado" : "Adicionar"}
-                            </Button>
+                            {added ? (
+                              <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-slate-400">
+                                Adicionado
+                              </span>
+                            ) : isPending ? (
+                              <div className="flex items-center gap-1.5">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  autoFocus
+                                  placeholder="Qtd"
+                                  value={pendingAdd.quantity}
+                                  onChange={(e) => setPendingAdd({ rowKey, quantity: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleAddItem(row, pendingAdd.quantity);
+                                    if (e.key === "Escape") setPendingAdd(null);
+                                  }}
+                                  className="w-20 text-center"
+                                />
+                                <Button size="sm" onClick={() => handleAddItem(row, pendingAdd.quantity)} disabled={!pendingAdd.quantity || Number(pendingAdd.quantity) <= 0}>
+                                  <Check className="size-3.5" />
+                                </Button>
+                                <button type="button" onClick={() => setPendingAdd(null)} className="rounded-full p-1 text-slate-400 hover:text-slate-600">
+                                  <X className="size-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => setPendingAdd({ rowKey, quantity: "" })}
+                              >
+                                <Plus className="size-3.5" />
+                                Adicionar
+                              </Button>
+                            )}
                           </div>
                         </div>
                       );
