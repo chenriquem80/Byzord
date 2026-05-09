@@ -311,7 +311,7 @@ export function ProductsPage() {
       {/* Dados do Produto */}
       <SectionCard
         title={isEditing ? "Editar Produto" : "Novo Produto"}
-        description="Informações básicas de identificação e classificação."
+        description=""
         action={
           <div className="flex items-center gap-3">
             {savedMessage && (
@@ -418,7 +418,7 @@ export function ProductsPage() {
       {/* Estoque */}
       <SectionCard
         title="Estoque"
-        description="Saldo atual por loja, localização e quantidades mínimas."
+        description=""
       >
         {isEditing && (
           <div className="mb-6 grid gap-4 md:grid-cols-2">
