@@ -31,8 +31,8 @@ function dbToProduct(row: any, dbStores: any[]): Product {
     manufacturers: (row.product_manufacturers ?? []).map((mf: any) => ({
       id: mf.id,
       manufacturer: mf.manufacturer ?? "",
-      cost: mf.cost ?? 0,
-      price: mf.price ?? 0,
+      cost: mf.cost ?? mf.current_cost ?? 0,
+      price: mf.price ?? mf.sale_price ?? 0,
       lastPurchaseDate: mf.last_purchase_date ?? "",
       supplier: mf.supplier ?? "",
       inventories: (mf.product_store_inventory ?? []).map((inv: any) => {
@@ -42,8 +42,8 @@ function dbToProduct(row: any, dbStores: any[]): Product {
           storeId: inv.store_id,
           storeName: store?.name ?? "",
           location: inv.location ?? "",
-          stock: inv.stock ?? 0,
-          minQuantity: inv.min_quantity ?? 0,
+          stock: inv.stock ?? inv.stock_quantity ?? 0,
+          minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
         };
       }),
     })),
@@ -82,8 +82,8 @@ export function StockPage() {
         supabase.from("products").select(`
           id, internal_code, barcode, name, glass_type, feature, brand, description, status, notes,
           product_manufacturers (
-            id, manufacturer, cost, price, last_purchase_date, supplier,
-            product_store_inventory ( id, store_id, location, stock, min_quantity )
+            *,
+            product_store_inventory ( * )
           )
         `),
       ]);
@@ -119,11 +119,12 @@ export function StockPage() {
         return matchesQuery && matchesGlassType;
       })
       .flatMap((product) => {
+        if (product.manufacturers.length === 0) return [];
         return product.manufacturers.map((manufacturer) => {
           const store1Quantity =
-            manufacturer.inventories.find((inventory) => inventory.storeId === stores[0].id)?.stock ?? 0;
+            manufacturer.inventories.find((inventory) => inventory.storeId === stores[0]?.id)?.stock ?? 0;
           const store2Quantity =
-            manufacturer.inventories.find((inventory) => inventory.storeId === stores[1].id)?.stock ?? 0;
+            manufacturer.inventories.find((inventory) => inventory.storeId === stores[1]?.id)?.stock ?? 0;
 
           return {
             product,
