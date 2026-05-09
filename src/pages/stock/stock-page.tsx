@@ -90,10 +90,13 @@ export function StockPage() {
       if (productsError) console.error("Erro ao buscar produtos:", productsError);
       const stores = storesData ?? [];
       setDbStores(stores);
-      if (productsData && productsData.length > 0) {
-        setDbProducts(productsData.map((p) => dbToProduct(p, stores)));
+      const hasRealProducts = productsData && productsData.some(
+        (p: any) => p.product_manufacturers?.length > 0
+      );
+      if (hasRealProducts) {
+        setDbProducts(productsData!.map((p) => dbToProduct(p, stores)));
       } else {
-        // Supabase vazio ou sem acesso — mantém null para exibir mock
+        // Supabase vazio ou apenas produtos parciais — mantém null para exibir mock
         setDbProducts(null);
       }
       setLoading(false);

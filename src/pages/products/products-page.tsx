@@ -267,32 +267,37 @@ export function ProductsPage() {
 
           const productDbId = inserted.id;
 
-          const { data: mf, error: mfError } = await supabase
-            .from("product_manufacturers")
-            .insert({
-              product_id: productDbId,
-              manufacturer: values.manufacturer,
-              cost: Number(values.cost),
-              price: Number(values.price),
-              last_purchase_date: values.lastPurchaseDate || null,
-              supplier: values.lastSupplier,
-            })
-            .select("id")
-            .single();
-          if (mfError) throw mfError;
+          try {
+            const { data: mf, error: mfError } = await supabase
+              .from("product_manufacturers")
+              .insert({
+                product_id: productDbId,
+                manufacturer: values.manufacturer,
+                cost: Number(values.cost),
+                price: Number(values.price),
+                last_purchase_date: values.lastPurchaseDate || null,
+                supplier: values.lastSupplier,
+              })
+              .select("id")
+              .single();
+            if (mfError) throw mfError;
 
-          const activeStores = dbStores.length > 0 ? dbStores : stores;
-          const inventoryRows = activeStores.map((store: any, i: number) => ({
-            manufacturer_id: mf.id,
-            store_id: store.id,
-            location: values.location,
-            stock: i === 0 ? Number(values.quantity) : 0,
-            min_quantity: Number(values.minimum),
-          }));
-          const { error: invError } = await supabase
-            .from("product_store_inventory")
-            .insert(inventoryRows);
-          if (invError) throw invError;
+            const activeStores = dbStores.length > 0 ? dbStores : stores;
+            const inventoryRows = activeStores.map((store: any, i: number) => ({
+              manufacturer_id: mf.id,
+              store_id: store.id,
+              location: values.location,
+              stock: i === 0 ? Number(values.quantity) : 0,
+              min_quantity: Number(values.minimum),
+            }));
+            const { error: invError } = await supabase
+              .from("product_store_inventory")
+              .insert(inventoryRows);
+            if (invError) throw invError;
+          } catch (innerErr) {
+            await supabase.from("products").delete().eq("id", productDbId);
+            throw innerErr;
+          }
 
           navigate(`/app/produtos?id=${productDbId}`);
         }
