@@ -68,7 +68,6 @@ interface StockRow {
 export function StockPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [year, setYear] = useState("");
   const [glassType, setGlassType] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
