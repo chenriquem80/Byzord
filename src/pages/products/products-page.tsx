@@ -129,12 +129,15 @@ export function ProductsPage() {
   const [newManufacturer, setNewManufacturer] = useState("");
   const newManufacturerRef = useRef<HTMLInputElement>(null);
 
+  const [dbStores, setDbStores] = useState<any[]>([]);
+
   useEffect(() => {
     async function fetchOptions() {
       if (!supabase) return;
-      const [{ data: pData }, { data: mfData }] = await Promise.all([
+      const [{ data: pData }, { data: mfData }, { data: storesData }] = await Promise.all([
         supabase.from("products").select("glass_type, feature"),
         supabase.from("product_manufacturers").select("manufacturer"),
+        supabase.from("stores").select("id, name, code"),
       ]);
       if (pData) {
         const dbTypes = pData.map((r: any) => r.glass_type).filter(Boolean);
@@ -145,6 +148,9 @@ export function ProductsPage() {
       if (mfData) {
         const dbMfrs = mfData.map((r: any) => r.manufacturer).filter(Boolean);
         setManufacturers([...new Set([...DEFAULT_MANUFACTURERS, ...dbMfrs])]);
+      }
+      if (storesData && storesData.length > 0) {
+        setDbStores(storesData);
       }
     }
     fetchOptions();
@@ -238,8 +244,6 @@ export function ProductsPage() {
               description: values.description ?? "",
               status: values.status,
               notes: values.notes ?? "",
-              is_type_b: values.isTypeB ?? false,
-              is_type_r: values.isTypeR ?? false,
             })
             .eq("id", currentProduct.id);
           if (error) { console.error("Supabase update error:", error); throw error; }
@@ -256,8 +260,6 @@ export function ProductsPage() {
               description: values.description ?? "",
               status: values.status,
               notes: values.notes ?? "",
-              is_type_b: values.isTypeB ?? false,
-              is_type_r: values.isTypeR ?? false,
             })
             .select("id")
             .single();
@@ -270,21 +272,21 @@ export function ProductsPage() {
             .insert({
               product_id: productDbId,
               manufacturer: values.manufacturer,
-              cost: Number(values.cost),
-              price: Number(values.price),
-              last_purchase_date: values.lastPurchaseDate,
-              supplier: values.lastSupplier,
+              current_cost: Number(values.cost),
+              sale_price: Number(values.price),
+              last_purchase_date: values.lastPurchaseDate || null,
             })
             .select("id")
             .single();
           if (mfError) throw mfError;
 
-          const inventoryRows = stores.map((store, i) => ({
-            manufacturer_id: mf.id,
+          const activeStores = dbStores.length > 0 ? dbStores : stores;
+          const inventoryRows = activeStores.map((store: any, i: number) => ({
+            product_manufacturer_id: mf.id,
             store_id: store.id,
             location: values.location,
-            stock: i === 0 ? Number(values.quantity) : 0,
-            min_quantity: Number(values.minimum),
+            stock_quantity: i === 0 ? Number(values.quantity) : 0,
+            minimum_quantity: Number(values.minimum),
           }));
           const { error: invError } = await supabase
             .from("product_store_inventory")
