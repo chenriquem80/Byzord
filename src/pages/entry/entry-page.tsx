@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Check, Plus, Printer, Search, X } from "lucide-react";
@@ -16,25 +16,31 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { labels, products, stores, suppliers } from "@/data/mock-data";
+import { labels, products as mockProducts, stores as mockStores, suppliers } from "@/data/mock-data";
 import { formatCurrency } from "@/lib/format";
+import { supabase } from "@/lib/database";
+import type { Product } from "@/types/domain";
+
+type Manufacturer = Product["manufacturers"][0];
 
 type SearchRow = {
-  product: (typeof products)[0];
-  mf: (typeof products)[0]["manufacturers"][0];
+  product: Product;
+  mf: Manufacturer;
   totalStock: number;
 };
 
 type EntryItem = {
   key: string;
-  product: (typeof products)[0];
-  mf: (typeof products)[0]["manufacturers"][0];
+  product: Product;
+  mf: Manufacturer;
   quantities: Record<string, string>;
 };
 
 export function EntryPage() {
   const { readOnly } = usePermissions();
   const navigate = useNavigate();
+  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [stores, setStores] = useState(mockStores);
   const [codeQuery, setCodeQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchRow[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -46,6 +52,73 @@ export function EntryPage() {
   const [note, setNote] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const entryListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!supabase) return;
+      const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
+        supabase.from("stores").select("*"),
+        supabase.from("products").select("*"),
+        supabase.from("product_manufacturers").select("*"),
+        supabase.from("product_store_inventory").select("*"),
+      ]);
+      const dbStores = storesResp.data ?? [];
+      const rawProducts = productsResp.data ?? [];
+      const rawMf = mfResp.data ?? [];
+      const rawInv = invResp.data ?? [];
+
+      if (dbStores.length > 0) setStores(dbStores);
+
+      if (rawProducts.length > 0 && rawMf.length > 0) {
+        const mapped: Product[] = rawProducts.map((p: any) => {
+          const mfs = rawMf.filter((mf: any) => mf.product_id === p.id);
+          const manufacturers: Manufacturer[] = mfs.map((mf: any) => {
+            const mfId = mf.id;
+            const invs = rawInv.filter(
+              (inv: any) => inv.manufacturer_id === mfId || inv.product_manufacturer_id === mfId
+            );
+            return {
+              id: mf.id,
+              manufacturer: mf.manufacturer ?? "",
+              cost: mf.cost ?? mf.current_cost ?? 0,
+              price: mf.price ?? mf.sale_price ?? 0,
+              lastPurchaseDate: mf.last_purchase_date ?? "",
+              supplier: mf.supplier ?? "",
+              inventories: invs.map((inv: any) => {
+                const invStore = dbStores.find((s: any) => s.id === inv.store_id);
+                return {
+                  id: inv.id,
+                  storeId: inv.store_id,
+                  storeName: invStore?.name ?? "",
+                  location: inv.location ?? "",
+                  stock: inv.stock ?? inv.stock_quantity ?? 0,
+                  minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
+                };
+              }),
+            };
+          });
+          return {
+            id: p.id,
+            internalCode: p.internal_code ?? "",
+            supplierCode: "",
+            barcode: p.barcode ?? "",
+            name: p.name ?? "",
+            glassType: p.glass_type ?? "",
+            feature: p.feature ?? "",
+            brand: p.brand ?? "",
+            description: p.description ?? "",
+            photos: [],
+            status: p.status ?? "ativo",
+            notes: p.notes ?? "",
+            manufacturers,
+            compatibilities: [],
+          };
+        });
+        setProducts(mapped);
+      }
+    }
+    fetchData();
+  }, []);
 
   const lastItem = entryItems.length > 0 ? entryItems[entryItems.length - 1] : null;
 
