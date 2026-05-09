@@ -69,9 +69,7 @@ export function StockPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [year, setYear] = useState("");
-  const [modelFilter, setModelFilter] = useState("");
   const [glassType, setGlassType] = useState("");
-  const [feature, setFeature] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [dbStores, setDbStores] = useState<any[]>([]);
@@ -108,17 +106,8 @@ export function StockPage() {
           .map((item) => `${item.model} ${item.generation}`)
           .join(" ")}`.toLowerCase();
         const matchesQuery = query ? text.includes(query.toLowerCase()) : true;
-        const matchesYear = year
-          ? product.compatibilities.some(
-              (item) => Number(year) >= item.startYear && Number(year) <= item.endYear,
-            )
-          : true;
-        const matchesModel = modelFilter
-          ? product.compatibilities.some((item) => item.model === modelFilter)
-          : true;
         const matchesGlassType = glassType ? product.glassType === glassType : true;
-        const matchesFeature = feature ? product.feature === feature : true;
-        return matchesQuery && matchesYear && matchesModel && matchesGlassType && matchesFeature;
+        return matchesQuery && matchesGlassType;
       })
       .flatMap((product) => {
         return product.manufacturers.map((manufacturer) => {
@@ -142,7 +131,7 @@ export function StockPage() {
           };
         });
       });
-  }, [feature, glassType, modelFilter, query, year, products, stores]);
+  }, [glassType, query, products, stores]);
 
   const columns = useMemo<ColumnDef<StockRow>[]>(
     () => [
@@ -198,34 +187,16 @@ export function StockPage() {
         title="Busca de Produto"
         description="Filtre por nome, código ou ano para consultar o estoque em todas as lojas."
       >
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-          <div className="xl:col-span-2">
-            <Input 
-              value={query} 
-              onChange={(e) => setQuery(e.target.value)} 
-              placeholder="Digite o nome do produto (ex: Parabrisa Gol)" 
-            />
-          </div>
-          <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="Ano" />
-          <Select value={modelFilter} onChange={(e) => setModelFilter(e.target.value)} placeholder="Modelo">
-            {[...new Set(products.flatMap((item) => item.compatibilities.map((compatibility) => compatibility.model)))].map((model) => (
-              <option key={model} value={model}>
-                {model}
-              </option>
-            ))}
-          </Select>
-          <Select value={glassType} onChange={(e) => setGlassType(e.target.value)} placeholder="Tipo de vidro">
+        <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Digite o nome do produto (ex: Parabrisa Gol)"
+          />
+          <Select value={glassType} onChange={(e) => setGlassType(e.target.value)} placeholder="Tipo de item">
+            <option value="">Todos os tipos</option>
             {[...new Set(products.map((item) => item.glassType))].map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </Select>
-          <Select value={feature} onChange={(e) => setFeature(e.target.value)} placeholder="Característica">
-            {[...new Set(products.map((item) => item.feature))].map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
+              <option key={item} value={item}>{item}</option>
             ))}
           </Select>
         </div>
