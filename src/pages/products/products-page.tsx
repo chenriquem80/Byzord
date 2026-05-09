@@ -110,22 +110,45 @@ export function ProductsPage() {
   const productId = searchParams.get("id");
   const [savedMessage, setSavedMessage] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [glassTypes, setGlassTypes] = useState([
-    "Parabrisa", "Vigia", "Porta dianteira", "Porta traseira", "Lateral fixa", "Quebra-vento", "Teto solar",
-  ]);
+  const DEFAULT_GLASS_TYPES = ["Parabrisa", "Vigia", "Porta dianteira", "Porta traseira", "Lateral fixa", "Quebra-vento", "Teto solar"];
+  const DEFAULT_FEATURES = ["Verde", "Verde sensor", "Degradê", "Degradê sensor", "Incolor", "Térmico"];
+  const DEFAULT_MANUFACTURERS = ["AGC", "Pilkington", "Saint-Gobain", "Fanavid", "XYG", "Outro"];
+
+  const [glassTypes, setGlassTypes] = useState(DEFAULT_GLASS_TYPES);
   const [showAddGlassType, setShowAddGlassType] = useState(false);
   const [newGlassType, setNewGlassType] = useState("");
   const newGlassTypeRef = useRef<HTMLInputElement>(null);
 
-  const [features, setFeatures] = useState(["Verde", "Verde sensor", "Degradê", "Degradê sensor", "Incolor", "Térmico"]);
+  const [features, setFeatures] = useState(DEFAULT_FEATURES);
   const [showAddFeature, setShowAddFeature] = useState(false);
   const [newFeature, setNewFeature] = useState("");
   const newFeatureRef = useRef<HTMLInputElement>(null);
 
-  const [manufacturers, setManufacturers] = useState(["AGC", "Pilkington", "Saint-Gobain", "Fanavid", "XYG", "Outro"]);
+  const [manufacturers, setManufacturers] = useState(DEFAULT_MANUFACTURERS);
   const [showAddManufacturer, setShowAddManufacturer] = useState(false);
   const [newManufacturer, setNewManufacturer] = useState("");
   const newManufacturerRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    async function fetchOptions() {
+      if (!supabase) return;
+      const [{ data: pData }, { data: mfData }] = await Promise.all([
+        supabase.from("products").select("glass_type, feature"),
+        supabase.from("product_manufacturers").select("manufacturer"),
+      ]);
+      if (pData) {
+        const dbTypes = pData.map((r: any) => r.glass_type).filter(Boolean);
+        const dbFeatures = pData.map((r: any) => r.feature).filter(Boolean);
+        setGlassTypes([...new Set([...DEFAULT_GLASS_TYPES, ...dbTypes])]);
+        setFeatures([...new Set([...DEFAULT_FEATURES, ...dbFeatures])]);
+      }
+      if (mfData) {
+        const dbMfrs = mfData.map((r: any) => r.manufacturer).filter(Boolean);
+        setManufacturers([...new Set([...DEFAULT_MANUFACTURERS, ...dbMfrs])]);
+      }
+    }
+    fetchOptions();
+  }, []);
 
   const currentProduct = productId
     ? (products.find((p) => p.id === productId) ?? null)
