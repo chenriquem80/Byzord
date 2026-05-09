@@ -39,7 +39,6 @@ export function EntryPage() {
     "store-2": "0",
   });
   const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [showLabel, setShowLabel] = useState(false);
   type SearchRow = {
     product: (typeof products)[0];
     mf: (typeof products)[0]["manufacturers"][0];
@@ -327,17 +326,15 @@ export function EntryPage() {
                     <p className="mt-1 text-2xl font-bold text-slate-950">{totalQuantity} un.</p>
                     <p className="text-xs text-slate-400">Taubaté + Pinda</p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={showLabel ? "default" : "outline"}
-                    onClick={() => setShowLabel((v) => !v)}
-                  >
-                    <Printer className="size-4" />
-                    Imprimir etiqueta
-                  </Button>
+                  {productSelected && (
+                    <Button size="sm" variant="outline" onClick={() => window.print()}>
+                      <Printer className="size-4" />
+                      Imprimir etiqueta
+                    </Button>
+                  )}
                 </div>
 
-                {showLabel && (
+                {productSelected && (
                   <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
                     <div className="mx-auto w-full max-w-[280px] rounded-[22px] bg-white p-5 text-slate-950 shadow-sm">
                       <p className="text-[13px] font-medium">Codigo:</p>
@@ -380,13 +377,10 @@ export function EntryPage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex gap-2">
-                      <Button className="flex-1" onClick={() => window.print()}>
+                    <div className="mt-4">
+                      <Button className="w-full" onClick={() => window.print()}>
                         <Printer className="size-4" />
                         Imprimir
-                      </Button>
-                      <Button variant="outline" onClick={() => setShowLabel(false)}>
-                        Fechar
                       </Button>
                     </div>
                   </div>
