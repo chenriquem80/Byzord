@@ -192,7 +192,7 @@ export function StockPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Digite o nome do produto (ex: Parabrisa Gol)"
           />
-          <Select value={glassType} onChange={(e) => setGlassType(e.target.value)} placeholder="Tipo do item">
+          <Select value={glassType} onChange={(e) => setGlassType(e.target.value)} placeholder="Todos os itens">
             {[...new Set(products.map((item) => item.glassType))].map((item) => (
               <option key={item} value={item}>{item}</option>
             ))}
