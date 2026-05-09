@@ -117,6 +117,16 @@ export function ProductsPage() {
   const [newGlassType, setNewGlassType] = useState("");
   const newGlassTypeRef = useRef<HTMLInputElement>(null);
 
+  const [features, setFeatures] = useState(["Verde", "Verde sensor", "Degradê", "Degradê sensor", "Incolor", "Térmico"]);
+  const [showAddFeature, setShowAddFeature] = useState(false);
+  const [newFeature, setNewFeature] = useState("");
+  const newFeatureRef = useRef<HTMLInputElement>(null);
+
+  const [manufacturers, setManufacturers] = useState(["AGC", "Pilkington", "Saint-Gobain", "Fanavid", "XYG", "Outro"]);
+  const [showAddManufacturer, setShowAddManufacturer] = useState(false);
+  const [newManufacturer, setNewManufacturer] = useState("");
+  const newManufacturerRef = useRef<HTMLInputElement>(null);
+
   const currentProduct = productId
     ? (products.find((p) => p.id === productId) ?? null)
     : null;
@@ -152,6 +162,24 @@ export function ProductsPage() {
     lastPurchaseDate: "Última data de compra",
     lastSupplier: "Último fornecedor",
   };
+
+  function handleAddFeature() {
+    const trimmed = newFeature.trim();
+    if (!trimmed || features.includes(trimmed)) return;
+    setFeatures((prev) => [...prev, trimmed]);
+    form.setValue("feature", trimmed);
+    setNewFeature("");
+    setShowAddFeature(false);
+  }
+
+  function handleAddManufacturer() {
+    const trimmed = newManufacturer.trim();
+    if (!trimmed || manufacturers.includes(trimmed)) return;
+    setManufacturers((prev) => [...prev, trimmed]);
+    form.setValue("manufacturer", trimmed);
+    setNewManufacturer("");
+    setShowAddManufacturer(false);
+  }
 
   function handleAddGlassType() {
     const trimmed = newGlassType.trim();
@@ -386,20 +414,80 @@ export function ProductsPage() {
             </div>
           </FormField>
           <FormField label="Característica" error={form.formState.errors.feature?.message}>
-            <Select {...form.register("feature")}>
-              <option value="">Selecione</option>
-              {["Verde", "Verde sensor", "Degradê", "Degradê sensor", "Incolor", "Térmico"].map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </Select>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Select {...form.register("feature")} className="flex-1">
+                  <option value="">Selecione</option>
+                  {features.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </Select>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddFeature((v) => !v); setNewFeature(""); setTimeout(() => newFeatureRef.current?.focus(), 50); }}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
+                  title="Adicionar nova característica"
+                >
+                  <Plus className="size-4" />
+                </button>
+              </div>
+              {showAddFeature && (
+                <div className="flex gap-2">
+                  <Input
+                    ref={newFeatureRef}
+                    value={newFeature}
+                    onChange={(e) => setNewFeature(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddFeature(); } if (e.key === "Escape") setShowAddFeature(false); }}
+                    placeholder="Nova característica..."
+                    className="flex-1"
+                  />
+                  <Button type="button" size="sm" onClick={handleAddFeature} disabled={!newFeature.trim()}>
+                    <Check className="size-3.5" />
+                  </Button>
+                  <button type="button" onClick={() => setShowAddFeature(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
+                    <X className="size-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </FormField>
           <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
-            <Select {...form.register("manufacturer")}>
-              <option value="">Selecione</option>
-              {["AGC", "Pilkington", "Saint-Gobain", "Fanavid", "XYG", "Outro"].map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </Select>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Select {...form.register("manufacturer")} className="flex-1">
+                  <option value="">Selecione</option>
+                  {manufacturers.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </Select>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddManufacturer((v) => !v); setNewManufacturer(""); setTimeout(() => newManufacturerRef.current?.focus(), 50); }}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
+                  title="Adicionar novo fabricante"
+                >
+                  <Plus className="size-4" />
+                </button>
+              </div>
+              {showAddManufacturer && (
+                <div className="flex gap-2">
+                  <Input
+                    ref={newManufacturerRef}
+                    value={newManufacturer}
+                    onChange={(e) => setNewManufacturer(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddManufacturer(); } if (e.key === "Escape") setShowAddManufacturer(false); }}
+                    placeholder="Novo fabricante..."
+                    className="flex-1"
+                  />
+                  <Button type="button" size="sm" onClick={handleAddManufacturer} disabled={!newManufacturer.trim()}>
+                    <Check className="size-3.5" />
+                  </Button>
+                  <button type="button" onClick={() => setShowAddManufacturer(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
+                    <X className="size-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </FormField>
           <FormField label="Especial">
             <div className="flex flex-row items-center justify-center gap-4 rounded-xl border border-border bg-white px-4 py-2 shadow-sm">
