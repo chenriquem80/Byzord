@@ -401,7 +401,7 @@ export function ProductsPage() {
             </Select>
           </FormField>
           <FormField label="Especial">
-            <div className="flex flex-col justify-center gap-2 rounded-xl border border-border bg-white px-4 py-2 shadow-sm">
+            <div className="flex flex-row items-center justify-center gap-4 rounded-xl border border-border bg-white px-4 py-2 shadow-sm">
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="checkbox" {...form.register("isTypeB")} className="size-4 accent-primary" />
                 <span className="text-sm font-semibold text-slate-700">B</span>
