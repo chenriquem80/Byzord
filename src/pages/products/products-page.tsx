@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useForm } from "react-hook-form";
@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { products, stores, suppliers } from "@/data/mock-data";
 import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
+import { Check, Plus, X } from "lucide-react";
 import { supabase } from "@/lib/database";
 import { productSchema } from "@/lib/schemas";
 import type { Product } from "@/types/domain";
@@ -109,6 +110,12 @@ export function ProductsPage() {
   const productId = searchParams.get("id");
   const [savedMessage, setSavedMessage] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [glassTypes, setGlassTypes] = useState([
+    "Parabrisa", "Vigia", "Porta dianteira", "Porta traseira", "Lateral fixa", "Quebra-vento", "Teto solar",
+  ]);
+  const [showAddGlassType, setShowAddGlassType] = useState(false);
+  const [newGlassType, setNewGlassType] = useState("");
+  const newGlassTypeRef = useRef<HTMLInputElement>(null);
 
   const currentProduct = productId
     ? (products.find((p) => p.id === productId) ?? null)
@@ -134,7 +141,7 @@ export function ProductsPage() {
     name: "Nome do produto",
     internalCode: "Código interno",
     brand: "Marca",
-    glassType: "Tipo de vidro",
+    glassType: "Tipo do item",
     feature: "Característica",
     manufacturer: "Fabricante",
     location: "Localização",
@@ -145,6 +152,15 @@ export function ProductsPage() {
     lastPurchaseDate: "Última data de compra",
     lastSupplier: "Último fornecedor",
   };
+
+  function handleAddGlassType() {
+    const trimmed = newGlassType.trim();
+    if (!trimmed || glassTypes.includes(trimmed)) return;
+    setGlassTypes((prev) => [...prev, trimmed]);
+    form.setValue("glassType", trimmed);
+    setNewGlassType("");
+    setShowAddGlassType(false);
+  }
 
   function handleValidationError(errors: FieldErrors<ProductFormValues>) {
     const missing = (Object.keys(errors) as (keyof ProductFormValues)[])
@@ -330,13 +346,43 @@ export function ProductsPage() {
           </FormField>
 
           {/* Linha de classificação */}
-          <FormField label="Tipo de vidro" error={form.formState.errors.glassType?.message}>
-            <Select {...form.register("glassType")}>
-              <option value="">Selecione</option>
-              {["Parabrisa", "Vigia", "Porta dianteira", "Porta traseira", "Lateral fixa", "Quebra-vento", "Teto solar"].map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </Select>
+          <FormField label="Tipo do item" error={form.formState.errors.glassType?.message}>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Select {...form.register("glassType")} className="flex-1">
+                  <option value="">Selecione</option>
+                  {glassTypes.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </Select>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddGlassType((v) => !v); setNewGlassType(""); setTimeout(() => newGlassTypeRef.current?.focus(), 50); }}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
+                  title="Adicionar novo tipo"
+                >
+                  <Plus className="size-4" />
+                </button>
+              </div>
+              {showAddGlassType && (
+                <div className="flex gap-2">
+                  <Input
+                    ref={newGlassTypeRef}
+                    value={newGlassType}
+                    onChange={(e) => setNewGlassType(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddGlassType(); } if (e.key === "Escape") setShowAddGlassType(false); }}
+                    placeholder="Nome do novo tipo..."
+                    className="flex-1"
+                  />
+                  <Button type="button" size="sm" onClick={handleAddGlassType} disabled={!newGlassType.trim()}>
+                    <Check className="size-3.5" />
+                  </Button>
+                  <button type="button" onClick={() => setShowAddGlassType(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
+                    <X className="size-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </FormField>
           <FormField label="Característica" error={form.formState.errors.feature?.message}>
             <Select {...form.register("feature")}>
