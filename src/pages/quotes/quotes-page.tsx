@@ -14,7 +14,7 @@ export function QuotesPage() {
     products[0].manufacturers[0].manufacturer
   );
   const [customPrice, setCustomPrice] = useState<number>(products[0].manufacturers[0].price);
-  const [showValues, setShowValues] = useState(true);
+  const [showValues, setShowValues] = useState(false);
 
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedProductId) || products[0],
