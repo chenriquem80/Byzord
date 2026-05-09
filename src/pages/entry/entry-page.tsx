@@ -40,7 +40,12 @@ export function EntryPage() {
   });
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [showLabel, setShowLabel] = useState(false);
-  const [searchResults, setSearchResults] = useState<typeof products>([]);
+  type SearchRow = {
+    product: (typeof products)[0];
+    mf: (typeof products)[0]["manufacturers"][0];
+    totalStock: number;
+  };
+  const [searchResults, setSearchResults] = useState<SearchRow[]>([]);
   const [productSelected, setProductSelected] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const entryFormRef = useRef<HTMLDivElement>(null);
@@ -81,21 +86,29 @@ export function EntryPage() {
 
   function handleCodeSearch() {
     if (!codeQuery.trim()) return;
-    const results = products.filter((item) =>
-      `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`
-        .toLowerCase()
-        .includes(codeQuery.toLowerCase()),
-    );
-    setSearchResults(results);
+    const rows: SearchRow[] = products
+      .filter((item) =>
+        `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`
+          .toLowerCase()
+          .includes(codeQuery.toLowerCase()),
+      )
+      .flatMap((product) =>
+        product.manufacturers.map((mf) => ({
+          product,
+          mf,
+          totalStock: mf.inventories.reduce((s, inv) => s + inv.stock, 0),
+        })),
+      );
+    setSearchResults(rows);
     setProductSelected(false);
     setHasSearched(true);
   }
 
-  function handleSelectProduct(product: typeof products[0]) {
-    setSelectedProductId(product.id);
-    setSelectedManufacturer(product.manufacturers[0].manufacturer);
-    setSelectedSupplier(product.manufacturers[0].supplier);
-    setCost(String(product.manufacturers[0].cost));
+  function handleSelectProduct(row: SearchRow) {
+    setSelectedProductId(row.product.id);
+    setSelectedManufacturer(row.mf.manufacturer);
+    setSelectedSupplier(row.mf.supplier);
+    setCost(String(row.mf.cost));
     setStoreQuantities({ "store-1": "0", "store-2": "0" });
     setSearchResults([]);
     setProductSelected(true);
@@ -151,32 +164,29 @@ export function EntryPage() {
                       {searchResults.length} produto{searchResults.length > 1 ? "s" : ""} encontrado{searchResults.length > 1 ? "s" : ""} — selecione um
                     </p>
                     <div className="divide-y divide-border">
-                      {searchResults.map((product) => {
-                        const totalStock = product.manufacturers.reduce(
-                          (sum, m) => sum + m.inventories.reduce((s, inv) => s + inv.stock, 0),
-                          0,
-                        );
-                        return (
-                          <button
-                            key={product.id}
-                            type="button"
-                            onClick={() => handleSelectProduct(product)}
-                            className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
-                          >
-                            <div>
-                              <p className="font-semibold text-slate-900">
-                                {product.internalCode} • {product.name}
-                              </p>
-                              <p className="text-sm text-slate-500">
-                                {product.glassType} • {product.feature} • {product.brand}
-                              </p>
-                            </div>
-                            <span className={`ml-4 shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${totalStock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                              {totalStock} un.
-                            </span>
-                          </button>
-                        );
-                      })}
+                      {searchResults.map((row, i) => (
+                        <button
+                          key={`${row.product.id}-${i}`}
+                          type="button"
+                          onClick={() => handleSelectProduct(row)}
+                          className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
+                        >
+                          <div>
+                            <p className="font-semibold text-slate-900">
+                              {row.product.internalCode} • {row.product.name}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              {row.product.glassType} • {row.product.feature} • {row.product.brand}
+                            </p>
+                            <p className="mt-0.5 text-xs font-medium text-slate-400">
+                              Fabricante: {row.mf.manufacturer} • Custo: {formatCurrency(row.mf.cost)}
+                            </p>
+                          </div>
+                          <span className={`ml-4 shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${row.totalStock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                            {row.totalStock} un.
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
