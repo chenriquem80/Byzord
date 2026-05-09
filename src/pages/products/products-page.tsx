@@ -129,15 +129,21 @@ export function ProductsPage() {
   const [newManufacturer, setNewManufacturer] = useState("");
   const newManufacturerRef = useRef<HTMLInputElement>(null);
 
+  const [suppliersList, setSuppliersList] = useState<string[]>([]);
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [newSupplier, setNewSupplier] = useState("");
+  const newSupplierRef = useRef<HTMLInputElement>(null);
+
   const [dbStores, setDbStores] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchOptions() {
       if (!supabase) return;
-      const [{ data: pData }, { data: mfData }, { data: storesData }] = await Promise.all([
+      const [{ data: pData }, { data: mfData }, { data: storesData }, { data: suppData }] = await Promise.all([
         supabase.from("products").select("glass_type, feature"),
-        supabase.from("product_manufacturers").select("manufacturer"),
+        supabase.from("product_manufacturers").select("manufacturer, supplier"),
         supabase.from("stores").select("id, name, code"),
+        supabase.from("suppliers").select("name"),
       ]);
       if (pData) {
         const dbTypes = pData.map((r: any) => r.glass_type).filter(Boolean);
@@ -148,6 +154,12 @@ export function ProductsPage() {
       if (mfData) {
         const dbMfrs = mfData.map((r: any) => r.manufacturer).filter(Boolean);
         setManufacturers([...new Set([...DEFAULT_MANUFACTURERS, ...dbMfrs])]);
+        const dbSupps = mfData.map((r: any) => r.supplier).filter(Boolean);
+        setSuppliersList((prev) => [...new Set([...prev, ...dbSupps])]);
+      }
+      if (suppData) {
+        const dbSupps = suppData.map((r: any) => r.name).filter(Boolean);
+        setSuppliersList((prev) => [...new Set([...prev, ...dbSupps])]);
       }
       if (storesData && storesData.length > 0) {
         setDbStores(storesData);
@@ -189,7 +201,7 @@ export function ProductsPage() {
     cost: "Preço de custo",
     price: "Preço de venda",
     lastPurchaseDate: "Última data de compra",
-    lastSupplier: "Último fornecedor",
+    lastSupplier: "Fornecedor",
   };
 
   function handleAddFeature() {
@@ -208,6 +220,15 @@ export function ProductsPage() {
     form.setValue("manufacturer", trimmed);
     setNewManufacturer("");
     setShowAddManufacturer(false);
+  }
+
+  function handleAddSupplier() {
+    const trimmed = newSupplier.trim();
+    if (!trimmed || suppliersList.includes(trimmed)) return;
+    setSuppliersList((prev) => [...prev, trimmed]);
+    form.setValue("lastSupplier", trimmed);
+    setNewSupplier("");
+    setShowAddSupplier(false);
   }
 
   function handleAddGlassType() {
@@ -607,15 +628,33 @@ export function ProductsPage() {
           <FormField label="Última data de compra" error={form.formState.errors.lastPurchaseDate?.message}>
             <Input type="date" {...form.register("lastPurchaseDate")} />
           </FormField>
-          <FormField label="Último fornecedor" error={form.formState.errors.lastSupplier?.message}>
-            <Select {...form.register("lastSupplier")}>
-              <option value="">Selecione</option>
-              {suppliers.map((item) => (
-                <option key={item.id} value={item.name}>
-                  {item.name}
-                </option>
-              ))}
-            </Select>
+          <FormField label="Fornecedor" error={form.formState.errors.lastSupplier?.message}>
+            {showAddSupplier ? (
+              <div className="flex gap-2">
+                <Input
+                  ref={newSupplierRef}
+                  value={newSupplier}
+                  onChange={(e) => setNewSupplier(e.target.value)}
+                  placeholder="Nome do fornecedor"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddSupplier(); } if (e.key === "Escape") setShowAddSupplier(false); }}
+                  autoFocus
+                />
+                <Button type="button" size="sm" onClick={handleAddSupplier}><Check className="size-4" /></Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setShowAddSupplier(false)}><X className="size-4" /></Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Select {...form.register("lastSupplier")} className="flex-1">
+                  <option value="">Selecione</option>
+                  {suppliersList.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </Select>
+                <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddSupplier(true); setTimeout(() => newSupplierRef.current?.focus(), 50); }}>
+                  <Plus className="size-4" />
+                </Button>
+              </div>
+            )}
           </FormField>
         </div>
       </SectionCard>
