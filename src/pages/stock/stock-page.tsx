@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil } from "lucide-react";
@@ -10,8 +10,46 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatCurrency, formatMonthYear } from "@/lib/format";
-import { products, stores } from "@/data/mock-data";
+import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
+import { supabase } from "@/lib/database";
 import type { Product } from "@/types/domain";
+
+function dbToProduct(row: any, dbStores: any[]): Product {
+  return {
+    id: row.id,
+    internalCode: row.internal_code ?? "",
+    supplierCode: "",
+    barcode: row.barcode ?? "",
+    name: row.name ?? "",
+    glassType: row.glass_type ?? "",
+    feature: row.feature ?? "",
+    brand: row.brand ?? "",
+    description: row.description ?? "",
+    photos: [],
+    status: row.status ?? "ativo",
+    notes: row.notes ?? "",
+    manufacturers: (row.product_manufacturers ?? []).map((mf: any) => ({
+      id: mf.id,
+      manufacturer: mf.manufacturer ?? "",
+      cost: mf.cost ?? 0,
+      price: mf.price ?? 0,
+      lastPurchaseDate: mf.last_purchase_date ?? "",
+      supplier: mf.supplier ?? "",
+      inventories: (mf.product_store_inventory ?? []).map((inv: any) => {
+        const store = dbStores.find((s) => s.id === inv.store_id);
+        return {
+          id: inv.id,
+          storeId: inv.store_id,
+          storeName: store?.name ?? "",
+          location: inv.location ?? "",
+          stock: inv.stock ?? 0,
+          minQuantity: inv.min_quantity ?? 0,
+        };
+      }),
+    })),
+    compatibilities: [],
+  };
+}
 
 interface StockRow {
   product: Product;
@@ -35,6 +73,33 @@ export function StockPage() {
   const [glassType, setGlassType] = useState("");
   const [feature, setFeature] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
+  const [dbStores, setDbStores] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!supabase) { setLoading(false); return; }
+      const [{ data: storesData }, { data: productsData }] = await Promise.all([
+        supabase.from("stores").select("*"),
+        supabase.from("products").select(`
+          id, internal_code, barcode, name, glass_type, feature, brand, description, status, notes,
+          product_manufacturers (
+            id, manufacturer, cost, price, last_purchase_date, supplier,
+            product_store_inventory ( id, store_id, location, stock, min_quantity )
+          )
+        `),
+      ]);
+      const stores = storesData ?? [];
+      setDbStores(stores);
+      if (productsData) setDbProducts(productsData.map((p) => dbToProduct(p, stores)));
+      setLoading(false);
+    }
+    fetchData();
+  }, []);
+
+  const stores = dbStores.length > 0 ? dbStores : mockStores;
+  const products = dbProducts ?? mockProducts;
 
   const rows = useMemo<StockRow[]>(() => {
     return products
@@ -77,7 +142,7 @@ export function StockPage() {
           };
         });
       });
-  }, [feature, glassType, modelFilter, query, year]);
+  }, [feature, glassType, modelFilter, query, year, products, stores]);
 
   const columns = useMemo<ColumnDef<StockRow>[]>(
     () => [
@@ -93,8 +158,8 @@ export function StockPage() {
           </button>
         ),
       },
-      { accessorKey: "store1Quantity", header: stores[0].code },
-      { accessorKey: "store2Quantity", header: stores[1].code },
+      { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1" },
+      { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2" },
       { accessorKey: "totalQuantity", header: "Total" },
       { accessorKey: "productName", header: "Produto" },
       { accessorKey: "code", header: "Código" },
@@ -171,7 +236,11 @@ export function StockPage() {
         description="Clique na característica para abrir o detalhamento por loja e fabricante."
         action={<Badge className="bg-rose-100 text-rose-700">{rows.filter((item) => item.totalQuantity === 0).length} zerados</Badge>}
       >
-        <DataTable columns={columns} data={rows} />
+        {loading ? (
+          <p className="py-8 text-center text-sm text-slate-500">Carregando estoque...</p>
+        ) : (
+          <DataTable columns={columns} data={rows} />
+        )}
       </SectionCard>
 
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
