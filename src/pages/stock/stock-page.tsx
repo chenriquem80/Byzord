@@ -77,7 +77,7 @@ export function StockPage() {
   useEffect(() => {
     async function fetchData() {
       if (!supabase) { setLoading(false); return; }
-      const [{ data: storesData }, { data: productsData }] = await Promise.all([
+      const [{ data: storesData }, { data: productsData, error: productsError }] = await Promise.all([
         supabase.from("stores").select("*"),
         supabase.from("products").select(`
           id, internal_code, barcode, name, glass_type, feature, brand, description, status, notes,
@@ -87,21 +87,28 @@ export function StockPage() {
           )
         `),
       ]);
+      if (productsError) console.error("Erro ao buscar produtos:", productsError);
       const stores = storesData ?? [];
       setDbStores(stores);
-      if (productsData) setDbProducts(productsData.map((p) => dbToProduct(p, stores)));
+      if (productsData && productsData.length > 0) {
+        setDbProducts(productsData.map((p) => dbToProduct(p, stores)));
+      } else {
+        // Supabase vazio ou sem acesso — mantém null para exibir mock
+        setDbProducts(null);
+      }
       setLoading(false);
     }
     fetchData();
   }, []);
 
   const stores = dbStores.length > 0 ? dbStores : mockStores;
+  // Mostra dados do banco se disponíveis; caso contrário, usa mock
   const products = dbProducts ?? mockProducts;
 
   const rows = useMemo<StockRow[]>(() => {
     return products
       .filter((product) => {
-        const text = `${product.name} ${product.brand} ${product.compatibilities
+        const text = `${product.internalCode} ${product.name} ${product.brand} ${product.glassType} ${product.feature} ${product.compatibilities
           .map((item) => `${item.model} ${item.generation}`)
           .join(" ")}`.toLowerCase();
         const matchesQuery = query ? text.includes(query.toLowerCase()) : true;
