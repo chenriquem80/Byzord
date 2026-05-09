@@ -167,7 +167,6 @@ export function ProductsPage() {
       .map((key) => fieldLabels[key] ?? key)
       .join(" • ");
     setSaveError(`Campos obrigatórios não preenchidos: ${missing}`);
-    setTimeout(() => setSaveError(null), 6000);
   }
 
   async function handleSave(values: ProductFormValues) {
@@ -180,38 +179,40 @@ export function ProductsPage() {
             .from("products")
             .update({
               internal_code: values.internalCode,
+              supplier_code: values.supplierCode ?? "",
               barcode: values.barcode,
               name: values.name,
               glass_type: values.glassType,
               feature: values.feature,
               brand: values.brand,
-              description: values.description,
+              description: values.description ?? "",
               status: values.status,
               notes: values.notes ?? "",
-              is_type_b: values.isTypeB,
-              is_type_r: values.isTypeR,
+              is_type_b: values.isTypeB ?? false,
+              is_type_r: values.isTypeR ?? false,
             })
             .eq("id", currentProduct.id);
-          if (error) throw error;
+          if (error) { console.error("Supabase update error:", error); throw error; }
         } else {
           const { data: inserted, error: insertError } = await supabase
             .from("products")
             .insert({
               internal_code: values.internalCode,
+              supplier_code: values.supplierCode ?? "",
               barcode: values.barcode,
               name: values.name,
               glass_type: values.glassType,
               feature: values.feature,
               brand: values.brand,
-              description: values.description,
+              description: values.description ?? "",
               status: values.status,
               notes: values.notes ?? "",
-              is_type_b: values.isTypeB,
-              is_type_r: values.isTypeR,
+              is_type_b: values.isTypeB ?? false,
+              is_type_r: values.isTypeR ?? false,
             })
             .select("id")
             .single();
-          if (insertError) throw insertError;
+          if (insertError) { console.error("Supabase insert error:", insertError); throw insertError; }
 
           const productDbId = inserted.id;
 
@@ -585,15 +586,27 @@ export function ProductsPage() {
         </div>
       )}
 
+      {/* Mensagem de erro visível */}
+      {saveError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4">
+          <p className="text-sm font-semibold text-rose-700">Erro ao salvar</p>
+          <p className="mt-1 text-sm text-rose-600">{saveError}</p>
+          <button
+            type="button"
+            onClick={() => setSaveError(null)}
+            className="mt-2 text-xs text-rose-400 underline hover:text-rose-600"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
+
       {/* Botão de salvar no final da página */}
       <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
           <div>
             {savedMessage && (
               <span className="text-sm font-medium text-emerald-600">✓ Salvo com sucesso!</span>
-            )}
-            {saveError && (
-              <span className="text-sm font-medium text-rose-600">{saveError}</span>
             )}
           </div>
           <Button
