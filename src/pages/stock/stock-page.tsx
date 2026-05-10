@@ -125,7 +125,9 @@ export function StockPage() {
         const text = `${product.internalCode} ${product.name} ${product.brand} ${product.glassType} ${product.feature} ${product.compatibilities
           .map((item) => `${item.model} ${item.generation}`)
           .join(" ")}`.toLowerCase();
-        const matchesQuery = query ? text.includes(query.toLowerCase()) : true;
+        const matchesQuery = query
+          ? query.toLowerCase().split(/\s+/).filter(Boolean).every((term) => text.includes(term))
+          : true;
         const matchesGlassType = glassType ? product.glassType === glassType : true;
         return matchesQuery && matchesGlassType;
       })

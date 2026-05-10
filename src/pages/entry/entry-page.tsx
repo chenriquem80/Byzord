@@ -138,12 +138,12 @@ export function EntryPage() {
 
   function handleCodeSearch() {
     if (!codeQuery.trim()) return;
+    const terms = codeQuery.toLowerCase().split(/\s+/).filter(Boolean);
     const rows: SearchRow[] = products
-      .filter((item) =>
-        `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`
-          .toLowerCase()
-          .includes(codeQuery.toLowerCase()),
-      )
+      .filter((item) => {
+        const text = `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`.toLowerCase();
+        return terms.every((term) => text.includes(term));
+      })
       .flatMap((product) =>
         product.manufacturers.map((mf) => ({
           product,
