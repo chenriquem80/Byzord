@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, UserMinus, UserCheck, Shield, ShieldCheck } from "lucide-react";
+import { Plus, Search, UserMinus, UserCheck, Shield, ShieldCheck, KeyRound } from "lucide-react";
 import { supabase, supabaseAdmin } from "@/lib/database";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -209,6 +209,20 @@ export function UserManagementPage() {
     }
   }
 
+  async function forcePasswordChange(user: User) {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ must_change_password: true })
+        .eq("id", user.id);
+      if (error) throw error;
+      fetchUsers();
+    } catch (err) {
+      console.error("Erro ao solicitar troca de senha:", err);
+    }
+  }
+
   function openPermissions(user: User) {
     setPermissionsRole(user.role);
     setPermissionsMap({ ...getRolePermissions(user.role) });
@@ -268,6 +282,16 @@ export function UserManagementPage() {
             title="Editar permissões"
           >
             <ShieldCheck className="size-4 text-blue-500" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => forcePasswordChange(row.original)}
+            className={`size-9 p-0 ${row.original.mustChangePassword ? "border-amber-300 bg-amber-50" : ""}`}
+            title={row.original.mustChangePassword ? "Troca de senha já solicitada" : "Solicitar troca de senha no próximo acesso"}
+            disabled={row.original.mustChangePassword}
+          >
+            <KeyRound className={`size-4 ${row.original.mustChangePassword ? "text-amber-500" : "text-slate-500"}`} />
           </Button>
           <Button
             variant="outline"
