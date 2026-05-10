@@ -32,7 +32,6 @@ const menuItems: MenuItem[] = [
   },
   { title: "Pedido", route: "/app/pedido", icon: "FileText", allowedRoles: ["ADMIN", "GERENTE"] },
   { title: "Clientes", route: "/app/clientes", icon: "Users" },
-  { title: "Fornecedores", route: "/app/fornecedores", icon: "Truck", allowedRoles: ["ADMIN", "GERENTE"] },
   { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3", allowedRoles: ["ADMIN", "GERENTE"] },
   { title: "Configuração", route: "/app/configuracoes", icon: "Settings" },
   { title: "Usuários", route: "/app/usuarios", icon: "UserCog", allowedRoles: ["ADMIN"] },
