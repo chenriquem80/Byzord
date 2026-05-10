@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
-import { Check, Plus, Printer, Search, X } from "lucide-react";
+import { Check, Plus, Printer, X } from "lucide-react";
 import Barcode from "react-barcode";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -35,8 +35,7 @@ export function EntryPage() {
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [stores, setStores] = useState(mockStores);
   const [codeQuery, setCodeQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchRow[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [entryItems, setEntryItems] = useState<EntryItem[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState(suppliers[0].name);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
@@ -138,10 +137,12 @@ export function EntryPage() {
     [entryItems],
   );
 
-  function handleCodeSearch() {
+  const searchResults = useMemo<SearchRow[]>(() => {
     const terms = codeQuery.toLowerCase().split(/\s+/).filter(Boolean);
-    const rows: SearchRow[] = products
+    return products
       .filter((item) => {
+        const matchesType = glassTypeFilter ? item.glassType === glassTypeFilter : true;
+        if (!matchesType) return false;
         if (terms.length === 0) return true;
         const text = `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`.toLowerCase();
         return terms.every((term) => text.includes(term));
@@ -153,9 +154,7 @@ export function EntryPage() {
           totalStock: mf.inventories.reduce((s, inv) => s + inv.stock, 0),
         })),
       );
-    setSearchResults(rows);
-    setHasSearched(true);
-  }
+  }, [codeQuery, glassTypeFilter, products]);
 
   function handleAddItem(row: SearchRow) {
     const key = `${row.product.id}-${row.mf.id}-${Date.now()}`;
@@ -215,9 +214,8 @@ export function EntryPage() {
 
   function handleCancel() {
     setEntryItems([]);
-    setSearchResults([]);
     setCodeQuery("");
-    setHasSearched(false);
+    setGlassTypeFilter("");
   }
 
   const isAlreadyAdded = (row: SearchRow) =>
@@ -227,7 +225,7 @@ export function EntryPage() {
     <div className="space-y-6">
       <SectionCard
         title="Nova entrada"
-        description={loaded ? `${products.length} produto${products.length !== 1 ? "s" : ""} cadastrado${products.length !== 1 ? "s" : ""} — busque por nome, código ou tipo, ou clique em Buscar sem texto para ver todos.` : "Carregando produtos..."}
+        description={loaded ? `${products.length} produto${products.length !== 1 ? "s" : ""} cadastrado${products.length !== 1 ? "s" : ""}` : "Carregando produtos..."}
       >
         <div className="space-y-6">
           {saveSuccess && (
@@ -239,82 +237,72 @@ export function EntryPage() {
 
           <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-4">
-              {/* Search */}
-              <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-                <FormField label="Descrição do produto">
-                  <Input
-                    value={codeQuery}
-                    onChange={(event) => {
-                      setCodeQuery(event.target.value);
-                      setSearchResults([]);
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && handleCodeSearch()}
-                    placeholder="Digite a descrição (ex: Parabrisa Gol G5)"
-                  />
-                </FormField>
-                <div className="flex items-end gap-3">
-                  <Button size="lg" className="w-full md:w-auto" onClick={handleCodeSearch}>
-                    <Search className="size-4" />
-                    Buscar
-                  </Button>
-                  <Button size="lg" variant="outline" className="w-full md:w-auto" onClick={() => navigate("/app/produtos")}>
-                    <Plus className="size-4" />
-                    Novo Item
-                  </Button>
-                </div>
+              {/* Search — igual ao estoque: texto + dropdown de tipo */}
+              <div className="grid gap-4 md:grid-cols-[1fr_auto_auto]">
+                <Input
+                  value={codeQuery}
+                  onChange={(e) => setCodeQuery(e.target.value)}
+                  placeholder="Digite o nome do produto (ex: Parabrisa Gol)"
+                />
+                <Select value={glassTypeFilter} onChange={(e) => setGlassTypeFilter(e.target.value)} placeholder="Todos os itens">
+                  {[...new Set(products.map((p) => p.glassType).filter(Boolean))].map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </Select>
+                <Button variant="outline" onClick={() => navigate("/app/produtos")}>
+                  <Plus className="size-4" />
+                  Novo Item
+                </Button>
               </div>
 
-              {/* Search results */}
-              {searchResults.length > 0 && (
+              {/* Search results — exibe assim que há texto ou filtro */}
+              {(codeQuery.trim() || glassTypeFilter) && (
                 <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
                   <p className="border-b border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {searchResults.length} produto{searchResults.length > 1 ? "s" : ""} encontrado{searchResults.length > 1 ? "s" : ""} — clique em Adicionar
+                    {searchResults.length} produto{searchResults.length !== 1 ? "s" : ""} encontrado{searchResults.length !== 1 ? "s" : ""}
+                    {searchResults.length > 0 ? " — clique em Adicionar" : ""}
                   </p>
-                  <div className="divide-y divide-border">
-                    {searchResults.map((row, i) => {
-                      const added = isAlreadyAdded(row);
-                      return (
-                        <div
-                          key={`${row.product.id}-${i}`}
-                          className="flex w-full items-center justify-between px-4 py-3"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-slate-900">
-                              {row.product.internalCode} • {row.product.name}
-                            </p>
-                            <p className="text-sm text-slate-500">
-                              {row.product.glassType} • {row.product.feature} • {row.product.brand}
-                            </p>
-                            <p className="mt-0.5 text-xs font-medium text-slate-400">
-                              Fabricante: {row.mf.manufacturer} • Custo: {formatCurrency(row.mf.cost)}
-                            </p>
-                          </div>
-                          <div className="ml-4 flex shrink-0 items-center gap-2">
-                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${row.totalStock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                              {row.totalStock} un.
-                            </span>
-                            {added ? (
-                              <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-slate-400">
-                                Adicionado
+                  {searchResults.length > 0 && (
+                    <div className="divide-y divide-border">
+                      {searchResults.map((row, i) => {
+                        const added = isAlreadyAdded(row);
+                        return (
+                          <div
+                            key={`${row.product.id}-${i}`}
+                            className="flex w-full items-center justify-between px-4 py-3"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-slate-900">
+                                {row.product.internalCode} • {row.product.name}
+                              </p>
+                              <p className="text-sm text-slate-500">
+                                {row.product.glassType} • {row.product.feature} • {row.product.brand}
+                              </p>
+                              <p className="mt-0.5 text-xs font-medium text-slate-400">
+                                Fabricante: {row.mf.manufacturer} • Custo: {formatCurrency(row.mf.cost)}
+                              </p>
+                            </div>
+                            <div className="ml-4 flex shrink-0 items-center gap-2">
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${row.totalStock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                                {row.totalStock} un.
                               </span>
-                            ) : (
-                              <Button size="sm" onClick={() => handleAddItem(row)}>
-                                <Plus className="size-3.5" />
-                                Adicionar
-                              </Button>
-                            )}
+                              {added ? (
+                                <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-slate-400">
+                                  Adicionado
+                                </span>
+                              ) : (
+                                <Button size="sm" onClick={() => handleAddItem(row)}>
+                                  <Plus className="size-3.5" />
+                                  Adicionar
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-
-              {hasSearched && searchResults.length === 0 && (
-                <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                  Nenhum produto encontrado para "<strong>{codeQuery}</strong>". Tente outros termos ou cadastre um novo item.
-                </p>
               )}
 
               {/* Entry items list */}
