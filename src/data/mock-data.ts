@@ -20,7 +20,7 @@ export const stores: Store[] = [
 
 export const currentUser: User = {
   id: "usr-01",
-  name: "Renato Nakamura",
+  name: "Henrique Marcondes",
   email: "renato@autovitrais.com.br",
   role: "ADMIN",
   storeId: "store-1",
@@ -330,7 +330,7 @@ export const stockMovements: StockMovement[] = [
     manufacturer: "Pilkington",
     supplier: "Pilkington Brasil",
     quantity: 5,
-    user: "Renato Nakamura",
+    user: "Henrique Marcondes",
     date: "2026-04-28T09:35:00",
     note: "Reposição semanal",
   },
@@ -345,7 +345,7 @@ export const stockMovements: StockMovement[] = [
     manufacturer: "AGC",
     supplier: "Vidro Forte Distribuidora",
     quantity: 2,
-    user: "Renato Nakamura",
+    user: "Henrique Marcondes",
     date: "2026-04-29T11:20:00",
     note: "Entrada separada na Loja 2",
   },
@@ -512,7 +512,7 @@ export const attendanceServices: ServiceOption[] = [
 export const attendanceQueue: AttendanceRecord[] = [
   {
     id: "atd-001",
-    employeeName: "Renato Nakamura",
+    employeeName: "Henrique Marcondes",
     storeName: "Taubaté",
     openedAt: "2026-05-02T09:05:00",
     plate: "BRA2E19",
