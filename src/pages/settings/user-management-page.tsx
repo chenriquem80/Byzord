@@ -286,16 +286,6 @@ export function UserManagementPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => forcePasswordChange(row.original)}
-            className={`size-9 p-0 ${row.original.mustChangePassword ? "border-amber-300 bg-amber-50" : ""}`}
-            title={row.original.mustChangePassword ? "Troca de senha já solicitada" : "Solicitar troca de senha no próximo acesso"}
-            disabled={row.original.mustChangePassword}
-          >
-            <KeyRound className={`size-4 ${row.original.mustChangePassword ? "text-amber-500" : "text-slate-500"}`} />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
             onClick={() => toggleUserStatus(row.original)}
             className="size-9 p-0"
             title={row.original.status === "ativo" ? "Desativar usuário" : "Ativar usuário"}
@@ -303,6 +293,15 @@ export function UserManagementPage() {
             {row.original.status === "ativo"
               ? <UserMinus className="size-4 text-rose-500" />
               : <UserCheck className="size-4 text-emerald-500" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => forcePasswordChange(row.original)}
+            className={`size-9 p-0 ${row.original.mustChangePassword ? "border-amber-300 bg-amber-50" : ""}`}
+            title={row.original.mustChangePassword ? "Troca de senha já solicitada" : "Solicitar troca de senha no próximo acesso"}
+          >
+            <KeyRound className={`size-4 ${row.original.mustChangePassword ? "text-amber-500" : "text-slate-500"}`} />
           </Button>
         </div>
       ),
