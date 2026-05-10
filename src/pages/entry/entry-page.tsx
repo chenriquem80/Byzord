@@ -44,6 +44,9 @@ export function EntryPage() {
   const [selectedSupplier, setSelectedSupplier] = useState(suppliers[0].name);
   const [manufacturersList, setManufacturersList] = useState<string[]>([]);
   const [selectedManufacturer, setSelectedManufacturer] = useState("");
+  const [showAddManufacturer, setShowAddManufacturer] = useState(false);
+  const [newManufacturer, setNewManufacturer] = useState("");
+  const newManufacturerRef = useRef<HTMLInputElement>(null);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [note, setNote] = useState("");
@@ -199,6 +202,15 @@ export function EntryPage() {
     setEntryItems((prev) => prev.filter((item) => item.key !== key));
   }
 
+  function handleAddManufacturer() {
+    const trimmed = newManufacturer.trim();
+    if (!trimmed || manufacturersList.includes(trimmed)) return;
+    setManufacturersList((prev) => [...prev, trimmed]);
+    setSelectedManufacturer(trimmed);
+    setShowAddManufacturer(false);
+    setNewManufacturer("");
+  }
+
   function handleAddSupplier() {
     const trimmed = newSupplier.trim();
     if (!trimmed || suppliersList.includes(trimmed)) return;
@@ -251,6 +263,8 @@ export function EntryPage() {
     setSelectedManufacturer("");
     setShowAddSupplier(false);
     setNewSupplier("");
+    setShowAddManufacturer(false);
+    setNewManufacturer("");
   }
 
   const isAlreadyAdded = (row: SearchRow) =>
@@ -376,12 +390,31 @@ export function EntryPage() {
                       )}
                     </FormField>
                     <FormField label="Fabricante">
-                      <Select value={selectedManufacturer} onChange={(e) => setSelectedManufacturer(e.target.value)}>
-                        <option value="">Selecione</option>
-                        {manufacturersList.map((m) => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </Select>
+                      {showAddManufacturer ? (
+                        <div className="flex gap-2">
+                          <Input
+                            ref={newManufacturerRef}
+                            value={newManufacturer}
+                            onChange={(e) => setNewManufacturer(e.target.value)}
+                            placeholder="Nome do fabricante"
+                            onKeyDown={(e) => e.key === "Enter" && handleAddManufacturer()}
+                          />
+                          <Button type="button" size="sm" onClick={handleAddManufacturer}><Check className="size-4" /></Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddManufacturer(false); setNewManufacturer(""); }}><X className="size-4" /></Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Select value={selectedManufacturer} onChange={(e) => setSelectedManufacturer(e.target.value)} className="flex-1">
+                            <option value="">Selecione</option>
+                            {manufacturersList.map((m) => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </Select>
+                          <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddManufacturer(true); setTimeout(() => newManufacturerRef.current?.focus(), 50); }}>
+                            <Plus className="size-4" />
+                          </Button>
+                        </div>
+                      )}
                     </FormField>
                     <FormField label="Data da compra">
                       <Input value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} type="date" />
