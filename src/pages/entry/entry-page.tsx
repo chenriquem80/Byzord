@@ -37,7 +37,13 @@ export function EntryPage() {
   const [codeQuery, setCodeQuery] = useState("");
   const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [entryItems, setEntryItems] = useState<EntryItem[]>([]);
+  const [suppliersList, setSuppliersList] = useState<string[]>(suppliers.map((s) => s.name));
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [newSupplier, setNewSupplier] = useState("");
+  const newSupplierRef = useRef<HTMLInputElement>(null);
   const [selectedSupplier, setSelectedSupplier] = useState(suppliers[0].name);
+  const [manufacturersList, setManufacturersList] = useState<string[]>([]);
+  const [selectedManufacturer, setSelectedManufacturer] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [note, setNote] = useState("");
@@ -61,6 +67,14 @@ export function EntryPage() {
       const rawInv = invResp.data ?? [];
 
       if (dbStores.length > 0) setStores(dbStores);
+
+      const uniqueSuppliers = [...new Set(rawMf.map((mf: any) => mf.supplier).filter(Boolean))] as string[];
+      const uniqueManufacturers = [...new Set(rawMf.map((mf: any) => mf.manufacturer).filter(Boolean))] as string[];
+      if (uniqueSuppliers.length > 0) {
+        setSuppliersList(uniqueSuppliers);
+        setSelectedSupplier(uniqueSuppliers[0]);
+      }
+      if (uniqueManufacturers.length > 0) setManufacturersList(uniqueManufacturers);
 
       if (rawProducts.length > 0) {
         const mapped: Product[] = rawProducts.map((p: any) => {
@@ -185,6 +199,15 @@ export function EntryPage() {
     setEntryItems((prev) => prev.filter((item) => item.key !== key));
   }
 
+  function handleAddSupplier() {
+    const trimmed = newSupplier.trim();
+    if (!trimmed || suppliersList.includes(trimmed)) return;
+    setSuppliersList((prev) => [...prev, trimmed]);
+    setSelectedSupplier(trimmed);
+    setShowAddSupplier(false);
+    setNewSupplier("");
+  }
+
   async function handleSaveEntry() {
     if (!supabase || entryItems.length === 0) return;
     setSaving(true);
@@ -201,12 +224,14 @@ export function EntryPage() {
             .update({ stock: newStock })
             .eq("id", inv.id);
         }
+        const mfUpdate: Record<string, unknown> = {
+          supplier: selectedSupplier,
+          last_purchase_date: purchaseDate || null,
+        };
+        if (selectedManufacturer) mfUpdate.manufacturer = selectedManufacturer;
         await supabase
           .from("product_manufacturers")
-          .update({
-            supplier: selectedSupplier,
-            last_purchase_date: purchaseDate || null,
-          })
+          .update(mfUpdate)
           .eq("id", item.mf.id);
       }
       setSaveSuccess(true);
@@ -223,6 +248,9 @@ export function EntryPage() {
     setEntryItems([]);
     setCodeQuery("");
     setGlassTypeFilter("");
+    setSelectedManufacturer("");
+    setShowAddSupplier(false);
+    setNewSupplier("");
   }
 
   const isAlreadyAdded = (row: SearchRow) =>
@@ -320,11 +348,38 @@ export function EntryPage() {
                   </p>
 
                   {/* Shared fields */}
-                  <div className="grid gap-4 rounded-2xl border border-border bg-white p-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-4 rounded-2xl border border-border bg-white p-4 md:grid-cols-2 xl:grid-cols-3">
                     <FormField label="Fornecedor">
-                      <Select value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)}>
-                        {suppliers.map((item) => (
-                          <option key={item.id} value={item.name}>{item.name}</option>
+                      {showAddSupplier ? (
+                        <div className="flex gap-2">
+                          <Input
+                            ref={newSupplierRef}
+                            value={newSupplier}
+                            onChange={(e) => setNewSupplier(e.target.value)}
+                            placeholder="Nome do fornecedor"
+                            onKeyDown={(e) => e.key === "Enter" && handleAddSupplier()}
+                          />
+                          <Button type="button" size="sm" onClick={handleAddSupplier}><Check className="size-4" /></Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddSupplier(false); setNewSupplier(""); }}><X className="size-4" /></Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Select value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)} className="flex-1">
+                            {suppliersList.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </Select>
+                          <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddSupplier(true); setTimeout(() => newSupplierRef.current?.focus(), 50); }}>
+                            <Plus className="size-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </FormField>
+                    <FormField label="Fabricante">
+                      <Select value={selectedManufacturer} onChange={(e) => setSelectedManufacturer(e.target.value)}>
+                        <option value="">Selecione</option>
+                        {manufacturersList.map((m) => (
+                          <option key={m} value={m}>{m}</option>
                         ))}
                       </Select>
                     </FormField>
