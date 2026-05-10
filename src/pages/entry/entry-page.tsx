@@ -139,6 +139,7 @@ export function EntryPage() {
 
   const searchResults = useMemo<SearchRow[]>(() => {
     const terms = codeQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    const seen = new Set<string>();
     return products
       .filter((item) => {
         const matchesType = glassTypeFilter ? item.glassType === glassTypeFilter : true;
@@ -153,7 +154,13 @@ export function EntryPage() {
           mf,
           totalStock: mf.inventories.reduce((s, inv) => s + inv.stock, 0),
         })),
-      );
+      )
+      .filter((row) => {
+        const key = `${row.product.id}-${row.mf.manufacturer}-${row.mf.cost}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
   }, [codeQuery, glassTypeFilter, products]);
 
   function handleAddItem(row: SearchRow) {

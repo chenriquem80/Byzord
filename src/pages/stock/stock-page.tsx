@@ -120,6 +120,7 @@ export function StockPage() {
   const products = dbProducts ?? mockProducts;
 
   const rows = useMemo<StockRow[]>(() => {
+    const seen = new Set<string>();
     return products
       .filter((product) => {
         const text = `${product.internalCode} ${product.name} ${product.brand} ${product.glassType} ${product.feature} ${product.compatibilities
@@ -153,6 +154,12 @@ export function StockPage() {
             lastPurchaseDate: manufacturer.lastPurchaseDate,
           };
         });
+      })
+      .filter((row) => {
+        const key = `${row.product.id}-${row.manufacturer}-${row.cost}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
       });
   }, [glassType, query, products, stores]);
 
