@@ -44,6 +44,7 @@ export function EntryPage() {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const entryListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function EntryPage() {
 
       if (dbStores.length > 0) setStores(dbStores);
 
-      if (rawProducts.length > 0 && rawMf.length > 0) {
+      if (rawProducts.length > 0) {
         const mapped: Product[] = rawProducts.map((p: any) => {
           const mfs = rawMf.filter((mf: any) => mf.product_id === p.id);
           const manufacturers: Manufacturer[] = mfs.map((mf: any) => {
@@ -109,6 +110,7 @@ export function EntryPage() {
         });
         setProducts(mapped);
       }
+      setLoaded(true);
     }
     fetchData();
   }, []);
@@ -137,10 +139,10 @@ export function EntryPage() {
   );
 
   function handleCodeSearch() {
-    if (!codeQuery.trim()) return;
     const terms = codeQuery.toLowerCase().split(/\s+/).filter(Boolean);
     const rows: SearchRow[] = products
       .filter((item) => {
+        if (terms.length === 0) return true;
         const text = `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`.toLowerCase();
         return terms.every((term) => text.includes(term));
       })
@@ -225,7 +227,7 @@ export function EntryPage() {
     <div className="space-y-6">
       <SectionCard
         title="Nova entrada"
-        description="Busque os produtos, adicione-os à lista e distribua as quantidades entre as lojas."
+        description={loaded ? `${products.length} produto${products.length !== 1 ? "s" : ""} cadastrado${products.length !== 1 ? "s" : ""} — busque por nome, código ou tipo, ou clique em Buscar sem texto para ver todos.` : "Carregando produtos..."}
       >
         <div className="space-y-6">
           {saveSuccess && (
