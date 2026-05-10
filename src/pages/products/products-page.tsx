@@ -10,7 +10,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { products, stores, suppliers } from "@/data/mock-data";
+import { products, stores } from "@/data/mock-data";
 import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
 import { Check, Plus, X } from "lucide-react";
 import { supabase } from "@/lib/database";
