@@ -5,13 +5,6 @@ import { Check, Plus, Printer, Search, X } from "lucide-react";
 import Barcode from "react-barcode";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -45,12 +38,12 @@ export function EntryPage() {
   const [searchResults, setSearchResults] = useState<SearchRow[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [entryItems, setEntryItems] = useState<EntryItem[]>([]);
-  const [pendingAdd, setPendingAdd] = useState<{ rowKey: string; quantity: string } | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState(suppliers[0].name);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [note, setNote] = useState("");
-  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const entryListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -162,12 +155,11 @@ export function EntryPage() {
     setHasSearched(true);
   }
 
-  function handleAddItem(row: SearchRow, initialQty: string) {
+  function handleAddItem(row: SearchRow) {
     const key = `${row.product.id}-${row.mf.id}-${Date.now()}`;
     const quantities: Record<string, string> = {};
-    stores.forEach((store, i) => { quantities[store.id] = i === 0 ? (initialQty || "0") : "0"; });
+    stores.forEach((store) => { quantities[store.id] = "0"; });
     setEntryItems((prev) => [...prev, { key, product: row.product, mf: row.mf, quantities }]);
-    setPendingAdd(null);
     setTimeout(() => entryListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
@@ -185,8 +177,45 @@ export function EntryPage() {
     setEntryItems((prev) => prev.filter((item) => item.key !== key));
   }
 
-  function handleFinalize() {
-    setPrintModalOpen(true);
+  async function handleSaveEntry() {
+    if (!supabase || entryItems.length === 0) return;
+    setSaving(true);
+    try {
+      for (const item of entryItems) {
+        for (const store of stores) {
+          const qty = Number(item.quantities[store.id] ?? 0);
+          if (qty <= 0) continue;
+          const inv = item.mf.inventories.find((i) => i.storeId === store.id);
+          if (!inv) continue;
+          const newStock = (inv.stock ?? 0) + qty;
+          await supabase
+            .from("product_store_inventory")
+            .update({ stock: newStock })
+            .eq("id", inv.id);
+        }
+        await supabase
+          .from("product_manufacturers")
+          .update({
+            supplier: selectedSupplier,
+            last_purchase_date: purchaseDate || null,
+          })
+          .eq("id", item.mf.id);
+      }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      handleCancel();
+    } catch (err) {
+      console.error("Erro ao salvar entrada:", err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleCancel() {
+    setEntryItems([]);
+    setSearchResults([]);
+    setCodeQuery("");
+    setHasSearched(false);
   }
 
   const isAlreadyAdded = (row: SearchRow) =>
@@ -199,6 +228,13 @@ export function EntryPage() {
         description="Busque os produtos, adicione-os à lista e distribua as quantidades entre as lojas."
       >
         <div className="space-y-6">
+          {saveSuccess && (
+            <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+              <Check className="size-4" />
+              Entrada registrada com sucesso!
+            </div>
+          )}
+
           <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-4">
               {/* Search */}
@@ -235,8 +271,6 @@ export function EntryPage() {
                   <div className="divide-y divide-border">
                     {searchResults.map((row, i) => {
                       const added = isAlreadyAdded(row);
-                      const rowKey = `${row.product.id}-${row.mf.id}`;
-                      const isPending = pendingAdd?.rowKey === rowKey;
                       return (
                         <div
                           key={`${row.product.id}-${i}`}
@@ -261,33 +295,8 @@ export function EntryPage() {
                               <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-slate-400">
                                 Adicionado
                               </span>
-                            ) : isPending ? (
-                              <div className="flex items-center gap-1.5">
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  autoFocus
-                                  placeholder="Qtd"
-                                  value={pendingAdd.quantity}
-                                  onChange={(e) => setPendingAdd({ rowKey, quantity: e.target.value })}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleAddItem(row, pendingAdd.quantity);
-                                    if (e.key === "Escape") setPendingAdd(null);
-                                  }}
-                                  className="w-20 text-center"
-                                />
-                                <Button size="sm" onClick={() => handleAddItem(row, pendingAdd.quantity)} disabled={!pendingAdd.quantity || Number(pendingAdd.quantity) <= 0}>
-                                  <Check className="size-3.5" />
-                                </Button>
-                                <button type="button" onClick={() => setPendingAdd(null)} className="rounded-full p-1 text-slate-400 hover:text-slate-600">
-                                  <X className="size-3.5" />
-                                </button>
-                              </div>
                             ) : (
-                              <Button
-                                size="sm"
-                                onClick={() => setPendingAdd({ rowKey, quantity: "" })}
-                              >
+                              <Button size="sm" onClick={() => handleAddItem(row)}>
                                 <Plus className="size-3.5" />
                                 Adicionar
                               </Button>
@@ -404,11 +413,15 @@ export function EntryPage() {
 
                   {!readOnly && (
                     <div className="flex flex-col gap-3 md:flex-row">
-                      <Button size="lg" variant="outline">
-                        Salvar
+                      <Button
+                        size="lg"
+                        onClick={handleSaveEntry}
+                        disabled={saving || totalQuantity <= 0}
+                      >
+                        {saving ? "Salvando..." : "Adicionar"}
                       </Button>
-                      <Button size="lg" onClick={handleFinalize} disabled={totalQuantity <= 0}>
-                        Finalizar
+                      <Button size="lg" variant="outline" onClick={handleCancel}>
+                        Cancelar
                       </Button>
                     </div>
                   )}
@@ -489,27 +502,6 @@ export function EntryPage() {
           </div>
         </div>
       </SectionCard>
-
-      <Dialog open={printModalOpen} onOpenChange={setPrintModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Entrada finalizada</DialogTitle>
-            <DialogDescription>
-              Deseja imprimir as etiquetas deste lançamento agora?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button className="flex-1">Sim, imprimir etiquetas</Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setPrintModalOpen(false)}
-            >
-              Não imprimir agora
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
