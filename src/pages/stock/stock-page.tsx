@@ -265,7 +265,6 @@ export function StockPage() {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-4 py-3 text-left">Loja</th>
-                    <th className="px-4 py-3 text-left">Fabricante</th>
                     <th className="px-4 py-3 text-left">Estoque</th>
                     <th className="px-4 py-3 text-left">Custo</th>
                     <th className="px-4 py-3 text-left">Venda</th>
@@ -274,19 +273,30 @@ export function StockPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedProduct.manufacturers.flatMap((item) =>
-                    item.inventories.map((inventory) => (
-                      <tr key={`${item.id}-${inventory.id}`} className="border-t border-border">
-                        <td className="px-4 py-3">{inventory.storeName}</td>
-                        <td className="px-4 py-3">{item.manufacturer}</td>
-                        <td className="px-4 py-3">{inventory.stock}</td>
-                        <td className="px-4 py-3">{formatCurrency(item.cost)}</td>
-                        <td className="px-4 py-3">{formatCurrency(item.price)}</td>
-                        <td className="px-4 py-3">{formatMonthYear(item.lastPurchaseDate)}</td>
-                        <td className="px-4 py-3">{inventory.location}</td>
+                  {selectedProduct.manufacturers.map((mf) => (
+                    <>
+                      <tr key={`mf-${mf.id}`}>
+                        <td
+                          colSpan={6}
+                          className="border-t border-border bg-slate-100 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600"
+                        >
+                          {mf.manufacturer || "—"} &nbsp;•&nbsp; Total:{" "}
+                          {mf.inventories.reduce((s, i) => s + i.stock, 0)} un.
+                          &nbsp;•&nbsp; Última compra: {formatMonthYear(mf.lastPurchaseDate)}
+                        </td>
                       </tr>
-                    )),
-                  )}
+                      {mf.inventories.map((inventory) => (
+                        <tr key={`${mf.id}-${inventory.id}`} className="border-t border-border">
+                          <td className="px-4 py-3">{inventory.storeName}</td>
+                          <td className="px-4 py-3">{inventory.stock}</td>
+                          <td className="px-4 py-3">{formatCurrency(mf.cost)}</td>
+                          <td className="px-4 py-3">{formatCurrency(mf.price)}</td>
+                          <td className="px-4 py-3">{formatMonthYear(mf.lastPurchaseDate)}</td>
+                          <td className="px-4 py-3">{inventory.location}</td>
+                        </tr>
+                      ))}
+                    </>
+                  ))}
                 </tbody>
               </table>
             </div>
