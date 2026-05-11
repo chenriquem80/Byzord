@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil } from "lucide-react";
+import { Pencil, RefreshCw } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
@@ -38,82 +38,82 @@ export function StockPage() {
   const [dbStores, setDbStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!supabase) { setLoading(false); return; }
+  const fetchData = useCallback(async () => {
+    if (!supabase) { setLoading(false); return; }
+    setLoading(true);
 
-      const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
-        supabase.from("stores").select("*"),
-        supabase.from("products").select("*"),
-        supabase.from("product_manufacturers").select("*"),
-        supabase.from("product_store_inventory").select("*"),
-      ]);
+    const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
+      supabase.from("stores").select("*"),
+      supabase.from("products").select("*"),
+      supabase.from("product_manufacturers").select("*"),
+      supabase.from("product_store_inventory").select("*"),
+    ]);
 
-      const stores = storesResp.data ?? [];
-      const rawProducts = productsResp.data ?? [];
-      const rawMf = mfResp.data ?? [];
-      const rawInv = invResp.data ?? [];
+    const stores = storesResp.data ?? [];
+    const rawProducts = productsResp.data ?? [];
+    const rawMf = mfResp.data ?? [];
+    const rawInv = invResp.data ?? [];
 
-      setDbStores(stores);
+    setDbStores(stores);
 
-      if (rawProducts.length === 0 || rawMf.length === 0) {
-        setDbProducts(null);
-        setLoading(false);
-        return;
-      }
+    if (rawProducts.length === 0 || rawMf.length === 0) {
+      setDbProducts(null);
+      setLoading(false);
+      return;
+    }
 
-      const mapped: Product[] = rawProducts.map((p: any) => {
-        const mfs = rawMf.filter((mf: any) => mf.product_id === p.id);
-        const manufacturers = mfs.map((mf: any) => {
-          const mfId = mf.id;
-          const invs = rawInv.filter(
-            (inv: any) => inv.manufacturer_id === mfId || inv.product_manufacturer_id === mfId
-          );
-          const store = stores.find((s: any) => s.id === mf.store_id);
-          return {
-            id: mf.id,
-            manufacturer: mf.manufacturer ?? "",
-            cost: mf.cost ?? mf.current_cost ?? 0,
-            price: mf.price ?? mf.sale_price ?? 0,
-            lastPurchaseDate: mf.last_purchase_date ?? "",
-            supplier: mf.supplier ?? "",
-            inventories: invs.map((inv: any) => {
-              const invStore = stores.find((s: any) => s.id === inv.store_id);
-              return {
-                id: inv.id,
-                storeId: inv.store_id,
-                storeName: invStore?.name ?? store?.name ?? "",
-                location: inv.location ?? "",
-                stock: inv.stock ?? inv.stock_quantity ?? 0,
-                minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
-              };
-            }),
-          };
-        });
-
+    const mapped: Product[] = rawProducts.map((p: any) => {
+      const mfs = rawMf.filter((mf: any) => mf.product_id === p.id);
+      const manufacturers = mfs.map((mf: any) => {
+        const mfId = mf.id;
+        const invs = rawInv.filter(
+          (inv: any) => inv.manufacturer_id === mfId || inv.product_manufacturer_id === mfId
+        );
+        const store = stores.find((s: any) => s.id === mf.store_id);
         return {
-          id: p.id,
-          internalCode: p.internal_code ?? "",
-          supplierCode: "",
-          barcode: p.barcode ?? "",
-          name: p.name ?? "",
-          glassType: p.glass_type ?? "",
-          feature: p.feature ?? "",
-          brand: p.brand ?? "",
-          description: p.description ?? "",
-          photos: [],
-          status: p.status ?? "ativo",
-          notes: p.notes ?? "",
-          manufacturers,
-          compatibilities: [],
+          id: mf.id,
+          manufacturer: mf.manufacturer ?? "",
+          cost: mf.cost ?? mf.current_cost ?? 0,
+          price: mf.price ?? mf.sale_price ?? 0,
+          lastPurchaseDate: mf.last_purchase_date ?? "",
+          supplier: mf.supplier ?? "",
+          inventories: invs.map((inv: any) => {
+            const invStore = stores.find((s: any) => s.id === inv.store_id);
+            return {
+              id: inv.id,
+              storeId: inv.store_id,
+              storeName: invStore?.name ?? store?.name ?? "",
+              location: inv.location ?? "",
+              stock: inv.stock ?? inv.stock_quantity ?? 0,
+              minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
+            };
+          }),
         };
       });
 
-      setDbProducts(mapped);
-      setLoading(false);
-    }
-    fetchData();
+      return {
+        id: p.id,
+        internalCode: p.internal_code ?? "",
+        supplierCode: "",
+        barcode: p.barcode ?? "",
+        name: p.name ?? "",
+        glassType: p.glass_type ?? "",
+        feature: p.feature ?? "",
+        brand: p.brand ?? "",
+        description: p.description ?? "",
+        photos: [],
+        status: p.status ?? "ativo",
+        notes: p.notes ?? "",
+        manufacturers,
+        compatibilities: [],
+      };
+    });
+
+    setDbProducts(mapped);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const stores = dbStores.length > 0 ? dbStores : mockStores;
   // Mostra dados do banco se disponíveis; caso contrário, usa mock
@@ -234,7 +234,15 @@ export function StockPage() {
       <SectionCard
         title="Resultado"
         description="Clique na característica para abrir o detalhamento por loja e fabricante."
-        action={<Badge className="bg-rose-100 text-rose-700">{rows.filter((item) => item.totalQuantity === 0).length} zerados</Badge>}
+        action={
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={fetchData} disabled={loading}>
+              <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+              Atualizar
+            </Button>
+            <Badge className="bg-rose-100 text-rose-700">{rows.filter((item) => item.totalQuantity === 0).length} zerados</Badge>
+          </div>
+        }
       >
         {loading ? (
           <p className="py-8 text-center text-sm text-slate-500">Carregando estoque...</p>

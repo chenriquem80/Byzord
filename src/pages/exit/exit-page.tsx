@@ -166,6 +166,9 @@ export function ExitPage() {
       });
   }, [codeQuery, glassTypeFilter, allProducts]);
 
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [scannedCode, setScannedCode] = useState<string | null>(null);
@@ -189,6 +192,47 @@ export function ExitPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [form.watch("storeId"), manufacturerStock],
   );
+
+  async function onSubmit(values: SaleFormValues) {
+    if (!supabase || !selectedInventory) return;
+    setSaveError(null);
+    const qty = Number(values.quantity);
+    const newStock = (selectedInventory.stock ?? 0) - qty;
+    if (newStock < 0) {
+      setSaveError("Estoque insuficiente para a quantidade informada.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("product_store_inventory")
+        .update({ stock: newStock })
+        .eq("id", selectedInventory.id);
+      if (error) throw error;
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
+      form.reset({
+        storeId: values.storeId,
+        productId: allProducts[0]?.id ?? "",
+        manufacturer: allProducts[0]?.manufacturers[0]?.manufacturer ?? "",
+        customer: values.customer,
+        customerVehicle: "",
+        plate: "",
+        paymentMethod: values.paymentMethod,
+        quantity: 1,
+        price: 0,
+        discount: 0,
+        note: "",
+      });
+      // Atualiza estoque local para refletir imediatamente
+      selectedInventory.stock = newStock;
+    } catch (err) {
+      console.error("Erro ao registrar saída:", err);
+      setSaveError("Erro ao registrar saída. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function stopScanner() {
     if (scannerControlsRef.current) {
@@ -362,7 +406,7 @@ export function ExitPage() {
           )
         }
       >
-        <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" onSubmit={form.handleSubmit(onSubmit)}>
           <FormField label="Loja" error={form.formState.errors.storeId?.message}>
             <Select {...form.register("storeId")}>
               {allStores.map((item) => (
@@ -448,12 +492,26 @@ export function ExitPage() {
           <FormField label="Observação" className="md:col-span-2 xl:col-span-4">
             <Textarea {...form.register("note")} />
           </FormField>
+          {saveSuccess && (
+            <div className="xl:col-span-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+              Saída registrada com sucesso!
+            </div>
+          )}
+          {saveError && (
+            <div className="xl:col-span-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              {saveError}
+            </div>
+          )}
           {!readOnly && (
-          <div className="xl:col-span-4">
-            <Button size="lg" disabled={!selectedInventory || selectedInventory.stock <= 0}>
-              Confirmar saída
-            </Button>
-          </div>
+            <div className="xl:col-span-4">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={saving || !selectedInventory || selectedInventory.stock <= 0}
+              >
+                {saving ? "Registrando..." : "Confirmar saída"}
+              </Button>
+            </div>
           )}
         </form>
       </SectionCard>
