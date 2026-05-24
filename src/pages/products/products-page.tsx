@@ -168,20 +168,88 @@ export function ProductsPage() {
     fetchOptions();
   }, []);
 
-  const currentProduct = productId
-    ? (products.find((p) => p.id === productId) ?? null)
-    : null;
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
 
   const isEditing = currentProduct !== null;
 
   const form = useForm<ProductFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(productSchema) as any,
-    defaultValues: currentProduct ? buildFormValues(currentProduct) : getEmptyFormValues(),
+    defaultValues: getEmptyFormValues(),
   });
 
   useEffect(() => {
-    form.reset(currentProduct ? buildFormValues(currentProduct) : getEmptyFormValues());
+    if (!productId) {
+      setCurrentProduct(null);
+      form.reset(getEmptyFormValues());
+      return;
+    }
+
+    async function fetchProduct() {
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("products")
+          .select(`
+            id, internal_code, supplier_code, barcode, name, glass_type, feature, brand, description, status, notes,
+            product_manufacturers (
+              id, manufacturer, cost, price, last_purchase_date, supplier,
+              product_store_inventory (
+                id, store_id, location, stock, min_quantity,
+                stores ( id, name, code, city )
+              )
+            )
+          `)
+          .eq("id", productId)
+          .single();
+
+        if (error || !data) {
+          setCurrentProduct(null);
+          form.reset(getEmptyFormValues());
+          return;
+        }
+
+        const product: Product = {
+          id: data.id,
+          internalCode: data.internal_code ?? "",
+          supplierCode: data.supplier_code ?? "",
+          barcode: data.barcode ?? "",
+          name: data.name ?? "",
+          glassType: data.glass_type as Product["glassType"],
+          feature: data.feature as Product["feature"],
+          brand: data.brand ?? "",
+          description: data.description ?? "",
+          photos: [],
+          status: data.status as Product["status"],
+          notes: data.notes ?? "",
+          manufacturers: (data.product_manufacturers ?? []).map((mf: any) => ({
+            id: mf.id,
+            manufacturer: mf.manufacturer ?? "",
+            cost: mf.cost ?? 0,
+            price: mf.price ?? 0,
+            lastPurchaseDate: mf.last_purchase_date ?? "",
+            supplier: mf.supplier ?? "",
+            inventories: (mf.product_store_inventory ?? []).map((inv: any) => ({
+              id: inv.id,
+              storeId: inv.store_id,
+              storeName: inv.stores?.name ?? "",
+              location: inv.location ?? "",
+              stock: inv.stock ?? 0,
+              minQuantity: inv.min_quantity ?? 0,
+            })),
+          })),
+          compatibilities: [],
+        };
+
+        setCurrentProduct(product);
+        form.reset(buildFormValues(product));
+      } else {
+        const found = products.find((p) => p.id === productId) ?? null;
+        setCurrentProduct(found);
+        form.reset(found ? buildFormValues(found) : getEmptyFormValues());
+      }
+    }
+
+    fetchProduct();
   }, [productId]);
 
   const watchedCost = form.watch("cost");
