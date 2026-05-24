@@ -17,6 +17,7 @@ import type { Product } from "@/types/domain";
 
 interface StockRow {
   product: Product;
+  manufacturerId: string;
   characteristic: string;
   store1Quantity: number;
   store2Quantity: number;
@@ -142,6 +143,7 @@ export function StockPage() {
 
           return {
             product,
+            manufacturerId: manufacturer.id,
             characteristic: product.feature,
             store1Quantity,
             store2Quantity,
@@ -200,7 +202,7 @@ export function StockPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => navigate(`/app/produtos?id=${row.original.product.id}`)}
+            onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}`)}
           >
             <Pencil className="size-3" />
             Alterar

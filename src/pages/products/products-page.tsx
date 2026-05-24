@@ -74,8 +74,9 @@ function getEmptyFormValues(): ProductFormValues {
   };
 }
 
-function buildFormValues(p: Product): ProductFormValues {
-  const inventory = p.manufacturers[0].inventories[0];
+function buildFormValues(p: Product, mfId?: string | null): ProductFormValues {
+  const mf = (mfId ? p.manufacturers.find((m) => m.id === mfId) : null) ?? p.manufacturers[0];
+  const inventory = mf?.inventories[0];
   return {
     internalCode: p.internalCode,
     supplierCode: p.supplierCode,
@@ -85,19 +86,18 @@ function buildFormValues(p: Product): ProductFormValues {
     isTypeR: (p as any).isTypeR ?? false,
     glassType: p.glassType,
     feature: p.feature,
-    manufacturer: p.manufacturers[0].manufacturer,
+    manufacturer: mf?.manufacturer ?? "",
     brand: p.brand,
     description: p.description,
-    location: inventory.location,
-    quantity: p.manufacturers.reduce(
-      (sum, item) => sum + item.inventories.reduce((storeSum, inv) => storeSum + inv.stock, 0),
-      0,
-    ),
-    minimum: inventory.minQuantity,
-    cost: p.manufacturers[0].cost,
-    price: p.manufacturers[0].price,
-    lastPurchaseDate: p.manufacturers[0].lastPurchaseDate,
-    lastSupplier: p.manufacturers[0].supplier,
+    location: inventory?.location ?? "",
+    quantity: mf
+      ? mf.inventories.reduce((sum, inv) => sum + inv.stock, 0)
+      : 0,
+    minimum: inventory?.minQuantity ?? 0,
+    cost: mf?.cost ?? 0,
+    price: mf?.price ?? 0,
+    lastPurchaseDate: mf?.lastPurchaseDate ?? "",
+    lastSupplier: mf?.supplier ?? "",
     status: p.status,
     notes: p.notes,
   };
@@ -108,6 +108,7 @@ export function ProductsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("id");
+  const manufacturerId = searchParams.get("mf");
   const [savedMessage, setSavedMessage] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const DEFAULT_GLASS_TYPES = ["Parabrisa", "Vigia", "Porta dianteira", "Porta traseira", "Lateral fixa", "Quebra-vento", "Teto solar"];
@@ -247,39 +248,16 @@ export function ProductsPage() {
         };
 
         setCurrentProduct(product);
-
-        const firstMf = product.manufacturers[0];
-        const firstInv = firstMf?.inventories[0];
-        if (firstMf && firstInv) {
-          form.reset(buildFormValues(product));
-        } else {
-          form.reset({
-            ...getEmptyFormValues(),
-            internalCode: product.internalCode,
-            barcode: product.barcode,
-            name: product.name,
-            glassType: product.glassType,
-            feature: product.feature,
-            brand: product.brand,
-            description: product.description,
-            status: product.status,
-            notes: product.notes,
-            manufacturer: firstMf?.manufacturer ?? "",
-            cost: firstMf?.cost ?? 0,
-            price: firstMf?.price ?? 0,
-            lastPurchaseDate: firstMf?.lastPurchaseDate ?? "",
-            lastSupplier: firstMf?.supplier ?? "",
-          });
-        }
+        form.reset(buildFormValues(product, manufacturerId));
       } else {
         const found = products.find((p) => p.id === productId) ?? null;
         setCurrentProduct(found);
-        form.reset(found ? buildFormValues(found) : getEmptyFormValues());
+        form.reset(found ? buildFormValues(found, manufacturerId) : getEmptyFormValues());
       }
     }
 
     fetchProduct();
-  }, [productId]);
+  }, [productId, manufacturerId]);
 
   const watchedCost = form.watch("cost");
   const watchedPrice = form.watch("price");
