@@ -343,6 +343,15 @@ export function ProductsPage() {
             })
             .eq("id", currentProduct.id);
           if (error) { console.error("Supabase update error:", error); throw error; }
+
+          // Atualiza nome do fabricante se estiver em modo de edição por fabricante específico
+          if (manufacturerId && values.manufacturer?.trim()) {
+            const { error: mfError } = await supabase
+              .from("product_manufacturers")
+              .update({ manufacturer: values.manufacturer.trim() })
+              .eq("id", manufacturerId);
+            if (mfError) console.error("Erro ao atualizar fabricante:", mfError);
+          }
         } else {
           const { data: inserted, error: insertError } = await supabase
             .from("products")
@@ -577,42 +586,51 @@ export function ProductsPage() {
             </div>
           </FormField>
           <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Select {...form.register("manufacturer")} className="flex-1">
-                  <option value="">Selecione</option>
-                  {manufacturers.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </Select>
-                <button
-                  type="button"
-                  onClick={() => { setShowAddManufacturer((v) => !v); setNewManufacturer(""); setTimeout(() => newManufacturerRef.current?.focus(), 50); }}
-                  className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
-                  title="Adicionar novo fabricante"
-                >
-                  <Plus className="size-4" />
-                </button>
-              </div>
-              {showAddManufacturer && (
+            {isEditing && manufacturerId ? (
+              /* Modo edição: campo de texto livre para renomear o fabricante */
+              <Input
+                {...form.register("manufacturer")}
+                placeholder="Nome do fabricante"
+                title="Edite o nome do fabricante diretamente"
+              />
+            ) : (
+              <div className="space-y-2">
                 <div className="flex gap-2">
-                  <Input
-                    ref={newManufacturerRef}
-                    value={newManufacturer}
-                    onChange={(e) => setNewManufacturer(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddManufacturer(); } if (e.key === "Escape") setShowAddManufacturer(false); }}
-                    placeholder="Novo fabricante..."
-                    className="flex-1"
-                  />
-                  <Button type="button" size="sm" onClick={handleAddManufacturer} disabled={!newManufacturer.trim()}>
-                    <Check className="size-3.5" />
-                  </Button>
-                  <button type="button" onClick={() => setShowAddManufacturer(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
-                    <X className="size-4" />
+                  <Select {...form.register("manufacturer")} className="flex-1">
+                    <option value="">Selecione</option>
+                    {manufacturers.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </Select>
+                  <button
+                    type="button"
+                    onClick={() => { setShowAddManufacturer((v) => !v); setNewManufacturer(""); setTimeout(() => newManufacturerRef.current?.focus(), 50); }}
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
+                    title="Adicionar novo fabricante"
+                  >
+                    <Plus className="size-4" />
                   </button>
                 </div>
-              )}
-            </div>
+                {showAddManufacturer && (
+                  <div className="flex gap-2">
+                    <Input
+                      ref={newManufacturerRef}
+                      value={newManufacturer}
+                      onChange={(e) => setNewManufacturer(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddManufacturer(); } if (e.key === "Escape") setShowAddManufacturer(false); }}
+                      placeholder="Novo fabricante..."
+                      className="flex-1"
+                    />
+                    <Button type="button" size="sm" onClick={handleAddManufacturer} disabled={!newManufacturer.trim()}>
+                      <Check className="size-3.5" />
+                    </Button>
+                    <button type="button" onClick={() => setShowAddManufacturer(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </FormField>
           <FormField label="Especial">
             <div className="flex flex-row items-center justify-center gap-4 rounded-xl border border-border bg-white px-4 py-2 shadow-sm">
