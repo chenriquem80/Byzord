@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Pencil, RefreshCw } from "lucide-react";
+import { Check, Pencil, RefreshCw, X } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,13 @@ interface StockRow {
   lastPurchaseDate: string;
 }
 
+interface ContextMenu {
+  visible: boolean;
+  x: number;
+  y: number;
+  row: StockRow | null;
+}
+
 export function StockPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -38,6 +45,47 @@ export function StockPage() {
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [dbStores, setDbStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Context menu (botão direito)
+  const [ctxMenu, setCtxMenu] = useState<ContextMenu>({ visible: false, x: 0, y: 0, row: null });
+  const ctxRef = useRef<HTMLDivElement>(null);
+
+  // Dialog de edição rápida
+  const [editDialog, setEditDialog] = useState<{ open: boolean; productId: string; name: string; saving: boolean }>({
+    open: false, productId: "", name: "", saving: false,
+  });
+
+  // Fecha o menu de contexto ao clicar fora
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ctxRef.current && !ctxRef.current.contains(e.target as Node)) {
+        setCtxMenu((m) => ({ ...m, visible: false }));
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  function handleContextMenu(e: React.MouseEvent, row: StockRow) {
+    e.preventDefault();
+    setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, row });
+  }
+
+  function openEditDialog() {
+    if (!ctxMenu.row) return;
+    setEditDialog({ open: true, productId: ctxMenu.row.product.id, name: ctxMenu.row.product.name, saving: false });
+    setCtxMenu((m) => ({ ...m, visible: false }));
+  }
+
+  async function handleSaveName() {
+    if (!editDialog.productId || !editDialog.name.trim()) return;
+    setEditDialog((d) => ({ ...d, saving: true }));
+    if (supabase) {
+      await supabase.from("products").update({ name: editDialog.name.trim() }).eq("id", editDialog.productId);
+    }
+    setEditDialog((d) => ({ ...d, open: false, saving: false }));
+    fetchData();
+  }
 
   const fetchData = useCallback(async () => {
     if (!supabase) { setLoading(false); return; }
@@ -182,7 +230,19 @@ export function StockPage() {
       { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1" },
       { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2" },
       { accessorKey: "totalQuantity", header: "Total" },
-      { accessorKey: "productName", header: "Produto" },
+      {
+        accessorKey: "productName",
+        header: "Produto",
+        cell: ({ row }) => (
+          <span
+            onContextMenu={(e) => handleContextMenu(e, row.original)}
+            className="cursor-context-menu select-none"
+            title="Clique com botão direito para editar"
+          >
+            {row.original.productName}
+          </span>
+        ),
+      },
       { accessorKey: "code", header: "Código" },
       { accessorKey: "manufacturer", header: "Fabricante" },
       {
@@ -252,6 +312,59 @@ export function StockPage() {
           <DataTable columns={columns} data={rows} />
         )}
       </SectionCard>
+
+      {/* Menu de contexto (botão direito) */}
+      {ctxMenu.visible && ctxMenu.row && (
+        <div
+          ref={ctxRef}
+          style={{ top: ctxMenu.y, left: ctxMenu.x }}
+          className="fixed z-50 min-w-[180px] rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
+        >
+          <p className="truncate px-3 py-1.5 text-xs font-semibold text-slate-400">{ctxMenu.row.productName}</p>
+          <hr className="my-1 border-slate-100" />
+          <button
+            onClick={openEditDialog}
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <Pencil className="size-3.5 text-primary" />
+            Editar descrição
+          </button>
+          <button
+            onClick={() => { navigate(`/app/produtos?id=${ctxMenu.row!.product.id}&mf=${ctxMenu.row!.manufacturerId}`); setCtxMenu((m) => ({ ...m, visible: false })); }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <Pencil className="size-3.5 text-slate-500" />
+            Editar produto completo
+          </button>
+        </div>
+      )}
+
+      {/* Dialog de edição rápida de nome */}
+      <Dialog open={editDialog.open} onOpenChange={(open) => !open && setEditDialog((d) => ({ ...d, open: false }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar descrição do produto</DialogTitle>
+            <DialogDescription>Altere o nome/descrição e clique em Salvar.</DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <Input
+              value={editDialog.name}
+              onChange={(e) => setEditDialog((d) => ({ ...d, name: e.target.value }))}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditDialog((d) => ({ ...d, open: false })); }}
+              placeholder="Nome do produto"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditDialog((d) => ({ ...d, open: false }))}>
+                <X className="size-3.5" /> Cancelar
+              </Button>
+              <Button size="sm" onClick={handleSaveName} disabled={editDialog.saving || !editDialog.name.trim()}>
+                <Check className="size-3.5" /> {editDialog.saving ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
         {selectedProduct ? (
