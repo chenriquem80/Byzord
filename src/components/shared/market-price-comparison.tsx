@@ -34,6 +34,7 @@ interface MarketPriceComparisonProps {
   productImage?: string;
   salePrice: number;
   costPrice: number;
+  searchQuery?: string;
 }
 
 function calcSimilarity(mlTitle: string, productName: string): number {
@@ -53,6 +54,7 @@ export function MarketPriceComparison({
   productImage,
   salePrice,
   costPrice,
+  searchQuery,
 }: MarketPriceComparisonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,12 +62,13 @@ export function MarketPriceComparison({
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   const fetchMarketPrices = useCallback(async () => {
-    if (!productName) return;
+    const rawQuery = searchQuery?.trim() || `${productName} ${productBrand}`.trim();
+    if (!rawQuery) return;
     setLoading(true);
     setError(null);
 
     try {
-      const query = encodeURIComponent(`${productName} ${productBrand}`.trim());
+      const query = encodeURIComponent(rawQuery);
       const url = `https://api.mercadolibre.com/sites/MLB/search?q=${query}&limit=6&sort=price_asc`;
       const response = await fetch(url);
 
@@ -103,11 +106,11 @@ export function MarketPriceComparison({
     } finally {
       setLoading(false);
     }
-  }, [productName, productBrand]);
+  }, [searchQuery, productName, productBrand]);
 
   useEffect(() => {
     fetchMarketPrices();
-  }, [productId, fetchMarketPrices]);
+  }, [fetchMarketPrices]);
 
   const lowestMarketPrice = results.length > 0 ? Math.min(...results.map((r) => r.price)) : 0;
   const isCompetitive = lowestMarketPrice > 0 && salePrice <= lowestMarketPrice * 1.1;
