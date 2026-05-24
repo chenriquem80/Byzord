@@ -187,61 +187,90 @@ export function ProductsPage() {
 
     async function fetchProduct() {
       if (supabase) {
-        const { data, error } = await supabase
-          .from("products")
-          .select(`
-            id, internal_code, supplier_code, barcode, name, glass_type, feature, brand, description, status, notes,
-            product_manufacturers (
-              id, manufacturer, cost, price, last_purchase_date, supplier,
-              product_store_inventory (
-                id, store_id, location, stock, min_quantity,
-                stores ( id, name, code, city )
-              )
-            )
-          `)
-          .eq("id", productId)
-          .single();
+        // Queries separadas, igual ao stock-page, para evitar falha de nested select
+        const [{ data: pData, error: pError }, { data: mfData }, { data: invData }, { data: storesData }] =
+          await Promise.all([
+            supabase.from("products").select("*").eq("id", productId).single(),
+            supabase.from("product_manufacturers").select("*").eq("product_id", productId),
+            supabase.from("product_store_inventory").select("*"),
+            supabase.from("stores").select("*"),
+          ]);
 
-        if (error || !data) {
+        if (pError || !pData) {
           setCurrentProduct(null);
           form.reset(getEmptyFormValues());
           return;
         }
 
+        const storesList = storesData ?? [];
+        const mfs = mfData ?? [];
+        const allInvs = invData ?? [];
+
         const product: Product = {
-          id: data.id,
-          internalCode: data.internal_code ?? "",
-          supplierCode: data.supplier_code ?? "",
-          barcode: data.barcode ?? "",
-          name: data.name ?? "",
-          glassType: data.glass_type as Product["glassType"],
-          feature: data.feature as Product["feature"],
-          brand: data.brand ?? "",
-          description: data.description ?? "",
+          id: pData.id,
+          internalCode: pData.internal_code ?? "",
+          supplierCode: pData.supplier_code ?? "",
+          barcode: pData.barcode ?? "",
+          name: pData.name ?? "",
+          glassType: pData.glass_type as Product["glassType"],
+          feature: pData.feature as Product["feature"],
+          brand: pData.brand ?? "",
+          description: pData.description ?? "",
           photos: [],
-          status: data.status as Product["status"],
-          notes: data.notes ?? "",
-          manufacturers: (data.product_manufacturers ?? []).map((mf: any) => ({
-            id: mf.id,
-            manufacturer: mf.manufacturer ?? "",
-            cost: mf.cost ?? 0,
-            price: mf.price ?? 0,
-            lastPurchaseDate: mf.last_purchase_date ?? "",
-            supplier: mf.supplier ?? "",
-            inventories: (mf.product_store_inventory ?? []).map((inv: any) => ({
-              id: inv.id,
-              storeId: inv.store_id,
-              storeName: inv.stores?.name ?? "",
-              location: inv.location ?? "",
-              stock: inv.stock ?? 0,
-              minQuantity: inv.min_quantity ?? 0,
-            })),
-          })),
+          status: pData.status as Product["status"],
+          notes: pData.notes ?? "",
+          manufacturers: mfs.map((mf: any) => {
+            const mfInvs = allInvs.filter(
+              (inv: any) => inv.manufacturer_id === mf.id || inv.product_manufacturer_id === mf.id,
+            );
+            return {
+              id: mf.id,
+              manufacturer: mf.manufacturer ?? "",
+              cost: mf.cost ?? mf.current_cost ?? 0,
+              price: mf.price ?? mf.sale_price ?? 0,
+              lastPurchaseDate: mf.last_purchase_date ?? "",
+              supplier: mf.supplier ?? "",
+              inventories: mfInvs.map((inv: any) => {
+                const store = storesList.find((s: any) => s.id === inv.store_id);
+                return {
+                  id: inv.id,
+                  storeId: inv.store_id,
+                  storeName: store?.name ?? "",
+                  location: inv.location ?? "",
+                  stock: inv.stock ?? inv.stock_quantity ?? 0,
+                  minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
+                };
+              }),
+            };
+          }),
           compatibilities: [],
         };
 
         setCurrentProduct(product);
-        form.reset(buildFormValues(product));
+
+        const firstMf = product.manufacturers[0];
+        const firstInv = firstMf?.inventories[0];
+        if (firstMf && firstInv) {
+          form.reset(buildFormValues(product));
+        } else {
+          form.reset({
+            ...getEmptyFormValues(),
+            internalCode: product.internalCode,
+            barcode: product.barcode,
+            name: product.name,
+            glassType: product.glassType,
+            feature: product.feature,
+            brand: product.brand,
+            description: product.description,
+            status: product.status,
+            notes: product.notes,
+            manufacturer: firstMf?.manufacturer ?? "",
+            cost: firstMf?.cost ?? 0,
+            price: firstMf?.price ?? 0,
+            lastPurchaseDate: firstMf?.lastPurchaseDate ?? "",
+            lastSupplier: firstMf?.supplier ?? "",
+          });
+        }
       } else {
         const found = products.find((p) => p.id === productId) ?? null;
         setCurrentProduct(found);
