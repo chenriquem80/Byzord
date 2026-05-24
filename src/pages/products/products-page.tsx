@@ -74,9 +74,11 @@ function getEmptyFormValues(): ProductFormValues {
   };
 }
 
-function buildFormValues(p: Product, mfId?: string | null): ProductFormValues {
+function buildFormValues(p: Product, mfId?: string | null, storeId?: string | null): ProductFormValues {
   const mf = (mfId ? p.manufacturers.find((m) => m.id === mfId) : null) ?? p.manufacturers[0];
-  const inventory = mf?.inventories[0];
+  const inventory = storeId
+    ? (mf?.inventories.find((i) => i.storeId === storeId) ?? mf?.inventories[0])
+    : mf?.inventories[0];
   return {
     internalCode: p.internalCode,
     supplierCode: p.supplierCode,
@@ -90,9 +92,7 @@ function buildFormValues(p: Product, mfId?: string | null): ProductFormValues {
     brand: p.brand,
     description: p.description,
     location: inventory?.location ?? "",
-    quantity: mf
-      ? mf.inventories.reduce((sum, inv) => sum + inv.stock, 0)
-      : 0,
+    quantity: inventory?.stock ?? 0,
     minimum: inventory?.minQuantity ?? 0,
     cost: mf?.cost ?? 0,
     price: mf?.price ?? 0,
@@ -111,6 +111,7 @@ export function ProductsPage() {
   const manufacturerId = searchParams.get("mf");
   const [savedMessage, setSavedMessage] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("");
   const DEFAULT_GLASS_TYPES = ["Parabrisa", "Vigia", "Porta dianteira", "Porta traseira", "Lateral fixa", "Quebra-vento", "Teto solar"];
   const DEFAULT_FEATURES = ["Verde", "Verde sensor", "Degradê", "Degradê sensor", "Incolor", "Térmico"];
   const DEFAULT_MANUFACTURERS = ["AGC", "Pilkington", "Saint-Gobain", "Fanavid", "XYG", "Outro"];
@@ -164,6 +165,7 @@ export function ProductsPage() {
       }
       if (storesData && storesData.length > 0) {
         setDbStores(storesData);
+        setSelectedStoreId((prev) => prev || storesData[0].id);
       }
     }
     fetchOptions();
@@ -247,8 +249,13 @@ export function ProductsPage() {
           compatibilities: [],
         };
 
+        // Inicializa a loja selecionada com a primeira loja disponível
+        const firstInv = product.manufacturers.find((m) => m.id === manufacturerId)?.inventories[0]
+          ?? product.manufacturers[0]?.inventories[0];
+        if (firstInv?.storeId) setSelectedStoreId(firstInv.storeId);
+
         setCurrentProduct(product);
-        form.reset(buildFormValues(product, manufacturerId));
+        form.reset(buildFormValues(product, manufacturerId, firstInv?.storeId ?? null));
       } else {
         const found = products.find((p) => p.id === productId) ?? null;
         setCurrentProduct(found);
@@ -344,13 +351,49 @@ export function ProductsPage() {
             .eq("id", currentProduct.id);
           if (error) { console.error("Supabase update error:", error); throw error; }
 
-          // Atualiza nome do fabricante se estiver em modo de edição por fabricante específico
-          if (manufacturerId && values.manufacturer?.trim()) {
+          // Atualiza fabricante: nome, custo, preço, fornecedor e data de compra
+          if (manufacturerId) {
             const { error: mfError } = await supabase
               .from("product_manufacturers")
-              .update({ manufacturer: values.manufacturer.trim() })
+              .update({
+                manufacturer: values.manufacturer?.trim() || undefined,
+                cost: Number(values.cost),
+                price: Number(values.price),
+                last_purchase_date: values.lastPurchaseDate || null,
+                supplier: values.lastSupplier,
+              })
               .eq("id", manufacturerId);
             if (mfError) console.error("Erro ao atualizar fabricante:", mfError);
+
+            // Atualiza estoque da loja selecionada
+            const storeId = selectedStoreId || (dbStores[0]?.id ?? stores[0]?.id);
+            if (storeId) {
+              const mfObj = currentProduct.manufacturers.find((m) => m.id === manufacturerId);
+              const existingInv = mfObj?.inventories.find((i) => i.storeId === storeId);
+
+              if (existingInv) {
+                const { error: invError } = await supabase
+                  .from("product_store_inventory")
+                  .update({
+                    stock: Number(values.quantity),
+                    min_quantity: Number(values.minimum),
+                    location: values.location,
+                  })
+                  .eq("id", existingInv.id);
+                if (invError) console.error("Erro ao atualizar inventário:", invError);
+              } else {
+                const { error: invError } = await supabase
+                  .from("product_store_inventory")
+                  .insert({
+                    manufacturer_id: manufacturerId,
+                    store_id: storeId,
+                    stock: Number(values.quantity),
+                    min_quantity: Number(values.minimum),
+                    location: values.location,
+                  });
+                if (invError) console.error("Erro ao inserir inventário:", invError);
+              }
+            }
           }
         } else {
           const { data: inserted, error: insertError } = await supabase
@@ -677,7 +720,19 @@ export function ProductsPage() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <FormField label="Loja destino">
-            <Select defaultValue={stores[0].id}>
+            <Select
+              value={selectedStoreId || stores[0]?.id}
+              onChange={(e) => {
+                const sid = e.target.value;
+                setSelectedStoreId(sid);
+                if (currentProduct) {
+                  const vals = buildFormValues(currentProduct, manufacturerId, sid);
+                  form.setValue("quantity", vals.quantity);
+                  form.setValue("minimum", vals.minimum);
+                  form.setValue("location", vals.location);
+                }
+              }}
+            >
               {stores.map((store) => (
                 <option key={store.id} value={store.id}>
                   {store.name} — {store.city}
