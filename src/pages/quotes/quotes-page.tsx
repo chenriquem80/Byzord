@@ -6,15 +6,28 @@ import { Input } from "@/components/ui/input";
 import { products } from "@/data/mock-data";
 import { formatCurrency } from "@/lib/format";
 import { MarketPriceComparison } from "@/components/shared/market-price-comparison";
-import { Search, Calculator, Eye, EyeOff } from "lucide-react";
+import { Search, Calculator, Eye, EyeOff, X } from "lucide-react";
 
 export function QuotesPage() {
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string>(products[0].id);
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>(
     products[0].manufacturers[0].manufacturer
   );
   const [customPrice, setCustomPrice] = useState<number>(products[0].manufacturers[0].price);
   const [showValues, setShowValues] = useState(false);
+
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm.trim()) return products;
+    const term = searchTerm.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    return products.filter((p) => {
+      const haystack = `${p.internalCode} ${p.name} ${p.brand} ${p.glassType} ${p.feature}`
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "");
+      return haystack.includes(term);
+    });
+  }, [searchTerm]);
 
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedProductId) || products[0],
@@ -25,6 +38,24 @@ export function QuotesPage() {
     () => selectedProduct.manufacturers.find((m) => m.manufacturer === selectedManufacturer) || selectedProduct.manufacturers[0],
     [selectedProduct, selectedManufacturer]
   );
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    const normalized = term.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const match = products.find((p) => {
+      const haystack = `${p.internalCode} ${p.name} ${p.brand} ${p.glassType} ${p.feature}`
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "");
+      return haystack.includes(normalized);
+    });
+    if (match) {
+      setSelectedProductId(match.id);
+      setSelectedManufacturer(match.manufacturers[0].manufacturer);
+      setCustomPrice(match.manufacturers[0].price);
+    }
+  };
 
   const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
@@ -43,26 +74,55 @@ export function QuotesPage() {
 
   return (
     <div className="space-y-6">
-            <SectionCard
+      <SectionCard
         title="Seleção de Produto"
         description="Escolha o produto para comparar com os preços praticados online."
       >
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <FormField label="Produto">
+        {/* Campo de pesquisa por descrição */}
+        <div className="mb-4">
+          <FormField label="Pesquisar por descrição">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Select 
-                value={selectedProductId} 
-                onChange={handleProductChange}
-                className="pl-10"
-              >
-                {products.map((p) => (
+              <Input
+                value={searchTerm}
+                onChange={handleSearchChange}
+                placeholder="Digite o nome, código ou característica do produto..."
+                className="pl-10 pr-10"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+            {searchTerm && (
+              <p className="mt-1 text-xs text-slate-500">
+                {filteredProducts.length} produto{filteredProducts.length !== 1 ? "s" : ""} encontrado{filteredProducts.length !== 1 ? "s" : ""}
+              </p>
+            )}
+          </FormField>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <FormField label="Produto">
+            <Select
+              value={selectedProductId}
+              onChange={handleProductChange}
+            >
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.internalCode} • {p.name}
                   </option>
-                ))}
-              </Select>
-            </div>
+                ))
+              ) : (
+                <option disabled value="">Nenhum produto encontrado</option>
+              )}
+            </Select>
           </FormField>
 
           <FormField label="Fabricante">
