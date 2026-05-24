@@ -48,7 +48,6 @@ function calcSimilarity(mlTitle: string, productName: string): number {
 }
 
 export function MarketPriceComparison({
-  productId,
   productName,
   productBrand,
   productImage,
