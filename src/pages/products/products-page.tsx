@@ -138,6 +138,11 @@ export function ProductsPage() {
 
   const [dbStores, setDbStores] = useState<any[]>([]);
 
+  // Campos de estoque controlados por estado independente do react-hook-form
+  const [invLocation, setInvLocation] = useState("");
+  const [invQuantity, setInvQuantity] = useState(0);
+  const [invMinimum, setInvMinimum] = useState(0);
+
   // Veículos compatíveis
   const [compatibilities, setCompatibilities] = useState<VehicleCompatibility[]>([]);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
@@ -278,13 +283,24 @@ export function ProductsPage() {
         const firstInv = product.manufacturers.find((m) => m.id === manufacturerId)?.inventories[0]
           ?? product.manufacturers[0]?.inventories[0];
         if (firstInv?.storeId) setSelectedStoreId(firstInv.storeId);
+        setInvLocation(firstInv?.location ?? "");
+        setInvQuantity(firstInv?.stock ?? 0);
+        setInvMinimum(firstInv?.minQuantity ?? 0);
 
         setCurrentProduct(product);
         form.reset(buildFormValues(product, manufacturerId, firstInv?.storeId ?? null));
       } else {
         const found = products.find((p) => p.id === productId) ?? null;
         setCurrentProduct(found);
-        form.reset(found ? buildFormValues(found, manufacturerId) : getEmptyFormValues());
+        if (found) {
+          const inv = found.manufacturers[0]?.inventories[0];
+          setInvLocation(inv?.location ?? "");
+          setInvQuantity(inv?.stock ?? 0);
+          setInvMinimum(inv?.minQuantity ?? 0);
+          form.reset(buildFormValues(found, manufacturerId));
+        } else {
+          form.reset(getEmptyFormValues());
+        }
       }
     }
 
@@ -302,9 +318,6 @@ export function ProductsPage() {
     glassType: "Tipo do item",
     feature: "Característica",
     manufacturer: "Fabricante",
-    location: "Localização",
-    quantity: "Quantidade atual",
-    minimum: "Quantidade mínima",
     cost: "Preço de custo",
     price: "Preço de venda",
     lastPurchaseDate: "Última data de compra",
@@ -448,17 +461,21 @@ export function ProductsPage() {
           // Atualiza estoque da loja selecionada (independe de ter manufacturerId na URL)
           const storeId = selectedStoreId || (dbStores[0]?.id ?? stores[0]?.id);
           if (storeId) {
-            const mfObj = currentProduct.manufacturers.find((m) => m.id === activeMfId)
-              ?? currentProduct.manufacturers[0];
-            const existingInv = mfObj?.inventories.find((i) => i.storeId === storeId);
+            const existingInv = currentProduct.manufacturers
+              .flatMap((m) => m.inventories.filter((i) => i.storeId === storeId))[0];
+            const mfObj = existingInv
+              ? currentProduct.manufacturers.find((m) => m.inventories.some((i) => i.id === existingInv.id))
+                ?? currentProduct.manufacturers.find((m) => m.id === activeMfId)
+                ?? currentProduct.manufacturers[0]
+              : (currentProduct.manufacturers.find((m) => m.id === activeMfId) ?? currentProduct.manufacturers[0]);
 
             if (existingInv) {
               const { error: invError } = await supabase
                 .from("product_store_inventory")
                 .update({
-                  stock: Number(values.quantity),
-                  min_quantity: Number(values.minimum),
-                  location: values.location,
+                  stock: invQuantity,
+                  min_quantity: invMinimum,
+                  location: invLocation,
                 })
                 .eq("id", existingInv.id);
               if (invError) console.error("Erro ao atualizar inventário:", invError);
@@ -468,9 +485,9 @@ export function ProductsPage() {
                 .insert({
                   manufacturer_id: mfObj.id,
                   store_id: storeId,
-                  stock: Number(values.quantity),
-                  min_quantity: Number(values.minimum),
-                  location: values.location,
+                  stock: invQuantity,
+                  min_quantity: invMinimum,
+                  location: invLocation,
                 });
               if (invError) console.error("Erro ao inserir inventário:", invError);
             }
@@ -514,9 +531,9 @@ export function ProductsPage() {
             const inventoryRows = activeStores.map((store: any, i: number) => ({
               manufacturer_id: mf.id,
               store_id: store.id,
-              location: values.location,
-              stock: i === 0 ? Number(values.quantity) : 0,
-              min_quantity: Number(values.minimum),
+              location: invLocation,
+              stock: i === 0 ? invQuantity : 0,
+              min_quantity: invMinimum,
             }));
             const { error: invError } = await supabase
               .from("product_store_inventory")
@@ -791,16 +808,11 @@ export function ProductsPage() {
                   key={store.id}
                   onClick={() => {
                     setSelectedStoreId(store.id);
-                    // Busca o fabricante ativo (pelo ID da URL ou o primeiro)
-                    const activeMf =
-                      (manufacturerId
-                        ? currentProduct.manufacturers.find((m) => m.id === manufacturerId)
-                        : null) ?? currentProduct.manufacturers[0];
-                    // Busca o inventário deste fabricante para a loja clicada
-                    const inv = activeMf?.inventories.find((i) => i.storeId === store.id);
-                    form.setValue("quantity", inv?.stock ?? 0);
-                    form.setValue("minimum", inv?.minQuantity ?? 0);
-                    form.setValue("location", inv?.location ?? "");
+                    const inv = currentProduct.manufacturers
+                      .flatMap((m) => m.inventories.filter((i) => i.storeId === store.id))[0];
+                    setInvLocation(inv?.location ?? "");
+                    setInvQuantity(inv?.stock ?? 0);
+                    setInvMinimum(inv?.minQuantity ?? 0);
                   }}
                   className={`rounded-2xl border p-4 text-left transition-all ${
                     isSelected
@@ -830,14 +842,14 @@ export function ProductsPage() {
         )}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <FormField label="Localização" error={form.formState.errors.location?.message}>
-            <Input {...form.register("location")} />
+          <FormField label="Localização">
+            <Input value={invLocation} onChange={(e) => setInvLocation(e.target.value)} />
           </FormField>
-          <FormField label="Quantidade atual" error={form.formState.errors.quantity?.message}>
-            <Input type="number" {...form.register("quantity")} />
+          <FormField label="Quantidade atual">
+            <Input type="number" value={invQuantity} onChange={(e) => setInvQuantity(Number(e.target.value))} />
           </FormField>
-          <FormField label="Quantidade mínima" error={form.formState.errors.minimum?.message}>
-            <Input type="number" {...form.register("minimum")} />
+          <FormField label="Quantidade mínima">
+            <Input type="number" value={invMinimum} onChange={(e) => setInvMinimum(Number(e.target.value))} />
           </FormField>
           <FormField label="Status" error={form.formState.errors.status?.message}>
             <Select {...form.register("status")}>
