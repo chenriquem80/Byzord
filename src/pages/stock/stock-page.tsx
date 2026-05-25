@@ -91,17 +91,19 @@ export function StockPage() {
     if (!supabase) { setLoading(false); return; }
     setLoading(true);
 
-    const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
+    const [storesResp, productsResp, mfResp, invResp, compatResp] = await Promise.all([
       supabase.from("stores").select("*"),
       supabase.from("products").select("*"),
       supabase.from("product_manufacturers").select("*"),
       supabase.from("product_store_inventory").select("*"),
+      supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
     ]);
 
     const stores = storesResp.data ?? [];
     const rawProducts = productsResp.data ?? [];
     const rawMf = mfResp.data ?? [];
     const rawInv = invResp.data ?? [];
+    const rawCompat = compatResp.data ?? [];
 
     setDbStores(stores);
 
@@ -154,7 +156,18 @@ export function StockPage() {
         status: p.status ?? "ativo",
         notes: p.notes ?? "",
         manufacturers,
-        compatibilities: [],
+        compatibilities: rawCompat
+          .filter((c: any) => c.product_id === p.id)
+          .map((c: any) => ({
+            id: c.id,
+            automaker: c.vehicles?.automaker ?? "",
+            model: c.vehicles?.model ?? "",
+            generation: c.vehicles?.generation ?? "",
+            startYear: c.vehicles?.start_year ?? 0,
+            endYear: c.vehicles?.end_year ?? 0,
+            version: c.vehicles?.version ?? "",
+            note: c.note ?? "",
+          })),
       };
     });
 
@@ -173,7 +186,7 @@ export function StockPage() {
     return products
       .filter((product) => {
         const text = `${product.internalCode} ${product.name} ${product.brand} ${product.glassType} ${product.feature} ${product.compatibilities
-          .map((item) => `${item.model} ${item.generation}`)
+          .map((item) => `${item.automaker} ${item.model} ${item.generation} ${item.version}`)
           .join(" ")}`.toLowerCase();
         const matchesQuery = query
           ? query.toLowerCase().split(/\s+/).filter(Boolean).every((term) => text.includes(term))

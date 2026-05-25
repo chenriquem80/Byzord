@@ -68,16 +68,18 @@ export function ExitPage() {
   useEffect(() => {
     async function fetchData() {
       if (!supabase) return;
-      const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
+      const [storesResp, productsResp, mfResp, invResp, compatResp] = await Promise.all([
         supabase.from("stores").select("*"),
         supabase.from("products").select("*"),
         supabase.from("product_manufacturers").select("*"),
         supabase.from("product_store_inventory").select("*"),
+        supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
       ]);
       const stores = storesResp.data ?? [];
       const rawProducts = productsResp.data ?? [];
       const rawMf = mfResp.data ?? [];
       const rawInv = invResp.data ?? [];
+      const rawCompat = compatResp.data ?? [];
 
       if (stores.length > 0) {
         setDbStores(stores);
@@ -126,7 +128,18 @@ export function ExitPage() {
             status: p.status ?? "ativo",
             notes: p.notes ?? "",
             manufacturers,
-            compatibilities: [],
+            compatibilities: rawCompat
+              .filter((c: any) => c.product_id === p.id)
+              .map((c: any) => ({
+                id: c.id,
+                automaker: c.vehicles?.automaker ?? "",
+                model: c.vehicles?.model ?? "",
+                generation: c.vehicles?.generation ?? "",
+                startYear: c.vehicles?.start_year ?? 0,
+                endYear: c.vehicles?.end_year ?? 0,
+                version: c.vehicles?.version ?? "",
+                note: c.note ?? "",
+              })),
           };
         });
         setDbProducts(mapped);
@@ -148,7 +161,8 @@ export function ExitPage() {
         const matchesType = glassTypeFilter ? item.glassType === glassTypeFilter : true;
         if (!matchesType) return false;
         if (terms.length === 0) return true;
-        const text = `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand}`.toLowerCase();
+        const compat = item.compatibilities.map((c) => `${c.automaker} ${c.model} ${c.generation} ${c.version}`).join(" ");
+        const text = `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand} ${compat}`.toLowerCase();
         return terms.every((term) => text.includes(term));
       })
       .flatMap((product) =>

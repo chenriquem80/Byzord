@@ -15,7 +15,7 @@ import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format"
 import { Check, Plus, X } from "lucide-react";
 import { supabase } from "@/lib/database";
 import { productSchema } from "@/lib/schemas";
-import type { Product } from "@/types/domain";
+import type { Product, VehicleCompatibility } from "@/types/domain";
 
 type ProductFormValues = {
   internalCode: string;
@@ -138,6 +138,17 @@ export function ProductsPage() {
 
   const [dbStores, setDbStores] = useState<any[]>([]);
 
+  // Veículos compatíveis
+  const [compatibilities, setCompatibilities] = useState<VehicleCompatibility[]>([]);
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [addingVehicle, setAddingVehicle] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState({
+    automaker: "", model: "", generation: "",
+    startYear: String(new Date().getFullYear()),
+    endYear: String(new Date().getFullYear()),
+    version: "", note: "",
+  });
+
   useEffect(() => {
     async function fetchOptions() {
       if (!supabase) return;
@@ -191,12 +202,13 @@ export function ProductsPage() {
     async function fetchProduct() {
       if (supabase) {
         // Queries separadas, igual ao stock-page, para evitar falha de nested select
-        const [{ data: pData, error: pError }, { data: mfData }, { data: invData }, { data: storesData }] =
+        const [{ data: pData, error: pError }, { data: mfData }, { data: invData }, { data: storesData }, { data: compatData }] =
           await Promise.all([
             supabase.from("products").select("*").eq("id", productId).single(),
             supabase.from("product_manufacturers").select("*").eq("product_id", productId),
             supabase.from("product_store_inventory").select("*"),
             supabase.from("stores").select("*"),
+            supabase.from("product_vehicle_compatibility").select("*, vehicles(*)").eq("product_id", productId),
           ]);
 
         if (pError || !pData) {
@@ -248,6 +260,19 @@ export function ProductsPage() {
           }),
           compatibilities: [],
         };
+
+        setCompatibilities(
+          (compatData ?? []).map((c: any) => ({
+            id: c.id,
+            automaker: c.vehicles?.automaker ?? "",
+            model: c.vehicles?.model ?? "",
+            generation: c.vehicles?.generation ?? "",
+            startYear: c.vehicles?.start_year ?? 0,
+            endYear: c.vehicles?.end_year ?? 0,
+            version: c.vehicles?.version ?? "",
+            note: c.note ?? "",
+          }))
+        );
 
         // Inicializa a loja selecionada com a primeira loja disponível
         const firstInv = product.manufacturers.find((m) => m.id === manufacturerId)?.inventories[0]
@@ -322,6 +347,59 @@ export function ProductsPage() {
     setShowAddGlassType(false);
   }
 
+  async function handleAddVehicle() {
+    if (!supabase || !currentProduct || !vehicleForm.automaker.trim() || !vehicleForm.model.trim()) return;
+    setAddingVehicle(true);
+    try {
+      const { data: newVehicle, error: vErr } = await supabase
+        .from("vehicles")
+        .insert({
+          automaker: vehicleForm.automaker.trim(),
+          model: vehicleForm.model.trim(),
+          generation: vehicleForm.generation.trim(),
+          start_year: Number(vehicleForm.startYear) || new Date().getFullYear(),
+          end_year: Number(vehicleForm.endYear) || new Date().getFullYear(),
+          version: vehicleForm.version.trim(),
+        })
+        .select("id")
+        .single();
+      if (vErr) throw vErr;
+
+      const { data: compRow, error: cErr } = await supabase
+        .from("product_vehicle_compatibility")
+        .insert({ product_id: currentProduct.id, vehicle_id: newVehicle.id, note: vehicleForm.note.trim() || null })
+        .select("id")
+        .single();
+      if (cErr) throw cErr;
+
+      setCompatibilities((prev) => [
+        ...prev,
+        {
+          id: compRow.id,
+          automaker: vehicleForm.automaker.trim(),
+          model: vehicleForm.model.trim(),
+          generation: vehicleForm.generation.trim(),
+          startYear: Number(vehicleForm.startYear),
+          endYear: Number(vehicleForm.endYear),
+          version: vehicleForm.version.trim(),
+          note: vehicleForm.note.trim(),
+        },
+      ]);
+      setVehicleForm({ automaker: "", model: "", generation: "", startYear: String(new Date().getFullYear()), endYear: String(new Date().getFullYear()), version: "", note: "" });
+      setShowAddVehicle(false);
+    } catch (err) {
+      console.error("Erro ao adicionar veículo:", err);
+    } finally {
+      setAddingVehicle(false);
+    }
+  }
+
+  async function handleDeleteVehicle(compatId: string) {
+    if (!supabase) return;
+    await supabase.from("product_vehicle_compatibility").delete().eq("id", compatId);
+    setCompatibilities((prev) => prev.filter((c) => c.id !== compatId));
+  }
+
   function handleValidationError(errors: FieldErrors<ProductFormValues>) {
     const missing = (Object.keys(errors) as (keyof ProductFormValues)[])
       .map((key) => fieldLabels[key] ?? key)
@@ -352,7 +430,8 @@ export function ProductsPage() {
           if (error) { console.error("Supabase update error:", error); throw error; }
 
           // Atualiza fabricante: nome, custo, preço, fornecedor e data de compra
-          if (manufacturerId) {
+          const activeMfId = manufacturerId ?? currentProduct.manufacturers[0]?.id ?? null;
+          if (activeMfId) {
             const { error: mfError } = await supabase
               .from("product_manufacturers")
               .update({
@@ -362,37 +441,38 @@ export function ProductsPage() {
                 last_purchase_date: values.lastPurchaseDate || null,
                 supplier: values.lastSupplier,
               })
-              .eq("id", manufacturerId);
+              .eq("id", activeMfId);
             if (mfError) console.error("Erro ao atualizar fabricante:", mfError);
+          }
 
-            // Atualiza estoque da loja selecionada
-            const storeId = selectedStoreId || (dbStores[0]?.id ?? stores[0]?.id);
-            if (storeId) {
-              const mfObj = currentProduct.manufacturers.find((m) => m.id === manufacturerId);
-              const existingInv = mfObj?.inventories.find((i) => i.storeId === storeId);
+          // Atualiza estoque da loja selecionada (independe de ter manufacturerId na URL)
+          const storeId = selectedStoreId || (dbStores[0]?.id ?? stores[0]?.id);
+          if (storeId) {
+            const mfObj = currentProduct.manufacturers.find((m) => m.id === activeMfId)
+              ?? currentProduct.manufacturers[0];
+            const existingInv = mfObj?.inventories.find((i) => i.storeId === storeId);
 
-              if (existingInv) {
-                const { error: invError } = await supabase
-                  .from("product_store_inventory")
-                  .update({
-                    stock: Number(values.quantity),
-                    min_quantity: Number(values.minimum),
-                    location: values.location,
-                  })
-                  .eq("id", existingInv.id);
-                if (invError) console.error("Erro ao atualizar inventário:", invError);
-              } else {
-                const { error: invError } = await supabase
-                  .from("product_store_inventory")
-                  .insert({
-                    manufacturer_id: manufacturerId,
-                    store_id: storeId,
-                    stock: Number(values.quantity),
-                    min_quantity: Number(values.minimum),
-                    location: values.location,
-                  });
-                if (invError) console.error("Erro ao inserir inventário:", invError);
-              }
+            if (existingInv) {
+              const { error: invError } = await supabase
+                .from("product_store_inventory")
+                .update({
+                  stock: Number(values.quantity),
+                  min_quantity: Number(values.minimum),
+                  location: values.location,
+                })
+                .eq("id", existingInv.id);
+              if (invError) console.error("Erro ao atualizar inventário:", invError);
+            } else if (mfObj) {
+              const { error: invError } = await supabase
+                .from("product_store_inventory")
+                .insert({
+                  manufacturer_id: mfObj.id,
+                  store_id: storeId,
+                  stock: Number(values.quantity),
+                  min_quantity: Number(values.minimum),
+                  location: values.location,
+                });
+              if (invError) console.error("Erro ao inserir inventário:", invError);
             }
           }
         } else {
@@ -697,49 +777,55 @@ export function ProductsPage() {
       >
         {isEditing && (
           <div className="mb-6 grid gap-4 md:grid-cols-2">
-            {stores.map((store) => {
+            {(dbStores.length > 0 ? dbStores : stores).map((store) => {
               const inventories = currentProduct.manufacturers.flatMap((manufacturer) =>
                 manufacturer.inventories.filter((inventory) => inventory.storeId === store.id),
               );
               const storeStock = inventories.reduce((sum, inventory) => sum + inventory.stock, 0);
               const minimum = inventories.reduce((sum, inventory) => sum + inventory.minQuantity, 0);
+              const isSelected = selectedStoreId === store.id;
 
               return (
-                <div key={store.id} className="rounded-2xl border border-border bg-slate-50 p-4">
-                  <p className="font-semibold text-slate-900">{store.name}</p>
+                <button
+                  type="button"
+                  key={store.id}
+                  onClick={() => {
+                    setSelectedStoreId(store.id);
+                    if (currentProduct) {
+                      const vals = buildFormValues(currentProduct, manufacturerId, store.id);
+                      form.setValue("quantity", vals.quantity);
+                      form.setValue("minimum", vals.minimum);
+                      form.setValue("location", vals.location);
+                    }
+                  }}
+                  className={`rounded-2xl border p-4 text-left transition-all ${
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-sm ring-2 ring-primary/20"
+                      : "border-border bg-slate-50 hover:border-slate-300 hover:bg-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className={`font-semibold ${isSelected ? "text-primary" : "text-slate-900"}`}>
+                      {store.name}
+                    </p>
+                    {isSelected && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        Editando
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-2 text-sm text-slate-600">Saldo atual: {storeStock} un.</p>
                   <p className="text-sm text-slate-600">Mínimo sugerido: {minimum} un.</p>
                   <p className="text-sm text-slate-600">
-                    Localizações: {inventories.map((inventory) => inventory.location).join(" • ")}
+                    Localizações: {inventories.map((inventory) => inventory.location).filter(Boolean).join(" • ") || "—"}
                   </p>
-                </div>
+                </button>
               );
             })}
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <FormField label="Loja destino">
-            <Select
-              value={selectedStoreId || stores[0]?.id}
-              onChange={(e) => {
-                const sid = e.target.value;
-                setSelectedStoreId(sid);
-                if (currentProduct) {
-                  const vals = buildFormValues(currentProduct, manufacturerId, sid);
-                  form.setValue("quantity", vals.quantity);
-                  form.setValue("minimum", vals.minimum);
-                  form.setValue("location", vals.location);
-                }
-              }}
-            >
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name} — {store.city}
-                </option>
-              ))}
-            </Select>
-          </FormField>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <FormField label="Localização" error={form.formState.errors.location?.message}>
             <Input {...form.register("location")} />
           </FormField>
@@ -816,18 +902,104 @@ export function ProductsPage() {
             description="Lista de modelos e versões que utilizam este produto."
           >
             <div className="space-y-3">
-              {currentProduct.compatibilities.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-border bg-slate-50 p-4">
-                  <p className="font-semibold text-slate-900">
-                    {item.automaker} {item.model} {item.generation}
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    {item.startYear} a {item.endYear} • {item.version}
-                  </p>
-                  {item.note ? <p className="mt-2 text-sm text-slate-500">{item.note}</p> : null}
+              {compatibilities.map((item) => (
+                <div key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-slate-50 p-4">
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      {item.automaker} {item.model} {item.generation}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      {item.startYear} a {item.endYear}{item.version ? ` • ${item.version}` : ""}
+                    </p>
+                    {item.note ? <p className="mt-1 text-sm text-slate-500">{item.note}</p> : null}
+                  </div>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteVehicle(item.id)}
+                      className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500"
+                      title="Remover"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
                 </div>
               ))}
-              <Button variant="outline">Adicionar compatibilidade</Button>
+
+              {showAddVehicle && (
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                  <p className="font-semibold text-slate-800">Novo veículo compatível</p>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <FormField label="Fabricante">
+                      <Input
+                        value={vehicleForm.automaker}
+                        onChange={(e) => setVehicleForm((f) => ({ ...f, automaker: e.target.value }))}
+                        placeholder="Ex: Chevrolet"
+                      />
+                    </FormField>
+                    <FormField label="Modelo">
+                      <Input
+                        value={vehicleForm.model}
+                        onChange={(e) => setVehicleForm((f) => ({ ...f, model: e.target.value }))}
+                        placeholder="Ex: Celta"
+                      />
+                    </FormField>
+                    <FormField label="Geração">
+                      <Input
+                        value={vehicleForm.generation}
+                        onChange={(e) => setVehicleForm((f) => ({ ...f, generation: e.target.value }))}
+                        placeholder="Ex: 2001/2006"
+                      />
+                    </FormField>
+                    <FormField label="Ano inicial">
+                      <Input
+                        type="number"
+                        value={vehicleForm.startYear}
+                        onChange={(e) => setVehicleForm((f) => ({ ...f, startYear: e.target.value }))}
+                      />
+                    </FormField>
+                    <FormField label="Ano final">
+                      <Input
+                        type="number"
+                        value={vehicleForm.endYear}
+                        onChange={(e) => setVehicleForm((f) => ({ ...f, endYear: e.target.value }))}
+                      />
+                    </FormField>
+                    <FormField label="Versão">
+                      <Input
+                        value={vehicleForm.version}
+                        onChange={(e) => setVehicleForm((f) => ({ ...f, version: e.target.value }))}
+                        placeholder="Ex: 2p / 4p"
+                      />
+                    </FormField>
+                  </div>
+                  <FormField label="Observação (opcional)">
+                    <Input
+                      value={vehicleForm.note}
+                      onChange={(e) => setVehicleForm((f) => ({ ...f, note: e.target.value }))}
+                      placeholder="Informação adicional"
+                    />
+                  </FormField>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={handleAddVehicle}
+                      disabled={addingVehicle || !vehicleForm.automaker.trim() || !vehicleForm.model.trim()}
+                    >
+                      {addingVehicle ? "Salvando..." : "Salvar"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setShowAddVehicle(false)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {!readOnly && !showAddVehicle && (
+                <Button type="button" variant="outline" onClick={() => setShowAddVehicle(true)}>
+                  Adicionar compatibilidade
+                </Button>
+              )}
             </div>
           </SectionCard>
 

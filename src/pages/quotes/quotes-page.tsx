@@ -17,6 +17,7 @@ function normalize(s: string) {
 export function QuotesPage() {
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [glassTypeFilter, setGlassTypeFilter] = useState<string>("");
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>("");
   const [customPrice, setCustomPrice] = useState<number>(0);
@@ -26,11 +27,13 @@ export function QuotesPage() {
   useEffect(() => {
     async function load() {
       if (!supabase) return;
-      const [{ data: pData }, { data: mfData }] = await Promise.all([
+      const [{ data: pData }, { data: mfData }, { data: compatData }] = await Promise.all([
         supabase.from("products").select("*").eq("status", "ativo"),
         supabase.from("product_manufacturers").select("*"),
+        supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
       ]);
       if (!pData || !mfData) return;
+      const rawCompat = compatData ?? [];
       const mapped: Product[] = pData.map((p: any) => ({
         id: p.id,
         internalCode: p.internal_code ?? "",
@@ -55,7 +58,18 @@ export function QuotesPage() {
             supplier: mf.supplier ?? "",
             inventories: [],
           })),
-        compatibilities: [],
+        compatibilities: rawCompat
+          .filter((c: any) => c.product_id === p.id)
+          .map((c: any) => ({
+            id: c.id,
+            automaker: c.vehicles?.automaker ?? "",
+            model: c.vehicles?.model ?? "",
+            generation: c.vehicles?.generation ?? "",
+            startYear: c.vehicles?.start_year ?? 0,
+            endYear: c.vehicles?.end_year ?? 0,
+            version: c.vehicles?.version ?? "",
+            note: c.note ?? "",
+          })),
       }));
       setDbProducts(mapped);
     }
@@ -74,17 +88,42 @@ export function QuotesPage() {
     }
   }, [allProducts]);
 
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) return allProducts;
-    const term = normalize(searchTerm);
-    return allProducts.filter((p) =>
-      normalize(`${p.internalCode} ${p.name} ${p.brand} ${p.glassType} ${p.feature} ${p.description}`).includes(term)
-    );
-  }, [searchTerm, allProducts]);
+  const glassTypes = useMemo(() => {
+    const types = Array.from(new Set(allProducts.map((p) => p.glassType).filter(Boolean))).sort();
+    return types;
+  }, [allProducts]);
 
+  const filteredProducts = useMemo(() => {
+    let list = allProducts;
+    if (glassTypeFilter) list = list.filter((p) => p.glassType === glassTypeFilter);
+    if (!searchTerm.trim()) return list;
+    const term = normalize(searchTerm);
+    return list.filter((p) => {
+      const compat = p.compatibilities.map((c) => `${c.automaker} ${c.model} ${c.generation} ${c.version}`).join(" ");
+      return normalize(`${p.internalCode} ${p.name} ${p.brand} ${p.glassType} ${p.feature} ${p.description} ${compat}`).includes(term);
+    });
+  }, [searchTerm, glassTypeFilter, allProducts]);
+
+  // Quando o filtro muda e o produto selecionado sai da lista visível, seleciona o primeiro da nova lista
+  useEffect(() => {
+    if (filteredProducts.length === 0) return;
+    const stillVisible = filteredProducts.some((p) => p.id === selectedProductId);
+    if (!stillVisible) {
+      const first = filteredProducts[0];
+      setSelectedProductId(first.id);
+      setSelectedManufacturer(first.manufacturers[0]?.manufacturer ?? "");
+      setCustomPrice(first.manufacturers[0]?.price ?? 0);
+    }
+  }, [filteredProducts]);
+
+  // Prioriza filteredProducts para que selectedProduct sempre corresponda
+  // ao produto visível no dropdown (que exibe filteredProducts)
   const selectedProduct = useMemo(
-    () => allProducts.find((p) => p.id === selectedProductId) ?? allProducts[0],
-    [selectedProductId, allProducts]
+    () =>
+      filteredProducts.find((p) => p.id === selectedProductId) ??
+      filteredProducts[0] ??
+      allProducts[0],
+    [selectedProductId, filteredProducts, allProducts]
   );
 
   const manufacturerData = useMemo(() => {
@@ -95,15 +134,22 @@ export function QuotesPage() {
     );
   }, [selectedProduct, selectedManufacturer]);
 
-  // Termo usado na API do ML: searchTerm se preenchido, senão nome do produto
-  const mlSearchQuery = searchTerm.trim() || selectedProduct?.name || "";
+  // Usa o primeiro produto da lista filtrada pelo tipo de vidro para garantir consistência com o dropdown
+  const mlSearchQuery = useMemo(() => {
+    const product = filteredProducts.find((p) => p.id === selectedProductId) ?? filteredProducts[0];
+    return product?.name ?? "";
+  }, [filteredProducts, selectedProductId]);
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const term = e.target.value;
     setSearchTerm(term);
     if (!term.trim()) return;
     const t = normalize(term);
-    const match = allProducts.find((p) =>
+    // Respeita o filtro de tipo de vidro para que o produto selecionado
+    // corresponda ao que está visível no dropdown
+    let pool = allProducts;
+    if (glassTypeFilter) pool = pool.filter((p) => p.glassType === glassTypeFilter);
+    const match = pool.find((p) =>
       normalize(`${p.internalCode} ${p.name} ${p.brand} ${p.glassType} ${p.feature} ${p.description}`).includes(t)
     );
     if (match) {
@@ -138,15 +184,15 @@ export function QuotesPage() {
         title="Seleção de Produto"
         description="Escolha o produto para comparar com os preços praticados online."
       >
-        {/* Campo de pesquisa por descrição */}
-        <div className="mb-4">
+        {/* Filtros: pesquisa por descrição + tipo de vidro */}
+        <div className="mb-4 grid gap-3 md:grid-cols-[1fr_auto]">
           <FormField label="Pesquisar por descrição">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <Input
                 value={searchTerm}
                 onChange={handleSearchChange}
-                placeholder="Digite o nome, código ou característica do produto..."
+                placeholder="Nome, código ou característica..."
                 className="pl-10 pr-10"
               />
               {searchTerm && (
@@ -159,11 +205,24 @@ export function QuotesPage() {
                 </button>
               )}
             </div>
-            {searchTerm && (
+            {(searchTerm || glassTypeFilter) && (
               <p className="mt-1 text-xs text-slate-500">
                 {filteredProducts.length} produto{filteredProducts.length !== 1 ? "s" : ""} encontrado{filteredProducts.length !== 1 ? "s" : ""}
               </p>
             )}
+          </FormField>
+
+          <FormField label="Tipo de vidro">
+            <Select
+              value={glassTypeFilter}
+              onChange={(e) => setGlassTypeFilter(e.target.value)}
+              className="min-w-[180px]"
+            >
+              <option value="">Todos os tipos</option>
+              {glassTypes.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </Select>
           </FormField>
         </div>
 
@@ -173,7 +232,7 @@ export function QuotesPage() {
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.internalCode ? `${p.internalCode} • ` : ""}{p.name}
+                    {p.name}
                   </option>
                 ))
               ) : (
@@ -240,15 +299,24 @@ export function QuotesPage() {
         </div>
       </SectionCard>
 
-      <MarketPriceComparison
-        productId={selectedProductId}
-        productName={selectedProduct.name}
-        productBrand={selectedManufacturer}
-        productImage={selectedProduct.photos[0]}
-        salePrice={customPrice}
-        costPrice={manufacturerData.cost}
-        searchQuery={mlSearchQuery}
-      />
+      {glassTypeFilter ? (
+        <MarketPriceComparison
+          productId={selectedProductId}
+          productName={selectedProduct.name}
+          productBrand={selectedManufacturer}
+          productImage={selectedProduct.photos[0]}
+          salePrice={customPrice}
+          costPrice={manufacturerData.cost}
+          searchQuery={mlSearchQuery}
+        />
+      ) : (
+        <div className="flex items-center gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-6 text-slate-500">
+          <Search className="size-5 shrink-0 text-slate-400" />
+          <p className="text-sm">
+            Selecione um <span className="font-semibold text-slate-700">Tipo de vidro</span> para ver a comparação de preços nos marketplaces.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-3xl border border-blue-100 bg-blue-50 p-6">
         <div className="flex items-start gap-4">
