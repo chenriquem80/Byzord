@@ -191,6 +191,11 @@ export function ProductsPage() {
 
   const isEditing = currentProduct !== null;
 
+  // Fabricante ativo: prioriza o ?mf= da URL, senão usa o primeiro
+  const activeMf = currentProduct
+    ? ((manufacturerId ? currentProduct.manufacturers.find((m) => m.id === manufacturerId) : null) ?? currentProduct.manufacturers[0])
+    : null;
+
   const form = useForm<ProductFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(productSchema) as any,
@@ -795,11 +800,8 @@ export function ProductsPage() {
         {isEditing && (
           <div className="mb-6 grid gap-4 md:grid-cols-2">
             {(dbStores.length > 0 ? dbStores : stores).map((store) => {
-              const inventories = currentProduct.manufacturers.flatMap((manufacturer) =>
-                manufacturer.inventories.filter((inventory) => inventory.storeId === store.id),
-              );
-              const storeStock = inventories.reduce((sum, inventory) => sum + inventory.stock, 0);
-              const minimum = inventories.reduce((sum, inventory) => sum + inventory.minQuantity, 0);
+              // Exibe apenas o estoque do fabricante ativo para consistência com o formulário
+              const inv = activeMf?.inventories.find((i) => i.storeId === store.id);
               const isSelected = selectedStoreId === store.id;
 
               return (
@@ -808,8 +810,6 @@ export function ProductsPage() {
                   key={store.id}
                   onClick={() => {
                     setSelectedStoreId(store.id);
-                    const inv = currentProduct.manufacturers
-                      .flatMap((m) => m.inventories.filter((i) => i.storeId === store.id))[0];
                     setInvLocation(inv?.location ?? "");
                     setInvQuantity(inv?.stock ?? 0);
                     setInvMinimum(inv?.minQuantity ?? 0);
@@ -830,10 +830,10 @@ export function ProductsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-2 text-sm text-slate-600">Saldo atual: {storeStock} un.</p>
-                  <p className="text-sm text-slate-600">Mínimo sugerido: {minimum} un.</p>
+                  <p className="mt-2 text-sm text-slate-600">Saldo atual: {inv?.stock ?? 0} un.</p>
+                  <p className="text-sm text-slate-600">Mínimo sugerido: {inv?.minQuantity ?? 0} un.</p>
                   <p className="text-sm text-slate-600">
-                    Localizações: {inventories.map((inventory) => inventory.location).filter(Boolean).join(" • ") || "—"}
+                    Localização: {inv?.location || "—"}
                   </p>
                 </button>
               );
