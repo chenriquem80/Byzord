@@ -791,12 +791,16 @@ export function ProductsPage() {
                   key={store.id}
                   onClick={() => {
                     setSelectedStoreId(store.id);
-                    if (currentProduct) {
-                      const vals = buildFormValues(currentProduct, manufacturerId, store.id);
-                      form.setValue("quantity", vals.quantity);
-                      form.setValue("minimum", vals.minimum);
-                      form.setValue("location", vals.location);
-                    }
+                    // Busca o fabricante ativo (pelo ID da URL ou o primeiro)
+                    const activeMf =
+                      (manufacturerId
+                        ? currentProduct.manufacturers.find((m) => m.id === manufacturerId)
+                        : null) ?? currentProduct.manufacturers[0];
+                    // Busca o inventário deste fabricante para a loja clicada
+                    const inv = activeMf?.inventories.find((i) => i.storeId === store.id);
+                    form.setValue("quantity", inv?.stock ?? 0);
+                    form.setValue("minimum", inv?.minQuantity ?? 0);
+                    form.setValue("location", inv?.location ?? "");
                   }}
                   className={`rounded-2xl border p-4 text-left transition-all ${
                     isSelected
