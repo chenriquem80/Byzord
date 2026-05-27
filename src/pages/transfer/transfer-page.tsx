@@ -184,11 +184,11 @@ export function TransferPage() {
         const { error: err2 } = await supabase
           .from("product_store_inventory")
           .insert({
-            product_manufacturer_id: selectedManufacturer.id,
             manufacturer_id: selectedManufacturer.id,
             store_id: toStoreId,
             stock: qty,
             min_quantity: 0,
+            location: "",
           });
         if (err2) throw err2;
       }
@@ -200,9 +200,10 @@ export function TransferPage() {
         `${qty} un. de "${selectedProduct.name}" transferidas de ${fromStore?.name} para ${toStore?.name}.`,
       );
       setQuantity("1");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro na transferência:", err);
-      setErrorMessage("Erro ao registrar transferência. Tente novamente.");
+      const detail = err?.message ?? err?.details ?? JSON.stringify(err);
+      setErrorMessage(`Erro ao registrar transferência: ${detail}`);
     } finally {
       setSaving(false);
     }
