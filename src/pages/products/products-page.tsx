@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { products, stores } from "@/data/mock-data";
 import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Pencil, Plus, X } from "lucide-react";
 import { supabase } from "@/lib/database";
 import { productSchema } from "@/lib/schemas";
 import type { Product, VehicleCompatibility } from "@/types/domain";
@@ -153,6 +153,12 @@ export function ProductsPage() {
     endYear: String(new Date().getFullYear()),
     version: "", note: "",
   });
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  const [editVehicleForm, setEditVehicleForm] = useState({
+    automaker: "", model: "", generation: "",
+    startYear: "", endYear: "", version: "", note: "",
+  });
+  const [savingVehicle, setSavingVehicle] = useState(false);
 
   useEffect(() => {
     async function fetchOptions() {
@@ -416,6 +422,75 @@ export function ProductsPage() {
     if (!supabase) return;
     await supabase.from("product_vehicle_compatibility").delete().eq("id", compatId);
     setCompatibilities((prev) => prev.filter((c) => c.id !== compatId));
+  }
+
+  function startEditVehicle(item: VehicleCompatibility) {
+    setEditingVehicleId(item.id);
+    setEditVehicleForm({
+      automaker: item.automaker,
+      model: item.model,
+      generation: item.generation,
+      startYear: String(item.startYear),
+      endYear: String(item.endYear),
+      version: item.version,
+      note: item.note,
+    });
+  }
+
+  async function handleSaveVehicle() {
+    if (!supabase || !editingVehicleId) return;
+    setSavingVehicle(true);
+    try {
+      // Busca o vehicle_id a partir da tabela de compatibilidade
+      const { data: compatRow } = await supabase
+        .from("product_vehicle_compatibility")
+        .select("vehicle_id")
+        .eq("id", editingVehicleId)
+        .single();
+
+      if (compatRow?.vehicle_id) {
+        const { error } = await supabase
+          .from("vehicles")
+          .update({
+            automaker: editVehicleForm.automaker.trim(),
+            model: editVehicleForm.model.trim(),
+            generation: editVehicleForm.generation.trim(),
+            start_year: Number(editVehicleForm.startYear) || new Date().getFullYear(),
+            end_year: Number(editVehicleForm.endYear) || new Date().getFullYear(),
+            version: editVehicleForm.version.trim(),
+          })
+          .eq("id", compatRow.vehicle_id);
+        if (error) throw error;
+      }
+
+      // Atualiza a nota na tabela de compatibilidade
+      await supabase
+        .from("product_vehicle_compatibility")
+        .update({ note: editVehicleForm.note.trim() || null })
+        .eq("id", editingVehicleId);
+
+      setCompatibilities((prev) =>
+        prev.map((c) =>
+          c.id === editingVehicleId
+            ? {
+                ...c,
+                automaker: editVehicleForm.automaker.trim(),
+                model: editVehicleForm.model.trim(),
+                generation: editVehicleForm.generation.trim(),
+                startYear: Number(editVehicleForm.startYear),
+                endYear: Number(editVehicleForm.endYear),
+                version: editVehicleForm.version.trim(),
+                note: editVehicleForm.note.trim(),
+              }
+            : c
+        )
+      );
+      setEditingVehicleId(null);
+    } catch (err) {
+      console.error("Erro ao salvar veículo:", err);
+    } finally {
+      setSavingVehicle(false);
+    }
   }
 
   function handleValidationError(errors: FieldErrors<ProductFormValues>) {
@@ -918,29 +993,108 @@ export function ProductsPage() {
             description="Lista de modelos e versões que utilizam este produto."
           >
             <div className="space-y-3">
-              {compatibilities.map((item) => (
-                <div key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-slate-50 p-4">
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      {item.automaker} {item.model} {item.generation}
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      {item.startYear} a {item.endYear}{item.version ? ` • ${item.version}` : ""}
-                    </p>
-                    {item.note ? <p className="mt-1 text-sm text-slate-500">{item.note}</p> : null}
+              {compatibilities.map((item) =>
+                editingVehicleId === item.id ? (
+                  <div key={item.id} className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                    <p className="font-semibold text-slate-800">Editar veículo compatível</p>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      <FormField label="Fabricante">
+                        <Input
+                          value={editVehicleForm.automaker}
+                          onChange={(e) => setEditVehicleForm((f) => ({ ...f, automaker: e.target.value }))}
+                          placeholder="Ex: Chevrolet"
+                        />
+                      </FormField>
+                      <FormField label="Modelo">
+                        <Input
+                          value={editVehicleForm.model}
+                          onChange={(e) => setEditVehicleForm((f) => ({ ...f, model: e.target.value }))}
+                          placeholder="Ex: Celta"
+                        />
+                      </FormField>
+                      <FormField label="Geração">
+                        <Input
+                          value={editVehicleForm.generation}
+                          onChange={(e) => setEditVehicleForm((f) => ({ ...f, generation: e.target.value }))}
+                          placeholder="Ex: 2001/2006"
+                        />
+                      </FormField>
+                      <FormField label="Ano inicial">
+                        <Input
+                          type="number"
+                          value={editVehicleForm.startYear}
+                          onChange={(e) => setEditVehicleForm((f) => ({ ...f, startYear: e.target.value }))}
+                        />
+                      </FormField>
+                      <FormField label="Ano final">
+                        <Input
+                          type="number"
+                          value={editVehicleForm.endYear}
+                          onChange={(e) => setEditVehicleForm((f) => ({ ...f, endYear: e.target.value }))}
+                        />
+                      </FormField>
+                      <FormField label="Versão">
+                        <Input
+                          value={editVehicleForm.version}
+                          onChange={(e) => setEditVehicleForm((f) => ({ ...f, version: e.target.value }))}
+                          placeholder="Ex: 2p / 4p"
+                        />
+                      </FormField>
+                    </div>
+                    <FormField label="Observação (opcional)">
+                      <Input
+                        value={editVehicleForm.note}
+                        onChange={(e) => setEditVehicleForm((f) => ({ ...f, note: e.target.value }))}
+                        placeholder="Informação adicional"
+                      />
+                    </FormField>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        onClick={handleSaveVehicle}
+                        disabled={savingVehicle || !editVehicleForm.automaker.trim() || !editVehicleForm.model.trim()}
+                      >
+                        {savingVehicle ? "Salvando..." : "Salvar"}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setEditingVehicleId(null)}>
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteVehicle(item.id)}
-                      className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500"
-                      title="Remover"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                ) : (
+                  <div key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-slate-50 p-4">
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        {item.automaker} {item.model} {item.generation}
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        {item.startYear} a {item.endYear}{item.version ? ` • ${item.version}` : ""}
+                      </p>
+                      {item.note ? <p className="mt-1 text-sm text-slate-500">{item.note}</p> : null}
+                    </div>
+                    {!readOnly && (
+                      <div className="flex shrink-0 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEditVehicle(item)}
+                          className="rounded-lg p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-500"
+                          title="Editar"
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteVehicle(item.id)}
+                          className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500"
+                          title="Remover"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
 
               {showAddVehicle && (
                 <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
