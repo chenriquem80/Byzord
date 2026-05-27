@@ -24,75 +24,74 @@ export function TransferPage() {
   const [allProducts, setAllProducts] = useState<Product[]>(mockProducts);
   const [allStores, setAllStores] = useState(mockStores);
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!supabase) return;
-      const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
-        supabase.from("stores").select("*"),
-        supabase.from("products").select("*"),
-        supabase.from("product_manufacturers").select("*"),
-        supabase.from("product_store_inventory").select("*"),
-      ]);
-      const stores = storesResp.data ?? [];
-      const rawProducts = productsResp.data ?? [];
-      const rawMf = mfResp.data ?? [];
-      const rawInv = invResp.data ?? [];
+  async function fetchData() {
+    if (!supabase) return;
+    const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
+      supabase.from("stores").select("*"),
+      supabase.from("products").select("*"),
+      supabase.from("product_manufacturers").select("*"),
+      supabase.from("product_store_inventory").select("*"),
+    ]);
+    const stores = storesResp.data ?? [];
+    const rawProducts = productsResp.data ?? [];
+    const rawMf = mfResp.data ?? [];
+    const rawInv = invResp.data ?? [];
 
-      if (stores.length > 0) {
-        setAllStores(stores);
-        setFromStoreId(stores[0].id);
-      }
+    if (stores.length > 0) {
+      setAllStores(stores);
+      setFromStoreId((prev) => prev || stores[0].id);
+    }
 
-      if (rawProducts.length > 0) {
-        const mapped: Product[] = rawProducts.map((p: any) => {
-          const mfs = rawMf.filter((mf: any) => mf.product_id === p.id);
-          const manufacturers: Manufacturer[] = mfs.map((mf: any) => {
-            const mfId = mf.id;
-            const invs = rawInv.filter(
-              (inv: any) => inv.manufacturer_id === mfId || inv.product_manufacturer_id === mfId
-            );
-            return {
-              id: mf.id,
-              manufacturer: mf.manufacturer ?? "",
-              cost: mf.cost ?? mf.current_cost ?? 0,
-              price: mf.price ?? mf.sale_price ?? 0,
-              lastPurchaseDate: mf.last_purchase_date ?? "",
-              supplier: mf.supplier ?? "",
-              inventories: invs.map((inv: any) => {
-                const invStore = stores.find((s: any) => s.id === inv.store_id);
-                return {
-                  id: inv.id,
-                  storeId: inv.store_id,
-                  storeName: invStore?.name ?? "",
-                  location: inv.location ?? "",
-                  stock: inv.stock ?? inv.stock_quantity ?? 0,
-                  minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
-                };
-              }),
-            };
-          });
+    if (rawProducts.length > 0) {
+      const mapped: Product[] = rawProducts.map((p: any) => {
+        const mfs = rawMf.filter((mf: any) => mf.product_id === p.id);
+        const manufacturers: Manufacturer[] = mfs.map((mf: any) => {
+          const mfId = mf.id;
+          const invs = rawInv.filter(
+            (inv: any) => inv.manufacturer_id === mfId || inv.product_manufacturer_id === mfId
+          );
           return {
-            id: p.id,
-            internalCode: p.internal_code ?? "",
-            supplierCode: "",
-            barcode: p.barcode ?? "",
-            name: p.name ?? "",
-            glassType: p.glass_type ?? "",
-            feature: p.feature ?? "",
-            brand: p.brand ?? "",
-            description: p.description ?? "",
-            photos: [],
-            status: p.status ?? "ativo",
-            notes: p.notes ?? "",
-            manufacturers,
-            compatibilities: [],
+            id: mf.id,
+            manufacturer: mf.manufacturer ?? "",
+            cost: mf.cost ?? mf.current_cost ?? 0,
+            price: mf.price ?? mf.sale_price ?? 0,
+            lastPurchaseDate: mf.last_purchase_date ?? "",
+            supplier: mf.supplier ?? "",
+            inventories: invs.map((inv: any) => {
+              const invStore = stores.find((s: any) => s.id === inv.store_id);
+              return {
+                id: inv.id,
+                storeId: inv.store_id,
+                storeName: invStore?.name ?? "",
+                location: inv.location ?? "",
+                stock: inv.stock ?? inv.stock_quantity ?? 0,
+                minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
+              };
+            }),
           };
         });
-        setAllProducts(mapped);
-      }
+        return {
+          id: p.id,
+          internalCode: p.internal_code ?? "",
+          supplierCode: "",
+          barcode: p.barcode ?? "",
+          name: p.name ?? "",
+          glassType: p.glass_type ?? "",
+          feature: p.feature ?? "",
+          brand: p.brand ?? "",
+          description: p.description ?? "",
+          photos: [],
+          status: p.status ?? "ativo",
+          notes: p.notes ?? "",
+          manufacturers,
+          compatibilities: [],
+        };
+      });
+      setAllProducts(mapped);
     }
-    fetchData();
-  }, []);
+  }
+
+  useEffect(() => { fetchData(); }, []);
 
   useEffect(() => {
     if (allStores.length > 0 && !fromStoreId) {
@@ -145,19 +144,6 @@ export function TransferPage() {
       setErrorMessage("Informe uma quantidade válida.");
       return;
     }
-    if (qty > fromStock) {
-      setErrorMessage(`Estoque insuficiente em ${fromStore?.name}. Disponível: ${fromStock} un.`);
-      return;
-    }
-
-    const fromInventory = selectedManufacturer.inventories.find((i) => i.storeId === fromStoreId);
-    const toInventory = selectedManufacturer.inventories.find((i) => i.storeId === toStoreId);
-
-    if (!fromInventory) {
-      setErrorMessage("Inventário de origem não encontrado.");
-      return;
-    }
-
     if (!supabase) {
       setErrorMessage("Banco de dados não disponível.");
       return;
@@ -165,36 +151,51 @@ export function TransferPage() {
 
     setSaving(true);
     try {
-      // Baixa da loja de origem
+      const mfId = selectedManufacturer.id;
+
+      // Busca dados frescos do banco para evitar usar estado desatualizado
+      const { data: freshInvData, error: fetchErr } = await supabase
+        .from("product_store_inventory")
+        .select("id, stock, store_id, manufacturer_id, product_manufacturer_id")
+        .or(`manufacturer_id.eq.${mfId},product_manufacturer_id.eq.${mfId}`);
+      if (fetchErr) throw fetchErr;
+
+      const freshFrom = (freshInvData ?? []).find((i: any) => i.store_id === fromStoreId);
+      const freshTo   = (freshInvData ?? []).find((i: any) => i.store_id === toStoreId);
+
+      if (!freshFrom) throw new Error(`Inventário de origem não encontrado em ${fromStore?.name}.`);
+      if (freshFrom.stock < qty)
+        throw new Error(`Estoque insuficiente em ${fromStore?.name}. Disponível: ${freshFrom.stock} un.`);
+
+      // Debita da origem
       const { error: err1 } = await supabase
         .from("product_store_inventory")
-        .update({ stock: fromInventory.stock - qty })
-        .eq("id", fromInventory.id);
+        .update({ stock: freshFrom.stock - qty })
+        .eq("id", freshFrom.id);
       if (err1) throw err1;
 
-      // Acrescenta na loja de destino (ou cria se não existir)
-      if (toInventory) {
+      // Credita no destino (ou cria registro se não existir)
+      if (freshTo) {
         const { error: err2 } = await supabase
           .from("product_store_inventory")
-          .update({ stock: toInventory.stock + qty })
-          .eq("id", toInventory.id);
+          .update({ stock: freshTo.stock + qty })
+          .eq("id", freshTo.id);
         if (err2) throw err2;
-        toInventory.stock += qty;
       } else {
         const { error: err2 } = await supabase
           .from("product_store_inventory")
           .insert({
-            manufacturer_id: selectedManufacturer.id,
+            manufacturer_id: mfId,
+            product_manufacturer_id: mfId,
             store_id: toStoreId,
             stock: qty,
             min_quantity: 0,
-            location: "",
           });
         if (err2) throw err2;
       }
 
-      // Atualiza estado local para refletir imediatamente
-      fromInventory.stock -= qty;
+      // Recarrega dados para refletir os novos saldos
+      await fetchData();
 
       setSuccessMessage(
         `${qty} un. de "${selectedProduct.name}" transferidas de ${fromStore?.name} para ${toStore?.name}.`,
@@ -203,7 +204,7 @@ export function TransferPage() {
     } catch (err: any) {
       console.error("Erro na transferência:", err);
       const detail = err?.message ?? err?.details ?? JSON.stringify(err);
-      setErrorMessage(`Erro ao registrar transferência: ${detail}`);
+      setErrorMessage(`Erro: ${detail}`);
     } finally {
       setSaving(false);
     }
