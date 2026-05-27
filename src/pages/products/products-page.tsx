@@ -538,38 +538,33 @@ export function ProductsPage() {
             if (mfError) console.error("Erro ao atualizar fabricante:", mfError);
           }
 
-          // Atualiza estoque da loja selecionada (independe de ter manufacturerId na URL)
-          const storeId = selectedStoreId || (dbStores[0]?.id ?? stores[0]?.id);
-          if (storeId) {
-            const existingInv = currentProduct.manufacturers
-              .flatMap((m) => m.inventories.filter((i) => i.storeId === storeId))[0];
-            const mfObj = existingInv
-              ? currentProduct.manufacturers.find((m) => m.inventories.some((i) => i.id === existingInv.id))
-                ?? currentProduct.manufacturers.find((m) => m.id === activeMfId)
-                ?? currentProduct.manufacturers[0]
-              : (currentProduct.manufacturers.find((m) => m.id === activeMfId) ?? currentProduct.manufacturers[0]);
+          // Atualiza estoque da loja selecionada usando manufacturer_id + store_id como filtro
+          const storeId = selectedStoreId || dbStores[0]?.id;
+          if (storeId && activeMfId) {
+            const orFilter = `manufacturer_id.eq.${activeMfId},product_manufacturer_id.eq.${activeMfId}`;
 
-            if (existingInv) {
-              const { error: invError } = await supabase
-                .from("product_store_inventory")
-                .update({
-                  stock: invQuantity,
-                  min_quantity: invMinimum,
-                  location: invLocation,
-                })
-                .eq("id", existingInv.id);
-              if (invError) console.error("Erro ao atualizar inventário:", invError);
-            } else if (mfObj) {
-              const { error: invError } = await supabase
+            // Tenta UPDATE; se não afetar nenhuma linha, faz INSERT
+            const { data: updated, error: upErr } = await supabase
+              .from("product_store_inventory")
+              .update({ stock: invQuantity, min_quantity: invMinimum, location: invLocation })
+              .or(orFilter)
+              .eq("store_id", storeId)
+              .select("id");
+
+            if (upErr) throw new Error(`Erro ao salvar estoque: ${upErr.message}`);
+
+            if (!updated || updated.length === 0) {
+              const { error: insErr } = await supabase
                 .from("product_store_inventory")
                 .insert({
-                  manufacturer_id: mfObj.id,
+                  manufacturer_id: activeMfId,
+                  product_manufacturer_id: activeMfId,
                   store_id: storeId,
                   stock: invQuantity,
                   min_quantity: invMinimum,
                   location: invLocation,
                 });
-              if (invError) console.error("Erro ao inserir inventário:", invError);
+              if (insErr) throw new Error(`Erro ao criar estoque: ${insErr.message}`);
             }
           }
         } else {
