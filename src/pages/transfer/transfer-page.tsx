@@ -27,16 +27,18 @@ export function TransferPage() {
 
   async function fetchData(): Promise<Product[]> {
     if (!supabase) return [];
-    const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
+    const [storesResp, productsResp, mfResp, invResp, compatResp] = await Promise.all([
       supabase.from("stores").select("*"),
       supabase.from("products").select("*"),
       supabase.from("product_manufacturers").select("*"),
       supabase.from("product_store_inventory").select("*"),
+      supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
     ]);
     const stores = storesResp.data ?? [];
     const rawProducts = productsResp.data ?? [];
     const rawMf = mfResp.data ?? [];
     const rawInv = invResp.data ?? [];
+    const rawCompat = compatResp.data ?? [];
 
     if (stores.length > 0) {
       setAllStores(stores);
@@ -85,7 +87,18 @@ export function TransferPage() {
           status: p.status ?? "ativo",
           notes: p.notes ?? "",
           manufacturers,
-          compatibilities: [],
+          compatibilities: rawCompat
+            .filter((c: any) => c.product_id === p.id)
+            .map((c: any) => ({
+              id: c.id,
+              automaker: c.vehicles?.automaker ?? "",
+              model: c.vehicles?.model ?? "",
+              generation: c.vehicles?.generation ?? "",
+              startYear: c.vehicles?.start_year ?? 0,
+              endYear: c.vehicles?.end_year ?? 0,
+              version: c.vehicles?.version ?? "",
+              note: c.note ?? "",
+            })),
         };
       });
       setAllProducts(mapped);
@@ -121,7 +134,8 @@ export function TransferPage() {
     if (glassTypeFilter) pool = pool.filter((p) => p.glassType === glassTypeFilter);
     if (terms.length === 0) return [];
     return pool.filter((p) => {
-      const text = `${p.internalCode} ${p.name} ${p.description} ${p.glassType} ${p.feature} ${p.brand}`.toLowerCase();
+      const compat = p.compatibilities.map((c) => `${c.automaker} ${c.model} ${c.generation} ${c.version}`).join(" ");
+      const text = `${p.internalCode} ${p.name} ${p.description} ${p.glassType} ${p.feature} ${p.brand} ${compat}`.toLowerCase();
       return terms.every((t) => text.includes(t));
     });
   }, [query, glassTypeFilter, allProducts]);
