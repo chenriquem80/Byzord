@@ -433,7 +433,7 @@ export function ProductsPage() {
       startYear: String(item.startYear),
       endYear: String(item.endYear),
       version: item.version,
-      note: item.note,
+      note: item.note ?? "",
     });
   }
 
