@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Check, Download, Pencil, RefreshCw, X } from "lucide-react";
+import { Car, Check, Download, Pencil, RefreshCw, X } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,37 @@ import { products as mockProducts, stores as mockStores } from "@/data/mock-data
 import { supabase } from "@/lib/database";
 import type { Product } from "@/types/domain";
 
+
+function CompatPopup({ compatibilities }: { compatibilities: Product["compatibilities"] }) {
+  const [open, setOpen] = useState(false);
+  if (compatibilities.length === 0) return <span className="text-xs text-slate-400">—</span>;
+  return (
+    <div className="relative inline-block" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-primary hover:text-primary"
+      >
+        <Car className="size-3.5" />
+        {compatibilities.length} veículo{compatibilities.length !== 1 ? "s" : ""}
+      </button>
+      {open && (
+        <div className="absolute bottom-full right-0 z-50 mb-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Veículos compatíveis</p>
+          <ul className="max-h-52 space-y-1 overflow-y-auto">
+            {compatibilities.map((c) => (
+              <li key={c.id} className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-700">
+                <span className="font-medium">{c.automaker} {c.model}</span>
+                {c.generation ? ` · ${c.generation}` : ""}
+                {(c.startYear || c.endYear) ? ` · ${c.startYear}/${c.endYear}` : ""}
+                {c.version ? ` · ${c.version}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface StockRow {
   product: Product;
@@ -267,6 +298,11 @@ export function StockPage() {
         accessorKey: "lastPurchaseDate",
         header: "Última compra",
         cell: ({ row }) => formatMonthYear(row.original.lastPurchaseDate),
+      },
+      {
+        id: "compat",
+        header: "Compatíveis",
+        cell: ({ row }) => <CompatPopup compatibilities={row.original.product.compatibilities} />,
       },
       {
         id: "actions",
