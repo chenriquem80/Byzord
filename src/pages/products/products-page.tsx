@@ -120,6 +120,9 @@ export function ProductsPage() {
   const [showAddGlassType, setShowAddGlassType] = useState(false);
   const [newGlassType, setNewGlassType] = useState("");
   const newGlassTypeRef = useRef<HTMLInputElement>(null);
+  const [showEditGlassType, setShowEditGlassType] = useState(false);
+  const [editGlassTypeValue, setEditGlassTypeValue] = useState("");
+  const editGlassTypeRef = useRef<HTMLInputElement>(null);
 
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
   const [showAddFeature, setShowAddFeature] = useState(false);
@@ -369,6 +372,18 @@ export function ProductsPage() {
     form.setValue("glassType", trimmed);
     setNewGlassType("");
     setShowAddGlassType(false);
+  }
+
+  async function handleEditGlassType() {
+    const oldValue = form.getValues("glassType");
+    const trimmed = editGlassTypeValue.trim();
+    if (!trimmed || trimmed === oldValue) { setShowEditGlassType(false); return; }
+    if (supabase) {
+      await supabase.from("products").update({ glass_type: trimmed }).eq("glass_type", oldValue);
+    }
+    setGlassTypes((prev) => prev.map((t) => (t === oldValue ? trimmed : t)));
+    form.setValue("glassType", trimmed);
+    setShowEditGlassType(false);
   }
 
   async function handleAddVehicle() {
@@ -735,13 +750,46 @@ export function ProductsPage() {
                 </Select>
                 <button
                   type="button"
-                  onClick={() => { setShowAddGlassType((v) => !v); setNewGlassType(""); setTimeout(() => newGlassTypeRef.current?.focus(), 50); }}
+                  onClick={() => {
+                    const current = form.getValues("glassType");
+                    if (!current) return;
+                    setEditGlassTypeValue(current);
+                    setShowEditGlassType(true);
+                    setShowAddGlassType(false);
+                    setTimeout(() => editGlassTypeRef.current?.focus(), 50);
+                  }}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
+                  title="Editar tipo selecionado"
+                >
+                  <Pencil className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddGlassType((v) => !v); setNewGlassType(""); setShowEditGlassType(false); setTimeout(() => newGlassTypeRef.current?.focus(), 50); }}
                   className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
                   title="Adicionar novo tipo"
                 >
                   <Plus className="size-4" />
                 </button>
               </div>
+              {showEditGlassType && (
+                <div className="flex gap-2">
+                  <Input
+                    ref={editGlassTypeRef}
+                    value={editGlassTypeValue}
+                    onChange={(e) => setEditGlassTypeValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleEditGlassType(); } if (e.key === "Escape") setShowEditGlassType(false); }}
+                    placeholder="Novo nome do tipo..."
+                    className="flex-1"
+                  />
+                  <Button type="button" size="sm" onClick={handleEditGlassType} disabled={!editGlassTypeValue.trim()}>
+                    <Check className="size-3.5" />
+                  </Button>
+                  <button type="button" onClick={() => setShowEditGlassType(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
+                    <X className="size-4" />
+                  </button>
+                </div>
+              )}
               {showAddGlassType && (
                 <div className="flex gap-2">
                   <Input
