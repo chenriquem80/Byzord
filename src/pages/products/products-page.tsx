@@ -142,6 +142,7 @@ export function ProductsPage() {
   const newSupplierRef = useRef<HTMLInputElement>(null);
 
   const [dbStores, setDbStores] = useState<any[]>([]);
+  const [newProductStoreId, setNewProductStoreId] = useState<string>("");
 
   // Campos de estoque controlados por estado independente do react-hook-form
   const [invLocation, setInvLocation] = useState("");
@@ -193,6 +194,7 @@ export function ProductsPage() {
       if (storesData && storesData.length > 0) {
         setDbStores(storesData);
         setSelectedStoreId((prev) => prev || storesData[0].id);
+        setNewProductStoreId((prev) => prev || storesData[0].id);
       }
     }
     fetchOptions();
@@ -656,11 +658,12 @@ export function ProductsPage() {
             if (mfError) throw mfError;
 
             const activeStores = dbStores.length > 0 ? dbStores : stores;
-            const inventoryRows = activeStores.map((store: any, i: number) => ({
+            const targetStoreId = newProductStoreId || activeStores[0]?.id;
+            const inventoryRows = activeStores.map((store: any) => ({
               manufacturer_id: mf.id,
               store_id: store.id,
               location: invLocation,
-              stock: i === 0 ? invQuantity : 0,
+              stock: store.id === targetStoreId ? invQuantity : 0,
               min_quantity: invMinimum,
             }));
             const { error: invError } = await supabase
@@ -1005,6 +1008,20 @@ export function ProductsPage() {
         )}
 
         <fieldset disabled={viewOnly} className="contents">
+        {!isEditing && (dbStores.length > 0 ? dbStores : stores).length > 1 && (
+          <div className="mb-4">
+            <FormField label="Adicionar estoque em">
+              <Select
+                value={newProductStoreId}
+                onChange={(e) => setNewProductStoreId(e.target.value)}
+              >
+                {(dbStores.length > 0 ? dbStores : stores).map((store: any) => (
+                  <option key={store.id} value={store.id}>{store.name}</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+        )}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <FormField label="Localização">
             <Input value={invLocation} onChange={(e) => setInvLocation(e.target.value)} />
