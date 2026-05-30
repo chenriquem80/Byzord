@@ -621,39 +621,32 @@ export function EntryPage() {
                       {currentLabel.productCode}
                     </p>
 
-                    <div className="mt-7 space-y-3">
-                      <div>
-                        <p className="text-[13px] font-medium">Estocagem:</p>
-                        <p className="mt-1 text-[28px] font-semibold leading-none">
-                          {currentLabel.location}
+                    <div className="mt-7 space-y-1 text-[18px] leading-tight">
+                      <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
+                      <p>{currentLabel.yearRange}</p>
+                      <p>{currentLabel.feature}</p>
+                      <p>{currentLabel.manufacturer}</p>
+                      <p>{currentLabel.purchaseSummary}</p>
+                    </div>
+
+                    {lastItem.product.barcode && (
+                      <div className="mt-6 rounded-[14px] border-2 border-slate-950 p-3 text-center">
+                        <div className="flex justify-center overflow-hidden">
+                          <Barcode
+                            value={lastItem.product.barcode}
+                            format="CODE128"
+                            width={1.6}
+                            height={60}
+                            fontSize={11}
+                            margin={0}
+                            background="transparent"
+                          />
+                        </div>
+                        <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                          {currentLabel.storeName}
                         </p>
                       </div>
-
-                      <div className="space-y-1 text-[18px] leading-tight">
-                        <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
-                        <p>{currentLabel.yearRange}</p>
-                        <p>{currentLabel.feature}</p>
-                        <p>{currentLabel.manufacturer}</p>
-                        <p>{currentLabel.purchaseSummary}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 rounded-[14px] border-2 border-slate-950 p-3 text-center">
-                      <div className="flex justify-center overflow-hidden">
-                        <Barcode
-                          value={lastItem.product.barcode || "0000000000000"}
-                          format="EAN13"
-                          width={1.6}
-                          height={60}
-                          fontSize={11}
-                          margin={0}
-                          background="transparent"
-                        />
-                      </div>
-                      <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                        {currentLabel.storeName}
-                      </p>
-                    </div>
+                    )}
                   </div>
 
                   <div className="mt-4">

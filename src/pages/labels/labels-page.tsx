@@ -17,26 +17,19 @@ function LabelContent({ label }: { label: LabelRecord }) {
         {label.productCode}
       </p>
 
-      <div className="mt-7 space-y-3">
-        <div>
-          <p className="text-[13px] font-medium">Estocagem:</p>
-          <p className="mt-1 text-[28px] font-semibold leading-none">{label.location}</p>
-        </div>
-
-        <div className="space-y-1 text-[18px] leading-tight">
-          <p>{label.vehicleLabel.toLowerCase()}</p>
-          <p>{label.yearRange}</p>
-          <p>{label.feature}</p>
-          <p>{label.manufacturer}</p>
-          <p>{label.purchaseSummary}</p>
-        </div>
+      <div className="mt-7 space-y-1 text-[18px] leading-tight">
+        <p>{label.vehicleLabel.toLowerCase()}</p>
+        <p>{label.yearRange}</p>
+        <p>{label.feature}</p>
+        <p>{label.manufacturer}</p>
+        <p>{label.purchaseSummary}</p>
       </div>
 
       {label.barcode && (
         <div className="mt-6 flex justify-center rounded-[14px] border-2 border-slate-950 p-3">
           <Barcode
             value={label.barcode}
-            format="EAN13"
+            format="CODE128"
             width={1.5}
             height={60}
             fontSize={12}
