@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Check, Pencil, RefreshCw, X } from "lucide-react";
+import { Check, Download, Pencil, RefreshCw, X } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
@@ -286,6 +286,47 @@ export function StockPage() {
     [],
   );
 
+  function exportCSV() {
+    const store1Name = stores[0]?.name ?? "Loja 1";
+    const store2Name = stores[1]?.name ?? "Loja 2";
+    const headers = [
+      "Código", "Produto", "Tipo", "Característica", "Fabricante",
+      store1Name, store2Name, "Total",
+      "Preço Venda", "Custo", "Última Compra", "Fornecedor", "Veículos Compatíveis",
+    ];
+    const escape = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const csvRows = rows.map((r) => {
+      const mf = r.product.manufacturers.find((m) => m.id === r.manufacturerId);
+      const compat = r.product.compatibilities
+        .map((c) => `${c.automaker} ${c.model} ${c.generation} ${c.startYear}/${c.endYear}`.trim())
+        .join(" | ");
+      return [
+        escape(r.code),
+        escape(r.productName),
+        escape(r.product.glassType),
+        escape(r.characteristic),
+        escape(r.manufacturer),
+        r.store1Quantity,
+        r.store2Quantity,
+        r.totalQuantity,
+        escape(r.price.toFixed(2)),
+        escape(r.cost.toFixed(2)),
+        escape(r.lastPurchaseDate),
+        escape(mf?.supplier ?? ""),
+        escape(compat),
+      ].join(";");
+    });
+    const bom = "﻿";
+    const content = bom + [headers.map((h) => `"${h}"`).join(";"), ...csvRows].join("\n");
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `produtos_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-6">
             <SectionCard
@@ -314,6 +355,10 @@ export function StockPage() {
             <Button size="sm" variant="outline" onClick={fetchData} disabled={loading}>
               <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
               Atualizar
+            </Button>
+            <Button size="sm" variant="outline" onClick={exportCSV} disabled={loading || rows.length === 0}>
+              <Download className="size-3.5" />
+              Exportar CSV
             </Button>
             <Badge className="bg-rose-100 text-rose-700">{rows.filter((item) => item.totalQuantity === 0).length} zerados</Badge>
           </div>
