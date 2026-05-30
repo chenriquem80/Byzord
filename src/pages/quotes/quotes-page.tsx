@@ -134,11 +134,13 @@ export function QuotesPage() {
     );
   }, [selectedProduct, selectedManufacturer]);
 
-  // Usa o primeiro produto da lista filtrada pelo tipo de vidro para garantir consistência com o dropdown
+  // Combina tipo do produto + nome para melhorar a busca nos marketplaces
   const mlSearchQuery = useMemo(() => {
     const product = filteredProducts.find((p) => p.id === selectedProductId) ?? filteredProducts[0];
-    return product?.name ?? "";
-  }, [filteredProducts, selectedProductId]);
+    if (!product) return "";
+    const parts = [glassTypeFilter || product.glassType, product.name].filter(Boolean);
+    return parts.join(" ");
+  }, [filteredProducts, selectedProductId, glassTypeFilter]);
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const term = e.target.value;
@@ -212,7 +214,7 @@ export function QuotesPage() {
             )}
           </FormField>
 
-          <FormField label="Tipo de vidro">
+          <FormField label="Tipo do produto">
             <Select
               value={glassTypeFilter}
               onChange={(e) => setGlassTypeFilter(e.target.value)}
