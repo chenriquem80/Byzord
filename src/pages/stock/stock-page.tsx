@@ -286,7 +286,6 @@ export function StockPage() {
           </span>
         ),
       },
-      { accessorKey: "code", header: "Código" },
       { accessorKey: "manufacturer", header: "Fabricante" },
       {
         accessorKey: "price",
