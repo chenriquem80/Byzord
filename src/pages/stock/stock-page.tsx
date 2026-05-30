@@ -280,9 +280,14 @@ export function StockPage() {
           <span
             onContextMenu={(e) => handleContextMenu(e, row.original)}
             className="cursor-context-menu select-none"
-            title="Clique com botão direito para editar"
           >
-            {row.original.productName}
+            <button
+              type="button"
+              className="text-left underline-offset-2 hover:underline hover:text-primary"
+              onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}&view=1`)}
+            >
+              {row.original.productName}
+            </button>
           </span>
         ),
       },

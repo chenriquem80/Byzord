@@ -109,6 +109,8 @@ export function ProductsPage() {
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("id");
   const manufacturerId = searchParams.get("mf");
+  const viewOnly = searchParams.get("view") === "1";
+  const isReadOnly = readOnly || viewOnly;
   const [savedMessage, setSavedMessage] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
@@ -739,17 +741,22 @@ export function ProductsPage() {
     <div className="space-y-6">
       {/* Dados do Produto */}
       <SectionCard
-        title={isEditing ? "Editar Produto" : "Novo Produto"}
-        description=""
+        title={isEditing ? (viewOnly ? "Visualizar Produto" : "Editar Produto") : "Novo Produto"}
+        description={viewOnly ? "Modo somente leitura — nenhuma alteração será salva." : ""}
         action={
           <div className="flex items-center gap-3">
+            {viewOnly && (
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                Somente leitura
+              </span>
+            )}
             {savedMessage && (
               <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span>
             )}
             {saveError && (
               <span className="text-sm font-medium text-rose-600">{saveError}</span>
             )}
-            {!readOnly && (
+            {!isReadOnly && (
               <Button size="lg" onClick={form.handleSubmit(handleSave as any, handleValidationError as any)}>
                 Salvar produto
               </Button>
@@ -757,6 +764,7 @@ export function ProductsPage() {
           </div>
         }
       >
+        <fieldset disabled={viewOnly} className="contents">
         <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {/* Nome em linha completa no topo */}
           <FormField label="Nome do produto" error={form.formState.errors.name?.message} className="md:col-span-2 xl:col-span-4">
@@ -944,6 +952,7 @@ export function ProductsPage() {
             </div>
           </FormField>
         </form>
+        </fieldset>
       </SectionCard>
 
       {/* Estoque */}
@@ -995,6 +1004,7 @@ export function ProductsPage() {
           </div>
         )}
 
+        <fieldset disabled={viewOnly} className="contents">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <FormField label="Localização">
             <Input value={invLocation} onChange={(e) => setInvLocation(e.target.value)} />
@@ -1012,6 +1022,7 @@ export function ProductsPage() {
             </Select>
           </FormField>
         </div>
+        </fieldset>
       </SectionCard>
 
       {/* Preço */}
@@ -1151,7 +1162,7 @@ export function ProductsPage() {
                       </p>
                       {item.note ? <p className="mt-1 text-sm text-slate-500">{item.note}</p> : null}
                     </div>
-                    {!readOnly && (
+                    {!isReadOnly && (
                       <div className="flex shrink-0 gap-1">
                         <button
                           type="button"
@@ -1244,7 +1255,7 @@ export function ProductsPage() {
                 </div>
               )}
 
-              {!readOnly && !showAddVehicle && (
+              {!isReadOnly && !showAddVehicle && (
                 <Button type="button" variant="outline" onClick={() => setShowAddVehicle(true)}>
                   Adicionar compatibilidade
                 </Button>
@@ -1298,15 +1309,17 @@ export function ProductsPage() {
                   className="hidden"
                   onChange={handlePhotoUpload}
                 />
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="flex h-full min-h-40 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-sm text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
-                >
-                  <ImagePlus className="size-6 text-slate-400" />
-                  {uploadingPhoto ? "Enviando..." : "Adicionar foto"}
-                </button>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="flex h-full min-h-40 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-sm text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    <ImagePlus className="size-6 text-slate-400" />
+                    {uploadingPhoto ? "Enviando..." : "Adicionar foto"}
+                  </button>
+                )}
               </div>
             </SectionCard>
 
