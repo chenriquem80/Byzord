@@ -13,6 +13,7 @@ type Manufacturer = Product["manufacturers"][0];
 
 export function TransferPage() {
   const [query, setQuery] = useState("");
+  const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedManufacturerId, setSelectedManufacturerId] = useState("");
   const [fromStoreId, setFromStoreId] = useState("");
@@ -107,14 +108,21 @@ export function TransferPage() {
   const fromStore = allStores.find((s) => s.id === fromStoreId);
   const toStore = allStores.find((s) => s.id === toStoreId);
 
+  const glassTypes = useMemo(
+    () => [...new Set(allProducts.map((p) => p.glassType).filter(Boolean))].sort(),
+    [allProducts],
+  );
+
   const searchResults = useMemo(() => {
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    let pool = allProducts;
+    if (glassTypeFilter) pool = pool.filter((p) => p.glassType === glassTypeFilter);
     if (terms.length === 0) return [];
-    return allProducts.filter((p) => {
+    return pool.filter((p) => {
       const text = `${p.internalCode} ${p.name} ${p.description} ${p.glassType} ${p.feature} ${p.brand}`.toLowerCase();
       return terms.every((t) => text.includes(t));
     });
-  }, [query, allProducts]);
+  }, [query, glassTypeFilter, allProducts]);
 
   const selectedManufacturer: Manufacturer | undefined = selectedProduct?.manufacturers.find(
     (m) => m.id === selectedManufacturerId,
@@ -217,41 +225,60 @@ export function TransferPage() {
         description="Busque o produto pela descrição e transfira o estoque entre as lojas."
       >
         <div className="space-y-6">
-          {/* Busca */}
-          <div className="relative">
-            <FormField label="Buscar produto">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setSelectedProduct(null);
-                    setSuccessMessage(null);
-                    setErrorMessage(null);
-                  }}
-                  placeholder="Digite a descrição, tipo ou marca..."
-                  className="pl-10"
-                />
-              </div>
+          {/* Filtros + Busca */}
+          <div className="grid gap-3 md:grid-cols-[auto_1fr]">
+            <FormField label="Tipo do produto">
+              <Select
+                value={glassTypeFilter}
+                onChange={(e) => {
+                  setGlassTypeFilter(e.target.value);
+                  setSelectedProduct(null);
+                  setQuery("");
+                }}
+                className="min-w-[180px]"
+              >
+                <option value="">Todos os tipos</option>
+                {glassTypes.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </Select>
             </FormField>
 
-            {searchResults.length > 0 && !selectedProduct && (
-              <div className="absolute z-10 mt-1 w-full rounded-2xl border border-border bg-white shadow-lg">
-                {searchResults.map((product) => (
-                  <button
-                    key={product.id}
-                    className="w-full px-4 py-3 text-left transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-slate-50"
-                    onClick={() => handleSelectProduct(product)}
-                  >
-                    <p className="font-semibold text-slate-900">{product.internalCode} • {product.name}</p>
-                    <p className="text-sm text-slate-500">
-                      {product.glassType} • {product.feature} • {product.brand}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="relative">
+              <FormField label="Buscar produto">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setSelectedProduct(null);
+                      setSuccessMessage(null);
+                      setErrorMessage(null);
+                    }}
+                    placeholder="Digite a descrição, tipo ou marca..."
+                    className="pl-10"
+                  />
+                </div>
+              </FormField>
+
+              {searchResults.length > 0 && !selectedProduct && (
+                <div className="absolute z-10 mt-1 w-full rounded-2xl border border-border bg-white shadow-lg">
+                  {searchResults.map((product) => (
+                    <button
+                      key={product.id}
+                      className="w-full px-4 py-3 text-left transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-slate-50"
+                      onClick={() => handleSelectProduct(product)}
+                    >
+                      <p className="font-semibold text-slate-900">{product.internalCode} • {product.name}</p>
+                      <p className="text-sm text-slate-500">
+                        {product.glassType} • {product.feature} • {product.brand}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {selectedProduct && (
