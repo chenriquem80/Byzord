@@ -87,7 +87,7 @@ export function EntryPage() {
           const manufacturers: Manufacturer[] = mfs.map((mf: any) => {
             const mfId = mf.id;
             const invs = rawInv.filter(
-              (inv: any) => inv.manufacturer_id === mfId || inv.product_manufacturer_id === mfId
+              (inv: any) => inv.manufacturer_id === mfId
             );
             return {
               id: mf.id,
@@ -255,7 +255,6 @@ export function EntryPage() {
                 .eq("id", inv.id);
             } else {
               await supabase.from("product_store_inventory").insert({
-                product_manufacturer_id: item.mf.id,
                 manufacturer_id: item.mf.id,
                 store_id: store.id,
                 stock: qty,
@@ -287,7 +286,6 @@ export function EntryPage() {
                   .eq("id", inv.id);
               } else {
                 await supabase.from("product_store_inventory").insert({
-                  product_manufacturer_id: existingMf.id,
                   manufacturer_id: existingMf.id,
                   store_id: store.id,
                   stock: qty,
@@ -320,7 +318,6 @@ export function EntryPage() {
               const qty = Number(item.quantities[store.id] ?? 0);
               if (qty <= 0) continue;
               await supabase.from("product_store_inventory").insert({
-                product_manufacturer_id: newMfData.id,
                 manufacturer_id: newMfData.id,
                 store_id: store.id,
                 stock: qty,

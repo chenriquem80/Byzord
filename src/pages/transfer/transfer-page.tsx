@@ -49,7 +49,7 @@ export function TransferPage() {
         const manufacturers: Manufacturer[] = mfs.map((mf: any) => {
           const mfId = mf.id;
           const invs = rawInv.filter(
-            (inv: any) => inv.manufacturer_id === mfId || inv.product_manufacturer_id === mfId
+            (inv: any) => inv.manufacturer_id === mfId
           );
           return {
             id: mf.id,
@@ -164,8 +164,8 @@ export function TransferPage() {
       // Busca dados frescos do banco para evitar usar estado desatualizado
       const { data: freshInvData, error: fetchErr } = await supabase
         .from("product_store_inventory")
-        .select("id, stock, store_id, manufacturer_id, product_manufacturer_id")
-        .or(`manufacturer_id.eq.${mfId},product_manufacturer_id.eq.${mfId}`);
+        .select("id, stock, store_id, manufacturer_id")
+        .eq("manufacturer_id", mfId);
       if (fetchErr) throw fetchErr;
 
       const freshFrom = (freshInvData ?? []).find((i: any) => i.store_id === fromStoreId);
@@ -194,7 +194,6 @@ export function TransferPage() {
           .from("product_store_inventory")
           .insert({
             manufacturer_id: mfId,
-            product_manufacturer_id: mfId,
             store_id: toStoreId,
             stock: qty,
             min_quantity: 0,

@@ -255,7 +255,7 @@ export function ProductsPage() {
           notes: pData.notes ?? "",
           manufacturers: mfs.map((mf: any) => {
             const mfInvs = allInvs.filter(
-              (inv: any) => inv.manufacturer_id === mf.id || inv.product_manufacturer_id === mf.id,
+              (inv: any) => inv.manufacturer_id === mf.id,
             );
             return {
               id: mf.id,
@@ -556,13 +556,11 @@ export function ProductsPage() {
           // Atualiza estoque da loja selecionada usando manufacturer_id + store_id como filtro
           const storeId = selectedStoreId || dbStores[0]?.id;
           if (storeId && activeMfId) {
-            const orFilter = `manufacturer_id.eq.${activeMfId},product_manufacturer_id.eq.${activeMfId}`;
-
             // Tenta UPDATE; se não afetar nenhuma linha, faz INSERT
             const { data: updated, error: upErr } = await supabase
               .from("product_store_inventory")
               .update({ stock: invQuantity, min_quantity: invMinimum, location: invLocation })
-              .or(orFilter)
+              .eq("manufacturer_id", activeMfId)
               .eq("store_id", storeId)
               .select("id");
 
@@ -573,7 +571,6 @@ export function ProductsPage() {
                 .from("product_store_inventory")
                 .insert({
                   manufacturer_id: activeMfId,
-                  product_manufacturer_id: activeMfId,
                   store_id: storeId,
                   stock: invQuantity,
                   min_quantity: invMinimum,

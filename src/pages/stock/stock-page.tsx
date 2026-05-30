@@ -118,7 +118,7 @@ export function StockPage() {
       const manufacturers = mfs.map((mf: any) => {
         const mfId = mf.id;
         const invs = rawInv.filter(
-          (inv: any) => inv.manufacturer_id === mfId || inv.product_manufacturer_id === mfId
+          (inv: any) => inv.manufacturer_id === mfId
         );
         const store = stores.find((s: any) => s.id === mf.store_id);
         return {
