@@ -315,7 +315,7 @@ export function QuotesPage() {
         <div className="flex items-center gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-6 text-slate-500">
           <Search className="size-5 shrink-0 text-slate-400" />
           <p className="text-sm">
-            Selecione um <span className="font-semibold text-slate-700">Tipo de vidro</span> para ver a comparação de preços nos marketplaces.
+            Selecione um <span className="font-semibold text-slate-700">Tipo do produto</span> para ver a comparação de preços nos marketplaces.
           </p>
         </div>
       )}
