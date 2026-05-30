@@ -25,8 +25,8 @@ export function TransferPage() {
   const [allProducts, setAllProducts] = useState<Product[]>(mockProducts);
   const [allStores, setAllStores] = useState(mockStores);
 
-  async function fetchData() {
-    if (!supabase) return;
+  async function fetchData(): Promise<Product[]> {
+    if (!supabase) return [];
     const [storesResp, productsResp, mfResp, invResp] = await Promise.all([
       supabase.from("stores").select("*"),
       supabase.from("products").select("*"),
@@ -89,7 +89,9 @@ export function TransferPage() {
         };
       });
       setAllProducts(mapped);
+      return mapped;
     }
+    return [];
   }
 
   useEffect(() => { fetchData(); }, []);
@@ -201,8 +203,10 @@ export function TransferPage() {
         if (err2) throw err2;
       }
 
-      // Recarrega dados para refletir os novos saldos
-      await fetchData();
+      // Recarrega dados e atualiza selectedProduct imediatamente com saldos frescos
+      const freshProducts = await fetchData();
+      const freshProduct = freshProducts.find((p) => p.id === selectedProduct.id);
+      if (freshProduct) setSelectedProduct(freshProduct);
 
       setSuccessMessage(
         `${qty} un. de "${selectedProduct.name}" transferidas de ${fromStore?.name} para ${toStore?.name}.`,
