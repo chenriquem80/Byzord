@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { products, stores } from "@/data/mock-data";
 import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
-import { Check, Pencil, Plus, X } from "lucide-react";
+import { Check, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/database";
 import { productSchema } from "@/lib/schemas";
 import type { Product, VehicleCompatibility } from "@/types/domain";
@@ -197,6 +197,9 @@ export function ProductsPage() {
   }, []);
 
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = currentProduct !== null;
 
@@ -251,7 +254,7 @@ export function ProductsPage() {
           brand: pData.brand ?? "",
           description: pData.description ?? "",
           photos: [],
-          status: pData.status as Product["status"],
+          status: pData.status as Product["status"] ?? "ativo",
           notes: pData.notes ?? "",
           manufacturers: mfs.map((mf: any) => {
             const mfInvs = allInvs.filter(
@@ -303,6 +306,13 @@ export function ProductsPage() {
 
         setCurrentProduct(product);
         form.reset(buildFormValues(product, manufacturerId, firstInv?.storeId ?? null));
+
+        // Carrega fotos do produto
+        const { data: photosData } = await supabase
+          .from("product_photos")
+          .select("url")
+          .eq("product_id", productId);
+        setPhotoUrls((photosData ?? []).map((p: any) => p.url));
       } else {
         const found = products.find((p) => p.id === productId) ?? null;
         setCurrentProduct(found);
@@ -506,6 +516,35 @@ export function ProductsPage() {
     } finally {
       setSavingVehicle(false);
     }
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !supabase || !currentProduct) return;
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${currentProduct.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("product-photos").upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from("product-photos").getPublicUrl(path);
+      const { error: dbErr } = await supabase.from("product_photos").insert({ product_id: currentProduct.id, url: publicUrl });
+      if (dbErr) throw dbErr;
+      setPhotoUrls((prev) => [...prev, publicUrl]);
+    } catch (err: any) {
+      setSaveError(`Erro ao enviar foto: ${err.message}`);
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleDeletePhoto(url: string) {
+    if (!supabase || !currentProduct) return;
+    await supabase.from("product_photos").delete().eq("url", url).eq("product_id", currentProduct.id);
+    const storagePath = url.split("/product-photos/")[1];
+    if (storagePath) await supabase.storage.from("product-photos").remove([storagePath]);
+    setPhotoUrls((prev) => prev.filter((u) => u !== url));
   }
 
   function handleValidationError(errors: FieldErrors<ProductFormValues>) {
@@ -1240,14 +1279,34 @@ export function ProductsPage() {
               description="Imagens do produto para referência visual."
             >
               <div className="grid gap-4 md:grid-cols-2">
-                {currentProduct.photos.map((photo) => (
-                  <div key={photo} className="rounded-3xl border border-dashed border-border bg-slate-50 p-10 text-center text-sm text-slate-500">
-                    Foto do produto
+                {photoUrls.map((url) => (
+                  <div key={url} className="group relative overflow-hidden rounded-2xl border border-border">
+                    <img src={url} alt="Foto do produto" className="h-40 w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePhoto(url)}
+                      className="absolute right-2 top-2 hidden size-7 items-center justify-center rounded-full bg-rose-500 text-white group-hover:flex"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
                   </div>
                 ))}
-                <Button variant="outline" className="h-full min-h-40 border-dashed">
-                  Adicionar foto
-                </Button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="flex h-full min-h-40 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-sm text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <ImagePlus className="size-6 text-slate-400" />
+                  {uploadingPhoto ? "Enviando..." : "Adicionar foto"}
+                </button>
               </div>
             </SectionCard>
 
