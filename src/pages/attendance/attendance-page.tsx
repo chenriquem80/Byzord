@@ -1,13 +1,13 @@
 import { useEffect, useRef, useMemo, useState } from "react";
-import { CalendarClock, Camera, CheckCircle2, MapPin, Plus, ShieldCheck, X } from "lucide-react";
+import { CalendarClock, Camera, Plus, ShieldCheck, X } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { currentUser, attendanceServices } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
-import { cn } from "@/lib/utils";
 import type { ServiceOption } from "@/types/domain";
 
 function formatPlate(value: string) {
@@ -28,8 +28,8 @@ export function AttendancePage() {
   const [videoDone, setVideoDone] = useState(false);
   const [vehiclePhoto, setVehiclePhoto] = useState<string | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  const [observations, setObservations] = useState("");
   const [saved, setSaved] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
 
   // Loja do atendimento
   const [dbStores, setDbStores] = useState<{ id: string; name: string }[]>([]);
@@ -321,75 +321,31 @@ export function AttendancePage() {
                 </div>
               </div>
 
-              <Button
-                size="lg"
-                className="w-full md:w-auto"
-                disabled={!canConfirm}
-                onClick={() => setShowSummary(true)}
-              >
-                Confirmar atendimento
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Funcionário</p>
-                <p className="mt-2 font-semibold text-slate-900">{currentUser.name}</p>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Loja</p>
-                <div className="mt-2 flex items-center gap-2 font-semibold text-slate-900">
-                  <MapPin className="size-4 text-slate-400" />
-                  {selectedStoreName}
-                </div>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Placa</p>
-                <p className="mt-2 font-semibold text-slate-900">{plate || "Não preenchida"}</p>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Serviço</p>
-                <p className="mt-2 font-semibold text-slate-900">
-                  {selectedServiceItem ? selectedServiceItem.title : "Nenhum serviço selecionado"}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Cobrança</p>
-                <p className="mt-2 font-semibold text-slate-900">{billingType || "—"}</p>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Executante</p>
-                <p className="mt-2 font-semibold text-slate-900">{executingEmployee || "—"}</p>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Foto do veículo</p>
-                <div className="mt-2 flex items-center gap-2 font-semibold text-slate-900">
-                  <CheckCircle2 className={cn("size-5", videoDone ? "text-emerald-600" : "text-slate-300")} />
-                  {videoDone ? "OK, foto adicionada" : "Pendente"}
-                </div>
-                {vehiclePhoto && (
-                  <img src={vehiclePhoto} alt="Foto do veículo" className="mt-3 h-20 w-28 rounded-xl border border-border object-cover" />
-                )}
+              {/* Observações */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">Observações</p>
+                <Textarea
+                  value={observations}
+                  onChange={(e) => setObservations(e.target.value)}
+                  placeholder="Informações adicionais sobre o atendimento..."
+                  className="min-h-24"
+                />
               </div>
 
-              <div className="flex flex-col gap-3 md:flex-row">
-                <Button size="lg" variant="outline" onClick={() => setShowSummary(false)}>
-                  Voltar e editar
-                </Button>
+              {saved ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                  Atendimento salvo com sucesso. O estoquista verá este item no menu lateral Pedido.
+                </div>
+              ) : (
                 <Button
                   size="lg"
-                  className="md:flex-1"
+                  className="w-full md:w-auto"
                   disabled={!canConfirm}
                   onClick={handleSave}
                 >
-                  Salvar atendimento pendente
+                  Confirmar atendimento
                 </Button>
-              </div>
-              {saved ? (
-                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
-                  Atendimento salvo como pendente. O estoquista verá este item no menu lateral Pedido.
-                </div>
-              ) : null}
+              )}
             </div>
           )}
         </SectionCard>
