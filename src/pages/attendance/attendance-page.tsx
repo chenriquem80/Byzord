@@ -4,6 +4,7 @@ import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { currentUser, attendanceServices } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,9 @@ export function AttendancePage() {
   const [showAddService, setShowAddService] = useState(false);
   const [newServiceTitle, setNewServiceTitle] = useState("");
   const [newServiceDescription, setNewServiceDescription] = useState("");
+  const [newServiceStoreId, setNewServiceStoreId] = useState("");
   const [addingService, setAddingService] = useState(false);
+  const [dbStores, setDbStores] = useState<{ id: string; name: string }[]>([]);
 
   // Funcionário executante
   const [executingEmployee, setExecutingEmployee] = useState("");
@@ -51,15 +54,19 @@ export function AttendancePage() {
   useEffect(() => {
     async function load() {
       if (!supabase) return;
-      const [{ data: sData }, { data: pData }] = await Promise.all([
+      const [{ data: sData }, { data: pData }, { data: stData }] = await Promise.all([
         supabase.from("services").select("id, title, description").eq("active", true).order("created_at"),
         supabase.from("profiles").select("name").order("name"),
+        supabase.from("stores").select("id, name").order("name"),
       ]);
       if (sData && sData.length > 0) {
         setServices(sData.map((s: any) => ({ id: s.id, title: s.title, description: s.description ?? "" })));
       }
       if (pData) {
         setEmployees(pData.map((p: any) => p.name).filter(Boolean));
+      }
+      if (stData) {
+        setDbStores(stData);
       }
     }
     load();
@@ -95,7 +102,7 @@ export function AttendancePage() {
       if (supabase) {
         const { data, error } = await supabase
           .from("services")
-          .insert({ title, description })
+          .insert({ title, description, store_id: newServiceStoreId || null })
           .select("id")
           .single();
         if (error) throw error;
@@ -109,6 +116,7 @@ export function AttendancePage() {
       }
       setNewServiceTitle("");
       setNewServiceDescription("");
+      setNewServiceStoreId("");
       setShowAddService(false);
     } catch (err) {
       console.error("Erro ao adicionar serviço:", err);
@@ -188,6 +196,15 @@ export function AttendancePage() {
                       placeholder="Descrição (opcional)"
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddService(); } if (e.key === "Escape") setShowAddService(false); }}
                     />
+                    <Select
+                      value={newServiceStoreId}
+                      onChange={(e) => setNewServiceStoreId(e.target.value)}
+                    >
+                      <option value="">Todas as lojas</option>
+                      {dbStores.map((store) => (
+                        <option key={store.id} value={store.id}>{store.name}</option>
+                      ))}
+                    </Select>
                     <div className="flex gap-2">
                       <Button type="button" size="sm" onClick={handleAddService} disabled={addingService || !newServiceTitle.trim()}>
                         <Check className="size-3.5" />
