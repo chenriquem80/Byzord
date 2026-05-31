@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo, useState } from "react";
-import { CalendarClock, Camera, Check, CheckCircle2, MapPin, Plus, ShieldCheck, X } from "lucide-react";
+import { CalendarClock, Camera, CheckCircle2, MapPin, Plus, ShieldCheck, X } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,8 @@ function formatPlate(value: string) {
 export function AttendancePage() {
   const [plate, setPlate] = useState("");
   const [services, setServices] = useState<ServiceOption[]>(attendanceServices);
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [billingType, setBillingType] = useState<"Seguro" | "Particular">("Seguro");
+  const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [billingType, setBillingType] = useState<"Seguro" | "Particular" | "">("");
   const [videoDone, setVideoDone] = useState(false);
   const [vehiclePhoto, setVehiclePhoto] = useState<string | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -48,7 +48,7 @@ export function AttendancePage() {
   const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
 
   const now = useMemo(() => new Date("2026-05-02T14:30:00"), []);
-  const selectedServiceItems = services.filter((item) => selectedServices.includes(item.id));
+  const selectedServiceItem = services.find((item) => item.id === selectedServiceId) ?? null;
   const selectedStoreName = dbStores.find((s) => s.id === selectedAttendanceStoreId)?.name ?? currentUser.storeName;
 
   useEffect(() => {
@@ -60,7 +60,8 @@ export function AttendancePage() {
         supabase.from("stores").select("id, name").order("name"),
       ]);
       if (sData && sData.length > 0) {
-        setServices(sData.map((s: any) => ({ id: s.id, title: s.title, description: s.description ?? "" })));
+        const mapped = sData.map((s: any) => ({ id: s.id, title: s.title, description: s.description ?? "" }));
+        setServices(mapped);
       }
       if (pData) {
         setEmployees(pData.map((p: any) => p.name).filter(Boolean));
@@ -77,13 +78,6 @@ export function AttendancePage() {
     setSaved(true);
   }
 
-  function toggleService(serviceId: string) {
-    setSelectedServices((current) =>
-      current.includes(serviceId)
-        ? current.filter((item) => item !== serviceId)
-        : [...current, serviceId],
-    );
-  }
 
   function handleVehiclePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -109,11 +103,11 @@ export function AttendancePage() {
         if (error) throw error;
         const newSvc: ServiceOption = { id: data.id, title, description };
         setServices((prev) => [...prev, newSvc]);
-        setSelectedServices((prev) => [...prev, data.id]);
+        setSelectedServiceId(data.id);
       } else {
         const newSvc: ServiceOption = { id: `svc-${Date.now()}`, title, description };
         setServices((prev) => [...prev, newSvc]);
-        setSelectedServices((prev) => [...prev, newSvc.id]);
+        setSelectedServiceId(newSvc.id);
       }
       setNewServiceTitle("");
       setNewServiceDescription("");
@@ -126,7 +120,7 @@ export function AttendancePage() {
     }
   }
 
-  const canConfirm = plate && videoDone && selectedServiceItems.length > 0 && executingEmployee.trim() && selectedAttendanceStoreId;
+  const canConfirm = plate && videoDone && selectedServiceId && billingType && executingEmployee.trim() && selectedAttendanceStoreId;
 
   return (
     <div className="space-y-6">
@@ -238,71 +232,28 @@ export function AttendancePage() {
                   </div>
                 )}
 
-                <div className="overflow-hidden rounded-2xl border border-border bg-white divide-y divide-border">
-                  {services.map((item) => {
-                    const isSelected = selectedServices.includes(item.id);
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => toggleService(item.id)}
-                        className={cn(
-                          "flex w-full items-center gap-4 px-4 py-3 text-left transition",
-                          isSelected ? "bg-primary/5" : "hover:bg-slate-50",
-                        )}
-                      >
-                        <div className={cn(
-                          "flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition",
-                          isSelected ? "border-primary bg-primary" : "border-slate-300 bg-white",
-                        )}>
-                          {isSelected && <Check className="size-3 text-white" />}
-                        </div>
-                        <div className="flex-1">
-                          <p className={cn("font-medium", isSelected ? "text-primary" : "text-slate-900")}>
-                            {item.title}
-                          </p>
-                          {item.description && (
-                            <p className="text-sm text-slate-500">{item.description}</p>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <Select
+                  value={selectedServiceId}
+                  onChange={(e) => setSelectedServiceId(e.target.value)}
+                >
+                  <option value="">Selecione o serviço...</option>
+                  {services.map((item) => (
+                    <option key={item.id} value={item.id}>{item.title}</option>
+                  ))}
+                </Select>
               </div>
 
               {/* Tipo do atendimento */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <p className="text-sm font-medium text-slate-700">Tipo do atendimento</p>
-                <div className="overflow-hidden rounded-2xl border border-border bg-white divide-y divide-border">
-                  {(["Seguro", "Particular"] as const).map((item) => {
-                    const isSelected = billingType === item;
-                    return (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setBillingType(item)}
-                        className={cn(
-                          "flex w-full items-center gap-4 px-4 py-3 text-left transition",
-                          isSelected ? "bg-primary/5" : "hover:bg-slate-50",
-                        )}
-                      >
-                        <div className={cn(
-                          "flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition",
-                          isSelected ? "border-primary bg-primary" : "border-slate-300 bg-white",
-                        )}>
-                          {isSelected && <Check className="size-3 text-white" />}
-                        </div>
-                        <div>
-                          <p className={cn("font-medium", isSelected ? "text-primary" : "text-slate-900")}>{item}</p>
-                          <p className="text-sm text-slate-500">
-                            {item === "Seguro" ? "Atendimento ligado a seguradora." : "Atendimento direto do cliente no balcão."}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <Select
+                  value={billingType}
+                  onChange={(e) => setBillingType(e.target.value as "Seguro" | "Particular")}
+                >
+                  <option value="">Selecione o tipo...</option>
+                  <option value="Seguro">Seguro</option>
+                  <option value="Particular">Particular</option>
+                </Select>
               </div>
 
               {/* Funcionário executante */}
@@ -399,14 +350,12 @@ export function AttendancePage() {
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Serviço</p>
                 <p className="mt-2 font-semibold text-slate-900">
-                  {selectedServiceItems.length
-                    ? selectedServiceItems.map((item) => item.title).join(" • ")
-                    : "Nenhum serviço selecionado"}
+                  {selectedServiceItem ? selectedServiceItem.title : "Nenhum serviço selecionado"}
                 </p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Cobrança</p>
-                <p className="mt-2 font-semibold text-slate-900">{billingType}</p>
+                <p className="mt-2 font-semibold text-slate-900">{billingType || "—"}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Executante</p>
