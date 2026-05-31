@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo, useState } from "react";
-import { CalendarClock, Camera, Check, CheckCircle2, Plus, ShieldCheck, X } from "lucide-react";
+import { CalendarClock, Camera, Check, CheckCircle2, MapPin, Plus, ShieldCheck, X } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,14 +13,10 @@ import type { ServiceOption } from "@/types/domain";
 function formatPlate(value: string) {
   const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
   let result = "";
-
   for (let index = 0; index < cleaned.length; index += 1) {
     result += cleaned[index];
-    if (index === 2 && cleaned.length > 3) {
-      result += "-";
-    }
+    if (index === 2 && cleaned.length > 3) result += "-";
   }
-
   return result;
 }
 
@@ -35,13 +31,16 @@ export function AttendancePage() {
   const [saved, setSaved] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
 
+  // Loja do atendimento
+  const [dbStores, setDbStores] = useState<{ id: string; name: string }[]>([]);
+  const [selectedAttendanceStoreId, setSelectedAttendanceStoreId] = useState("");
+
   // Novo serviço
   const [showAddService, setShowAddService] = useState(false);
   const [newServiceTitle, setNewServiceTitle] = useState("");
   const [newServiceDescription, setNewServiceDescription] = useState("");
   const [newServiceStoreId, setNewServiceStoreId] = useState("");
   const [addingService, setAddingService] = useState(false);
-  const [dbStores, setDbStores] = useState<{ id: string; name: string }[]>([]);
 
   // Funcionário executante
   const [executingEmployee, setExecutingEmployee] = useState("");
@@ -50,6 +49,7 @@ export function AttendancePage() {
 
   const now = useMemo(() => new Date("2026-05-02T14:30:00"), []);
   const selectedServiceItems = services.filter((item) => selectedServices.includes(item.id));
+  const selectedStoreName = dbStores.find((s) => s.id === selectedAttendanceStoreId)?.name ?? currentUser.storeName;
 
   useEffect(() => {
     async function load() {
@@ -65,8 +65,9 @@ export function AttendancePage() {
       if (pData) {
         setEmployees(pData.map((p: any) => p.name).filter(Boolean));
       }
-      if (stData) {
+      if (stData && stData.length > 0) {
         setDbStores(stData);
+        setSelectedAttendanceStoreId(stData[0].id);
       }
     }
     load();
@@ -125,11 +126,11 @@ export function AttendancePage() {
     }
   }
 
-  const canConfirm = plate && videoDone && selectedServiceItems.length > 0 && executingEmployee.trim();
+  const canConfirm = plate && videoDone && selectedServiceItems.length > 0 && executingEmployee.trim() && selectedAttendanceStoreId;
 
   return (
     <div className="space-y-6">
-            <div className="grid gap-6">
+      <div className="grid gap-6">
         <SectionCard
           title={showSummary ? "Dados confirmados" : "Atendimento em andamento"}
           description={
@@ -140,10 +141,11 @@ export function AttendancePage() {
         >
           {!showSummary ? (
             <div className="space-y-6">
+              {/* Cabeçalho do usuário */}
               <div className="flex flex-col gap-3 rounded-3xl bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
                 <Badge className="w-fit gap-2 bg-white text-primary">
                   <ShieldCheck className="size-4" />
-                  {currentUser.name} • {currentUser.storeName}
+                  {currentUser.name}
                 </Badge>
                 <Badge className="w-fit gap-2 bg-white text-slate-700">
                   <CalendarClock className="size-4" />
@@ -151,6 +153,27 @@ export function AttendancePage() {
                 </Badge>
               </div>
 
+              {/* Loja do atendimento */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">Loja / Unidade</p>
+                <Select
+                  value={selectedAttendanceStoreId}
+                  onChange={(e) => setSelectedAttendanceStoreId(e.target.value)}
+                >
+                  {dbStores.length > 0 ? (
+                    dbStores.map((store) => (
+                      <option key={store.id} value={store.id}>{store.name}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="pinda">Pinda</option>
+                      <option value="taubate">Taubaté</option>
+                    </>
+                  )}
+                </Select>
+              </div>
+
+              {/* Placa */}
               <div className="space-y-2">
                 <p className="text-sm font-medium text-slate-700">Placa do veículo</p>
                 <Input
@@ -159,12 +182,10 @@ export function AttendancePage() {
                   placeholder="ABC-1D23"
                   className="h-14 text-center text-2xl font-semibold tracking-[0.22em]"
                 />
-                <p className="text-xs text-slate-500">
-                  Máscara Mercosul: `ABC-1D23`
-                </p>
+                <p className="text-xs text-slate-500">Máscara Mercosul: ABC-1D23</p>
               </div>
 
-              {/* Serviços */}
+              {/* Serviços — estilo lista */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-slate-700">Serviço a executar</p>
@@ -217,52 +238,70 @@ export function AttendancePage() {
                   </div>
                 )}
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {services.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleService(item.id)}
-                      className={cn(
-                        "rounded-3xl border p-5 text-left transition",
-                        selectedServices.includes(item.id)
-                          ? "border-primary bg-primary text-white shadow-lg"
-                          : "border-border bg-white hover:border-primary/40 hover:bg-slate-50",
-                      )}
-                    >
-                      <p className="text-lg font-semibold">{item.title}</p>
-                      <p className={cn("mt-2 text-sm", selectedServices.includes(item.id) ? "text-blue-50" : "text-slate-500")}>
-                        {item.description}
-                      </p>
-                    </button>
-                  ))}
+                <div className="overflow-hidden rounded-2xl border border-border bg-white divide-y divide-border">
+                  {services.map((item) => {
+                    const isSelected = selectedServices.includes(item.id);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => toggleService(item.id)}
+                        className={cn(
+                          "flex w-full items-center gap-4 px-4 py-3 text-left transition",
+                          isSelected ? "bg-primary/5" : "hover:bg-slate-50",
+                        )}
+                      >
+                        <div className={cn(
+                          "flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition",
+                          isSelected ? "border-primary bg-primary" : "border-slate-300 bg-white",
+                        )}>
+                          {isSelected && <Check className="size-3 text-white" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className={cn("font-medium", isSelected ? "text-primary" : "text-slate-900")}>
+                            {item.title}
+                          </p>
+                          {item.description && (
+                            <p className="text-sm text-slate-500">{item.description}</p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Tipo do atendimento */}
               <div className="space-y-3">
                 <p className="text-sm font-medium text-slate-700">Tipo do atendimento</p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {(["Seguro", "Particular"] as const).map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setBillingType(item)}
-                      className={cn(
-                        "rounded-3xl border p-5 text-left transition",
-                        billingType === item
-                          ? "border-primary bg-primary text-white shadow-lg"
-                          : "border-border bg-white hover:border-primary/40 hover:bg-slate-50",
-                      )}
-                    >
-                      <p className="text-lg font-semibold">{item}</p>
-                      <p className={cn("mt-2 text-sm", billingType === item ? "text-blue-50" : "text-slate-500")}>
-                        {item === "Seguro"
-                          ? "Atendimento ligado a seguradora."
-                          : "Atendimento direto do cliente no balcão."}
-                      </p>
-                    </button>
-                  ))}
+                <div className="overflow-hidden rounded-2xl border border-border bg-white divide-y divide-border">
+                  {(["Seguro", "Particular"] as const).map((item) => {
+                    const isSelected = billingType === item;
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setBillingType(item)}
+                        className={cn(
+                          "flex w-full items-center gap-4 px-4 py-3 text-left transition",
+                          isSelected ? "bg-primary/5" : "hover:bg-slate-50",
+                        )}
+                      >
+                        <div className={cn(
+                          "flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition",
+                          isSelected ? "border-primary bg-primary" : "border-slate-300 bg-white",
+                        )}>
+                          {isSelected && <Check className="size-3 text-white" />}
+                        </div>
+                        <div>
+                          <p className={cn("font-medium", isSelected ? "text-primary" : "text-slate-900")}>{item}</p>
+                          <p className="text-sm text-slate-500">
+                            {item === "Seguro" ? "Atendimento ligado a seguradora." : "Atendimento direto do cliente no balcão."}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -301,9 +340,7 @@ export function AttendancePage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-lg font-semibold text-slate-900">Foto do veículo</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Tire uma foto do veículo antes de prosseguir.
-                    </p>
+                    <p className="mt-1 text-sm text-slate-500">Tire uma foto do veículo antes de prosseguir.</p>
                   </div>
                   <div className="flex flex-col items-end gap-3">
                     <input
@@ -350,7 +387,10 @@ export function AttendancePage() {
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Loja</p>
-                <p className="mt-2 font-semibold text-slate-900">{currentUser.storeName}</p>
+                <div className="mt-2 flex items-center gap-2 font-semibold text-slate-900">
+                  <MapPin className="size-4 text-slate-400" />
+                  {selectedStoreName}
+                </div>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Placa</p>
@@ -408,5 +448,3 @@ export function AttendancePage() {
     </div>
   );
 }
-
-
