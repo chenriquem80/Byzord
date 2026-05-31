@@ -154,26 +154,30 @@ export function ProductsPage() {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [addingVehicle, setAddingVehicle] = useState(false);
   const [vehicleForm, setVehicleForm] = useState({
-    automaker: "", model: "", generation: "",
+    automaker: "", model: "",
     startYear: String(new Date().getFullYear()),
     endYear: String(new Date().getFullYear()),
-    version: "", note: "",
+    version: "",
   });
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [editVehicleForm, setEditVehicleForm] = useState({
-    automaker: "", model: "", generation: "",
-    startYear: "", endYear: "", version: "", note: "",
+    automaker: "", model: "",
+    startYear: "", endYear: "", version: "",
   });
   const [savingVehicle, setSavingVehicle] = useState(false);
+  const [knownAutomakers, setKnownAutomakers] = useState<string[]>([]);
+  const [automakerDropdownOpen, setAutomakerDropdownOpen] = useState(false);
+  const [editAutomakerDropdownOpen, setEditAutomakerDropdownOpen] = useState(false);
 
   useEffect(() => {
     async function fetchOptions() {
       if (!supabase) return;
-      const [{ data: pData }, { data: mfData }, { data: storesData }, { data: suppData }] = await Promise.all([
+      const [{ data: pData }, { data: mfData }, { data: storesData }, { data: suppData }, { data: vehiclesData }] = await Promise.all([
         supabase.from("products").select("glass_type, feature"),
         supabase.from("product_manufacturers").select("manufacturer, supplier"),
         supabase.from("stores").select("id, name, code"),
         supabase.from("suppliers").select("name"),
+        supabase.from("vehicles").select("automaker"),
       ]);
       if (pData) {
         const dbTypes = pData.map((r: any) => r.glass_type).filter(Boolean);
@@ -195,6 +199,10 @@ export function ProductsPage() {
         setDbStores(storesData);
         setSelectedStoreId((prev) => prev || storesData[0].id);
         setNewProductStoreId((prev) => prev || storesData[0].id);
+      }
+      if (vehiclesData) {
+        const dbAutomakers = vehiclesData.map((r: any) => r.automaker).filter(Boolean);
+        setKnownAutomakers([...new Set<string>(dbAutomakers)]);
       }
     }
     fetchOptions();
@@ -409,7 +417,6 @@ export function ProductsPage() {
         .insert({
           automaker: vehicleForm.automaker.trim(),
           model: vehicleForm.model.trim(),
-          generation: vehicleForm.generation.trim(),
           start_year: Number(vehicleForm.startYear) || new Date().getFullYear(),
           end_year: Number(vehicleForm.endYear) || new Date().getFullYear(),
           version: vehicleForm.version.trim(),
@@ -420,25 +427,27 @@ export function ProductsPage() {
 
       const { data: compRow, error: cErr } = await supabase
         .from("product_vehicle_compatibility")
-        .insert({ product_id: currentProduct.id, vehicle_id: newVehicle.id, note: vehicleForm.note.trim() || null })
+        .insert({ product_id: currentProduct.id, vehicle_id: newVehicle.id })
         .select("id")
         .single();
       if (cErr) throw cErr;
 
+      const newAutomaker = vehicleForm.automaker.trim();
+      setKnownAutomakers((prev) => prev.includes(newAutomaker) ? prev : [...prev, newAutomaker]);
       setCompatibilities((prev) => [
         ...prev,
         {
           id: compRow.id,
-          automaker: vehicleForm.automaker.trim(),
+          automaker: newAutomaker,
           model: vehicleForm.model.trim(),
-          generation: vehicleForm.generation.trim(),
+          generation: "",
           startYear: Number(vehicleForm.startYear),
           endYear: Number(vehicleForm.endYear),
           version: vehicleForm.version.trim(),
-          note: vehicleForm.note.trim(),
+          note: "",
         },
       ]);
-      setVehicleForm({ automaker: "", model: "", generation: "", startYear: String(new Date().getFullYear()), endYear: String(new Date().getFullYear()), version: "", note: "" });
+      setVehicleForm({ automaker: "", model: "", startYear: String(new Date().getFullYear()), endYear: String(new Date().getFullYear()), version: "" });
       setShowAddVehicle(false);
     } catch (err) {
       console.error("Erro ao adicionar veículo:", err);
@@ -458,11 +467,9 @@ export function ProductsPage() {
     setEditVehicleForm({
       automaker: item.automaker,
       model: item.model,
-      generation: item.generation,
       startYear: String(item.startYear),
       endYear: String(item.endYear),
       version: item.version,
-      note: item.note ?? "",
     });
   }
 
@@ -483,7 +490,6 @@ export function ProductsPage() {
           .update({
             automaker: editVehicleForm.automaker.trim(),
             model: editVehicleForm.model.trim(),
-            generation: editVehicleForm.generation.trim(),
             start_year: Number(editVehicleForm.startYear) || new Date().getFullYear(),
             end_year: Number(editVehicleForm.endYear) || new Date().getFullYear(),
             version: editVehicleForm.version.trim(),
@@ -492,24 +498,20 @@ export function ProductsPage() {
         if (error) throw error;
       }
 
-      // Atualiza a nota na tabela de compatibilidade
-      await supabase
-        .from("product_vehicle_compatibility")
-        .update({ note: editVehicleForm.note.trim() || null })
-        .eq("id", editingVehicleId);
-
+      const updatedAutomaker = editVehicleForm.automaker.trim();
+      setKnownAutomakers((prev) => prev.includes(updatedAutomaker) ? prev : [...prev, updatedAutomaker]);
       setCompatibilities((prev) =>
         prev.map((c) =>
           c.id === editingVehicleId
             ? {
                 ...c,
-                automaker: editVehicleForm.automaker.trim(),
+                automaker: updatedAutomaker,
                 model: editVehicleForm.model.trim(),
-                generation: editVehicleForm.generation.trim(),
+                generation: "",
                 startYear: Number(editVehicleForm.startYear),
                 endYear: Number(editVehicleForm.endYear),
                 version: editVehicleForm.version.trim(),
-                note: editVehicleForm.note.trim(),
+                note: "",
               }
             : c
         )
@@ -1106,24 +1108,36 @@ export function ProductsPage() {
                     <p className="font-semibold text-slate-800">Editar veículo compatível</p>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       <FormField label="Fabricante">
-                        <Input
-                          value={editVehicleForm.automaker}
-                          onChange={(e) => setEditVehicleForm((f) => ({ ...f, automaker: e.target.value }))}
-                          placeholder="Ex: Chevrolet"
-                        />
+                        <div className="relative">
+                          <Input
+                            value={editVehicleForm.automaker}
+                            onChange={(e) => { setEditVehicleForm((f) => ({ ...f, automaker: e.target.value })); setEditAutomakerDropdownOpen(true); }}
+                            onFocus={() => setEditAutomakerDropdownOpen(true)}
+                            onBlur={() => setTimeout(() => setEditAutomakerDropdownOpen(false), 150)}
+                            placeholder="Ex: Chevrolet"
+                          />
+                          {editAutomakerDropdownOpen && knownAutomakers.filter((a) => !editVehicleForm.automaker || a.toLowerCase().includes(editVehicleForm.automaker.toLowerCase())).length > 0 && (
+                            <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border bg-white shadow-lg">
+                              {knownAutomakers
+                                .filter((a) => !editVehicleForm.automaker || a.toLowerCase().includes(editVehicleForm.automaker.toLowerCase()))
+                                .map((a) => (
+                                  <li
+                                    key={a}
+                                    className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-50"
+                                    onMouseDown={() => { setEditVehicleForm((f) => ({ ...f, automaker: a })); setEditAutomakerDropdownOpen(false); }}
+                                  >
+                                    {a}
+                                  </li>
+                                ))}
+                            </ul>
+                          )}
+                        </div>
                       </FormField>
                       <FormField label="Modelo">
                         <Input
                           value={editVehicleForm.model}
                           onChange={(e) => setEditVehicleForm((f) => ({ ...f, model: e.target.value }))}
                           placeholder="Ex: Celta"
-                        />
-                      </FormField>
-                      <FormField label="Geração">
-                        <Input
-                          value={editVehicleForm.generation}
-                          onChange={(e) => setEditVehicleForm((f) => ({ ...f, generation: e.target.value }))}
-                          placeholder="Ex: 2001/2006"
                         />
                       </FormField>
                       <FormField label="Ano inicial">
@@ -1148,13 +1162,6 @@ export function ProductsPage() {
                         />
                       </FormField>
                     </div>
-                    <FormField label="Observação (opcional)">
-                      <Input
-                        value={editVehicleForm.note}
-                        onChange={(e) => setEditVehicleForm((f) => ({ ...f, note: e.target.value }))}
-                        placeholder="Informação adicional"
-                      />
-                    </FormField>
                     <div className="flex gap-2">
                       <Button
                         type="button"
@@ -1208,24 +1215,36 @@ export function ProductsPage() {
                   <p className="font-semibold text-slate-800">Novo veículo compatível</p>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <FormField label="Fabricante">
-                      <Input
-                        value={vehicleForm.automaker}
-                        onChange={(e) => setVehicleForm((f) => ({ ...f, automaker: e.target.value }))}
-                        placeholder="Ex: Chevrolet"
-                      />
+                      <div className="relative">
+                        <Input
+                          value={vehicleForm.automaker}
+                          onChange={(e) => { setVehicleForm((f) => ({ ...f, automaker: e.target.value })); setAutomakerDropdownOpen(true); }}
+                          onFocus={() => setAutomakerDropdownOpen(true)}
+                          onBlur={() => setTimeout(() => setAutomakerDropdownOpen(false), 150)}
+                          placeholder="Ex: Chevrolet"
+                        />
+                        {automakerDropdownOpen && knownAutomakers.filter((a) => !vehicleForm.automaker || a.toLowerCase().includes(vehicleForm.automaker.toLowerCase())).length > 0 && (
+                          <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border bg-white shadow-lg">
+                            {knownAutomakers
+                              .filter((a) => !vehicleForm.automaker || a.toLowerCase().includes(vehicleForm.automaker.toLowerCase()))
+                              .map((a) => (
+                                <li
+                                  key={a}
+                                  className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-50"
+                                  onMouseDown={() => { setVehicleForm((f) => ({ ...f, automaker: a })); setAutomakerDropdownOpen(false); }}
+                                >
+                                  {a}
+                                </li>
+                              ))}
+                          </ul>
+                        )}
+                      </div>
                     </FormField>
                     <FormField label="Modelo">
                       <Input
                         value={vehicleForm.model}
                         onChange={(e) => setVehicleForm((f) => ({ ...f, model: e.target.value }))}
                         placeholder="Ex: Celta"
-                      />
-                    </FormField>
-                    <FormField label="Geração">
-                      <Input
-                        value={vehicleForm.generation}
-                        onChange={(e) => setVehicleForm((f) => ({ ...f, generation: e.target.value }))}
-                        placeholder="Ex: 2001/2006"
                       />
                     </FormField>
                     <FormField label="Ano inicial">
@@ -1250,13 +1269,6 @@ export function ProductsPage() {
                       />
                     </FormField>
                   </div>
-                  <FormField label="Observação (opcional)">
-                    <Input
-                      value={vehicleForm.note}
-                      onChange={(e) => setVehicleForm((f) => ({ ...f, note: e.target.value }))}
-                      placeholder="Informação adicional"
-                    />
-                  </FormField>
                   <div className="flex gap-2">
                     <Button
                       type="button"
