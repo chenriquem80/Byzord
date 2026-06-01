@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo, useState } from "react";
-import { CalendarClock, Camera, Plus, ShieldCheck, X } from "lucide-react";
+import { CalendarClock, Camera, Check, Plus, ShieldCheck, X } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,9 +48,8 @@ export function AttendancePage() {
   const [employees, setEmployees] = useState<string[]>([]);
   const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
 
+  const [showSummary] = useState(false);
   const now = useMemo(() => new Date("2026-05-02T14:30:00"), []);
-  const selectedServiceItem = services.find((item) => item.id === selectedServiceId) ?? null;
-  const selectedStoreName = dbStores.find((s) => s.id === selectedAttendanceStoreId)?.name ?? currentUser.storeName;
 
   useEffect(() => {
     async function load() {
@@ -358,7 +357,7 @@ export function AttendancePage() {
                 </Button>
               )}
             </div>
-          )}
+          ) : null}
         </SectionCard>
       </div>
     </div>
