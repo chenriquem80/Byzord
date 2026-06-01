@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { customers, products as mockProducts, stores as mockStores } from "@/data/mock-data";
+import { formatCurrency } from "@/lib/format";
 import { saleSchema } from "@/lib/schemas";
 import { supabase } from "@/lib/database";
 import type { Product } from "@/types/domain";
