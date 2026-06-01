@@ -27,6 +27,7 @@ type SaleFormValues = {
   storeId: string;
   productId: string;
   manufacturer: string;
+  productName: string;
   customer: string;
   customerVehicle: string;
   plate: string;
@@ -46,6 +47,7 @@ export function ExitPage() {
       storeId: mockStores[0].id,
       productId: mockProducts[0].id,
       manufacturer: mockProducts[0].manufacturers[1].manufacturer,
+      productName: "",
       customer: customers[0].name,
       customerVehicle: customers[0].vehicleModel,
       plate: customers[0].plate,
@@ -455,6 +457,9 @@ export function ExitPage() {
                 </option>
               ))}
             </Select>
+          </FormField>
+          <FormField label="Produto">
+            <Input {...form.register("productName")} placeholder="Descrição do produto..." />
           </FormField>
           <FormField label="Quantidade" error={form.formState.errors.quantity?.message}>
             <Input type="number" {...form.register("quantity")} />

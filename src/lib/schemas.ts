@@ -39,6 +39,7 @@ export const saleSchema = z.object({
   storeId: z.string().min(1, "Selecione a loja."),
   productId: z.string().min(1, "Selecione um produto."),
   manufacturer: z.string().min(1, "Selecione o fabricante."),
+  productName: z.string().optional().default(""),
   customer: z.string().optional().default(""),
   customerVehicle: z.string().optional().default(""),
   plate: z.string().optional().default(""),
