@@ -456,47 +456,15 @@ export function ExitPage() {
               ))}
             </Select>
           </FormField>
-          <FormField label="Cliente" error={form.formState.errors.customer?.message}>
-            <Select {...form.register("customer")}>
-              {customers.map((item) => (
-                <option key={item.id} value={item.name}>
-                  {item.name}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-          <FormField label="Veículo do cliente" error={form.formState.errors.customerVehicle?.message}>
-            <Input {...form.register("customerVehicle")} />
-          </FormField>
-          <FormField label="Placa" error={form.formState.errors.plate?.message}>
-            <Input {...form.register("plate")} />
-          </FormField>
-          <FormField label="Forma de pagamento" error={form.formState.errors.paymentMethod?.message}>
-            <Select {...form.register("paymentMethod")}>
-              {["Dinheiro", "Pix", "Cartão", "Boleto"].map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </Select>
-          </FormField>
           <FormField label="Quantidade" error={form.formState.errors.quantity?.message}>
             <Input type="number" {...form.register("quantity")} />
           </FormField>
           <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
             <Input type="number" step="0.01" {...form.register("price")} />
           </FormField>
-          <FormField label="Desconto" error={form.formState.errors.discount?.message}>
-            <Input type="number" step="0.01" {...form.register("discount")} />
-          </FormField>
           {currentUser.allowCostView && manufacturerStock ? (
             <FormField label="Custo visível para este perfil">
               <Input disabled value={formatCurrency(manufacturerStock.cost)} />
-            </FormField>
-          ) : null}
-          {selectedInventory ? (
-            <FormField label="Localização na loja">
-              <Input disabled value={selectedInventory.location} />
             </FormField>
           ) : null}
           <FormField label="Observação" className="md:col-span-2 xl:col-span-4">
