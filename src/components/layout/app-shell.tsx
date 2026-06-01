@@ -103,7 +103,7 @@ export function AppShell() {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-transparent text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-transparent text-slate-900">
       <div className="mx-auto flex min-h-screen w-full max-w-[1600px]">
         <aside className="hidden w-80 shrink-0 border-r border-slate-200 bg-[#74777F] px-6 py-8 text-slate-900 lg:block">
           <SidebarContent
@@ -155,7 +155,7 @@ export function AppShell() {
             ) : null}
           </header>
 
-          <main className="min-w-0 flex-1 p-4 md:p-6 xl:p-8">
+          <main className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-6 xl:p-8">
             <Outlet />
           </main>
         </div>
