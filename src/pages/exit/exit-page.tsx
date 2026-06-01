@@ -449,6 +449,9 @@ export function ExitPage() {
             </div>
           </FormField>
 
+          <FormField label="Característica">
+            <Input disabled value={selectedProduct.feature} />
+          </FormField>
           <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
             <Select {...form.register("manufacturer")}>
               {selectedProduct.manufacturers.map((item) => (
