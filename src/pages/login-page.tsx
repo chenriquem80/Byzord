@@ -55,7 +55,7 @@ export function LoginPage() {
               className="mx-auto w-full max-w-[160px] object-contain md:max-w-[280px]"
             />
           </div>
-          <div className="mt-8 hidden space-y-4 md:block">
+          <div className="mt-8 hidden space-y-4 lg:block">
             <p className="text-sm uppercase tracking-[0.28em] text-slate-200">Login</p>
             <h1 className="text-4xl font-bold text-white md:text-5xl">Byzord Auto Vitrais</h1>
             <p className="max-w-lg text-base leading-8 text-slate-100 md:text-lg">
