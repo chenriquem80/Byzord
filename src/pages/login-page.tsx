@@ -47,15 +47,15 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-4 md:p-8">
       <div className="grid w-full max-w-6xl overflow-hidden rounded-[36px] border border-white/70 bg-white shadow-panel lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="bg-[#74777F] p-8 text-white md:p-12">
-          <div className="rounded-[32px] bg-white p-6">
+        <div className="bg-[#74777F] p-6 text-white md:p-12">
+          <div className="rounded-[32px] bg-white p-4 md:p-6">
             <img
               src="/logo.png"
               alt="Byzord Auto Vitrais"
-              className="mx-auto w-full max-w-[280px] object-contain"
+              className="mx-auto w-full max-w-[160px] object-contain md:max-w-[280px]"
             />
           </div>
-          <div className="mt-8 space-y-4">
+          <div className="mt-8 hidden space-y-4 md:block">
             <p className="text-sm uppercase tracking-[0.28em] text-slate-200">Login</p>
             <h1 className="text-4xl font-bold text-white md:text-5xl">Byzord Auto Vitrais</h1>
             <p className="max-w-lg text-base leading-8 text-slate-100 md:text-lg">

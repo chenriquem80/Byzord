@@ -411,13 +411,9 @@ export function ExitPage() {
         title="Registrar saída"
         description="O fluxo está preparado para baixar estoque, registrar saída e gerar movimentação com log."
         action={
-          selectedInventory && selectedInventory.stock > 0 ? (
-            <Badge className="bg-emerald-100 text-emerald-700">
-              Estoque na loja: {selectedInventory.stock}
-            </Badge>
-          ) : (
+          selectedInventory && selectedInventory.stock === 0 ? (
             <Badge className="bg-rose-100 text-rose-700">Venda bloqueada sem estoque</Badge>
-          )
+          ) : undefined
         }
       >
         <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" onSubmit={form.handleSubmit(onSubmit)}>

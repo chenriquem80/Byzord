@@ -260,14 +260,16 @@ export function StockPage() {
     () => [
       {
         accessorKey: "characteristic",
-        header: "Característica",
+        header: () => <span className="block text-center">Característica</span>,
         cell: ({ row }) => (
-          <button
-            className="font-semibold text-primary underline-offset-4 hover:underline"
-            onClick={() => setSelectedProduct(row.original.product)}
-          >
-            {row.original.characteristic}
-          </button>
+          <div className="text-center">
+            <button
+              className="font-semibold text-primary underline-offset-4 hover:underline"
+              onClick={() => setSelectedProduct(row.original.product)}
+            >
+              {row.original.characteristic}
+            </button>
+          </div>
         ),
       },
       { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1" },

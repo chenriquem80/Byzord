@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
-import { Check, Plus, Printer, X } from "lucide-react";
+import { Camera, Check, Plus, Printer, X } from "lucide-react";
 import Barcode from "react-barcode";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,8 @@ export function EntryPage() {
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [note, setNote] = useState("");
+  const [entryPhoto, setEntryPhoto] = useState<string | null>(null);
+  const entryPhotoRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -505,6 +507,43 @@ export function EntryPage() {
                     </FormField>
                     <FormField label="Observação">
                       <Textarea value={note} onChange={(e) => setNote(e.target.value)} />
+                    </FormField>
+                    <FormField label="Foto">
+                      <input
+                        ref={entryPhotoRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setEntryPhoto(ev.target?.result as string);
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                      {entryPhoto ? (
+                        <div className="relative w-fit">
+                          <img
+                            src={entryPhoto}
+                            alt="Foto da entrada"
+                            className="h-24 w-36 rounded-xl border border-border object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setEntryPhoto(null)}
+                            className="absolute -right-2 -top-2 rounded-full border border-border bg-white p-0.5 text-slate-500 shadow hover:text-rose-600"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <Button type="button" variant="outline" className="w-full" onClick={() => entryPhotoRef.current?.click()}>
+                          <Camera className="size-4" />
+                          Adicionar foto
+                        </Button>
+                      )}
                     </FormField>
                   </div>
 
