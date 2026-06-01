@@ -429,7 +429,7 @@ export function ExitPage() {
             </Select>
           </FormField>
 
-          <FormField label="Produto" error={form.formState.errors.productId?.message} className="md:col-span-1 xl:col-span-3">
+          <FormField label="Produto" error={form.formState.errors.productId?.message} className="md:col-span-1 xl:col-span-2">
             <div className="flex gap-2">
               <Select {...form.register("productId")} className="flex-1">
                 {allProducts.map((item) => (
@@ -467,11 +467,6 @@ export function ExitPage() {
           <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
             <Input type="number" step="0.01" {...form.register("price")} />
           </FormField>
-          {currentUser.allowCostView && manufacturerStock ? (
-            <FormField label="Custo visível para este perfil">
-              <Input disabled value={formatCurrency(manufacturerStock.cost)} />
-            </FormField>
-          ) : null}
           <FormField label="Observação" className="md:col-span-2 xl:col-span-4">
             <Textarea {...form.register("note")} />
           </FormField>
