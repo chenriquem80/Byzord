@@ -429,7 +429,7 @@ export function ExitPage() {
             </Select>
           </FormField>
 
-          <FormField label="Produto" error={form.formState.errors.productId?.message}>
+          <FormField label="Produto" error={form.formState.errors.productId?.message} className="md:col-span-1 xl:col-span-3">
             <div className="flex gap-2">
               <Select {...form.register("productId")} className="flex-1">
                 {allProducts.map((item) => (
@@ -457,9 +457,6 @@ export function ExitPage() {
                 </option>
               ))}
             </Select>
-          </FormField>
-          <FormField label="Produto">
-            <Input {...form.register("productName")} placeholder="Descrição do produto..." />
           </FormField>
           <FormField label="Quantidade" error={form.formState.errors.quantity?.message}>
             <Input type="number" {...form.register("quantity")} />
