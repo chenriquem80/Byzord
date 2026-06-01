@@ -429,25 +429,27 @@ export function ExitPage() {
             </Select>
           </FormField>
 
-          <FormField label="Produto" error={form.formState.errors.productId?.message} className="md:col-span-1 xl:col-span-2">
-            <div className="flex gap-2">
-              <Select {...form.register("productId")} className="flex-1">
-                {allProducts.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.internalCode} • {item.name}
-                  </option>
-                ))}
-              </Select>
-              <button
-                type="button"
-                onClick={() => setScannerOpen(true)}
-                title="Escanear código de barras"
-                className="flex shrink-0 items-center justify-center rounded-2xl border border-border bg-white px-3 text-slate-600 transition-colors hover:border-primary hover:text-primary"
-              >
-                <Camera className="size-5" />
-              </button>
-            </div>
-          </FormField>
+          <div className="col-span-2 space-y-2">
+            <FormField label="Produto" error={form.formState.errors.productId?.message}>
+              <div className="flex gap-2">
+                <Select {...form.register("productId")} className="flex-1">
+                  {allProducts.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.internalCode} • {item.name}
+                    </option>
+                  ))}
+                </Select>
+                <button
+                  type="button"
+                  onClick={() => setScannerOpen(true)}
+                  title="Escanear código de barras"
+                  className="flex shrink-0 items-center justify-center rounded-2xl border border-border bg-white px-3 text-slate-600 transition-colors hover:border-primary hover:text-primary"
+                >
+                  <Camera className="size-5" />
+                </button>
+              </div>
+            </FormField>
+          </div>
 
           <FormField label="Característica">
             <Input disabled value={selectedProduct.feature} />
