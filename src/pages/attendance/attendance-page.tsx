@@ -28,6 +28,7 @@ export function AttendancePage() {
   const [videoDone, setVideoDone] = useState(false);
   const [vehiclePhoto, setVehiclePhoto] = useState<string | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  const [serviceDescription, setServiceDescription] = useState("");
   const [observations, setObservations] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -284,6 +285,16 @@ export function AttendancePage() {
                   )}
                 </div>
                 <p className="text-xs text-slate-500">Selecione da lista ou digite o nome do responsável.</p>
+              </div>
+
+              {/* Descrição do serviço */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">Descrição do serviço</p>
+                <Textarea
+                  value={serviceDescription}
+                  onChange={(e) => setServiceDescription(e.target.value)}
+                  placeholder="Descreva o serviço executado..."
+                />
               </div>
 
               {/* Foto do veículo */}
