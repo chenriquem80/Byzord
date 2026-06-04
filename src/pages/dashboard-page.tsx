@@ -18,6 +18,7 @@ type Movement = {
   user_name: string | null;
   quantity: number;
   note: string | null;
+  special_condition: string | null;
   created_at: string;
 };
 
@@ -139,29 +140,46 @@ export function DashboardPage() {
             {loadingMovements ? (
               <p className="py-6 text-center text-sm text-slate-400">Carregando...</p>
             ) : filteredMovements.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400">Nenhuma movimentação nesta data.</p>
+              <p className="py-6 text-center text-sm text-slate-400">
+                Nenhuma movimentação nesta data.{" "}
+                <span className="block mt-1 text-xs text-slate-300">
+                  Certifique-se que a tabela stock_movements foi criada no Supabase.
+                </span>
+              </p>
             ) : (
-              filteredMovements.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 md:flex-row md:items-center md:justify-between"
-                >
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      {item.type} • {item.product_name}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {item.store_name}{item.manufacturer ? ` • ${item.manufacturer}` : ""}{item.user_name ? ` • ${item.user_name}` : ""} • {new Date(item.created_at).toLocaleString("pt-BR")}
-                    </p>
+              filteredMovements.map((item) => {
+                const typeColor =
+                  item.type === "Entrada" ? "bg-emerald-100 text-emerald-700" :
+                  item.type === "Saída" ? "bg-rose-100 text-rose-700" :
+                  "bg-blue-100 text-blue-700";
+                return (
+                  <div
+                    key={item.id}
+                    className="flex flex-col gap-2 rounded-2xl border border-border bg-white p-4 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${typeColor}`}>{item.type}</span>
+                        {item.special_condition && (
+                          <span className="shrink-0 rounded-md bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                            {item.special_condition}
+                          </span>
+                        )}
+                        <p className="truncate font-semibold text-slate-900">{item.product_name}</p>
+                      </div>
+                      <p className="mt-0.5 text-sm text-slate-500">
+                        {item.store_name}{item.manufacturer ? ` • ${item.manufacturer}` : ""}{item.user_name ? ` • ${item.user_name}` : ""} • {new Date(item.created_at).toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                    <div className="text-left md:text-right shrink-0">
+                      <p className={`font-semibold ${item.quantity < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                        {item.quantity > 0 ? "+" : ""}{item.quantity} un.
+                      </p>
+                      {item.note && <p className="text-sm text-slate-400">{item.note}</p>}
+                    </div>
                   </div>
-                  <div className="text-left md:text-right">
-                    <p className={`font-semibold ${item.quantity < 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                      {item.quantity > 0 ? "+" : ""}{item.quantity} un.
-                    </p>
-                    {item.note && <p className="text-sm text-slate-500">{item.note}</p>}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </SectionCard>

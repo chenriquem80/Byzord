@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
+import { currentUser, products as mockProducts, stores as mockStores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
 import type { Product } from "@/types/domain";
 
@@ -221,6 +221,19 @@ export function TransferPage() {
       const freshProducts = await fetchData();
       const freshProduct = freshProducts.find((p) => p.id === selectedProduct.id);
       if (freshProduct) setSelectedProduct(freshProduct);
+
+      // Registra movimentação
+      const { error: mvErr } = await supabase.from("stock_movements").insert({
+        type: "Transferência",
+        product_name: selectedProduct.name,
+        store_name: `${fromStore?.name} → ${toStore?.name}`,
+        manufacturer: selectedManufacturer?.manufacturer ?? "",
+        user_name: currentUser?.name ?? "",
+        quantity: qty,
+        note: `Transferência de ${fromStore?.name} para ${toStore?.name}`,
+        special_condition: null,
+      });
+      if (mvErr) console.error("Erro ao registrar movimentação de transferência:", mvErr.message);
 
       setSuccessMessage(
         `${qty} un. de "${selectedProduct.name}" transferidas de ${fromStore?.name} para ${toStore?.name}.`,

@@ -235,7 +235,7 @@ export function EntryPage() {
       yearRange,
       feature: lastItem.product.feature,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
-      purchaseSummary: `${formatCurrency(lastItem.mf.price)} - ${dateLabel}`,
+      purchaseSummary: `${lastItem.mf.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
     };
   }, [lastItem, selectedManufacturer]);
@@ -403,13 +403,11 @@ export function EntryPage() {
       }
       // Registra movimentação no log
       for (const item of entryItems) {
-        const totalQty = Object.values(item.quantities).reduce((s, v) => s + (Number(v) > 0 ? Number(v) : 0), 0);
-        if (totalQty <= 0) continue;
         const mfName = selectedManufacturer || item.mf.manufacturer;
         for (const store of stores) {
           const qty = Number(item.quantities[store.id] ?? 0);
           if (qty <= 0) continue;
-          await supabase.from("stock_movements").insert({
+          const { error: mvErr } = await supabase.from("stock_movements").insert({
             type: "Entrada",
             product_name: item.product.name,
             store_name: store.name,
@@ -417,7 +415,9 @@ export function EntryPage() {
             user_name: currentUser?.name ?? "",
             quantity: qty,
             note: note || null,
+            special_condition: specialCond,
           });
+          if (mvErr) console.error("Erro ao registrar movimentação de entrada:", mvErr.message);
         }
       }
       setSaveSuccess(true);
