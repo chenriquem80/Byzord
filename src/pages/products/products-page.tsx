@@ -944,7 +944,7 @@ export function ProductsPage() {
               </div>
             )}
           </FormField>
-          <FormField label="Especial">
+          <FormField label="Condição especial">
             <div className="flex flex-row items-center justify-center gap-4 rounded-xl border border-border bg-white px-4 py-2 shadow-sm">
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="checkbox" {...form.register("isTypeB")} className="size-4 accent-primary" />
