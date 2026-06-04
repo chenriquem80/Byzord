@@ -241,6 +241,7 @@ export function EntryPage() {
   async function handleSaveEntry() {
     if (!supabase || entryItems.length === 0) return;
     setSaving(true);
+    const specialCond = isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null;
     try {
       for (const item of entryItems) {
         const isDifferentMf =
@@ -251,7 +252,9 @@ export function EntryPage() {
           for (const store of stores) {
             const qty = Number(item.quantities[store.id] ?? 0);
             if (qty <= 0) continue;
-            const inv = item.mf.inventories.find((i) => i.storeId === store.id);
+            const inv = item.mf.inventories.find(
+              (i) => i.storeId === store.id && (i as any).special_condition === specialCond,
+            );
             if (inv) {
               await supabase
                 .from("product_store_inventory")
@@ -263,26 +266,26 @@ export function EntryPage() {
                 store_id: store.id,
                 stock: qty,
                 min_quantity: 0,
+                special_condition: specialCond,
               });
             }
           }
-          // Atualiza fornecedor e data, mas nunca altera o nome do fabricante
           await supabase
             .from("product_manufacturers")
             .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
             .eq("id", item.mf.id);
         } else {
-          // Fabricante diferente: encontra ou cria o registro para esse fabricante
           const existingMf = item.product.manufacturers.find(
             (m) => m.manufacturer === selectedManufacturer,
           );
 
           if (existingMf) {
-            // Fabricante já existe neste produto — incrementa seu estoque
             for (const store of stores) {
               const qty = Number(item.quantities[store.id] ?? 0);
               if (qty <= 0) continue;
-              const inv = existingMf.inventories.find((i) => i.storeId === store.id);
+              const inv = existingMf.inventories.find(
+                (i) => i.storeId === store.id && (i as any).special_condition === specialCond,
+              );
               if (inv) {
                 await supabase
                   .from("product_store_inventory")
@@ -294,6 +297,7 @@ export function EntryPage() {
                   store_id: store.id,
                   stock: qty,
                   min_quantity: 0,
+                  special_condition: specialCond,
                 });
               }
             }
@@ -302,7 +306,6 @@ export function EntryPage() {
               .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
               .eq("id", existingMf.id);
           } else {
-            // Fabricante novo: cria linha em product_manufacturers
             const { data: newMfData, error: mfErr } = await supabase
               .from("product_manufacturers")
               .insert({
@@ -317,7 +320,6 @@ export function EntryPage() {
               .single();
             if (mfErr) throw mfErr;
 
-            // Cria linhas de estoque por loja
             for (const store of stores) {
               const qty = Number(item.quantities[store.id] ?? 0);
               if (qty <= 0) continue;
@@ -326,6 +328,7 @@ export function EntryPage() {
                 store_id: store.id,
                 stock: qty,
                 min_quantity: 0,
+                special_condition: specialCond,
               });
             }
           }

@@ -51,6 +51,8 @@ interface StockRow {
   characteristic: string;
   store1Quantity: number;
   store2Quantity: number;
+  store1Special: number;
+  store2Special: number;
   totalQuantity: number;
   productName: string;
   code: string;
@@ -182,6 +184,7 @@ export function StockPage() {
               location: inv.location ?? "",
               stock: inv.stock ?? inv.stock_quantity ?? 0,
               minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
+              specialCondition: inv.special_condition ?? null,
             };
           }),
         };
@@ -242,17 +245,22 @@ export function StockPage() {
       .flatMap((product) => {
         if (product.manufacturers.length === 0) return [];
         return product.manufacturers.map((manufacturer) => {
-          const store1Quantity =
-            manufacturer.inventories.find((inventory) => inventory.storeId === stores[0]?.id)?.stock ?? 0;
-          const store2Quantity =
-            manufacturer.inventories.find((inventory) => inventory.storeId === stores[1]?.id)?.stock ?? 0;
+          const regularInvs = manufacturer.inventories.filter((i) => !(i as any).specialCondition);
+          const specialInvs = manufacturer.inventories.filter((i) => (i as any).specialCondition);
+
+          const store1Quantity = regularInvs.filter((i) => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
+          const store2Quantity = regularInvs.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
+          const store1Special = specialInvs.filter((i) => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
+          const store2Special = specialInvs.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
 
           return {
             product,
             manufacturerId: manufacturer.id,
-            characteristic: `${product.feature}${product.isTypeB ? " B" : ""}${product.isTypeR ? " R" : ""}`,
+            characteristic: product.feature,
             store1Quantity,
             store2Quantity,
+            store1Special,
+            store2Special,
             totalQuantity: store1Quantity + store2Quantity,
             productName: product.name,
             code: product.internalCode,
@@ -311,43 +319,25 @@ export function StockPage() {
         header: "Cond.",
         size: 90,
         cell: ({ row }) => {
-          const { isTypeB, isTypeR } = row.original.product;
-          if (!isTypeB && !isTypeR) return <span className="text-slate-300">—</span>;
-          const s1 = row.original.store1Quantity;
-          const s2 = row.original.store2Quantity;
+          const { store1Special, store2Special } = row.original;
+          const hasSpecial = store1Special > 0 || store2Special > 0;
+          if (!hasSpecial) return <span className="text-slate-300">—</span>;
           return (
             <div className="flex flex-col gap-0.5">
               <div className="flex gap-1">
-                {isTypeB && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">B</span>}
-                {isTypeR && <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-bold text-sky-700">R</span>}
+                {row.original.product.isTypeB && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">B</span>}
+                {row.original.product.isTypeR && <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-bold text-sky-700">R</span>}
+                {!row.original.product.isTypeB && !row.original.product.isTypeR && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold text-slate-600">E</span>}
               </div>
               <span className="text-xs text-slate-500">
-                {stores[0]?.code ?? "L1"}: {s1} · {stores[1]?.code ?? "L2"}: {s2}
+                {stores[0]?.code ?? "L1"}: {store1Special} · {stores[1]?.code ?? "L2"}: {store2Special}
               </span>
             </div>
           );
         },
       },
-      {
-        accessorKey: "store1Quantity",
-        header: stores[0]?.code ?? "Loja 1",
-        size: 60,
-        cell: ({ row }) => {
-          if (row.original.product.isTypeB || row.original.product.isTypeR)
-            return <span className="text-slate-300">—</span>;
-          return row.original.store1Quantity;
-        },
-      },
-      {
-        accessorKey: "store2Quantity",
-        header: stores[1]?.code ?? "Loja 2",
-        size: 60,
-        cell: ({ row }) => {
-          if (row.original.product.isTypeB || row.original.product.isTypeR)
-            return <span className="text-slate-300">—</span>;
-          return row.original.store2Quantity;
-        },
-      },
+      { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1", size: 60 },
+      { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2", size: 60 },
       { accessorKey: "manufacturer", header: "Fabricante" },
       {
         accessorKey: "price",
