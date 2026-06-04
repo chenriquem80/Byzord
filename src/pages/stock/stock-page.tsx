@@ -203,6 +203,8 @@ export function StockPage() {
         photos: [],
         status: p.status ?? "ativo",
         notes: p.notes ?? "",
+        isTypeB: p.is_type_b ?? false,
+        isTypeR: p.is_type_r ?? false,
         manufacturers,
         compatibilities: rawCompat
           .filter((c: any) => c.product_id === p.id)
@@ -245,12 +247,10 @@ export function StockPage() {
       .flatMap((product) => {
         if (product.manufacturers.length === 0) return [];
         return product.manufacturers.map((manufacturer) => {
-          const specialInvs = manufacturer.inventories.filter((i) => (i as any).specialCondition);
-
           const store1Quantity = manufacturer.inventories.filter((i) => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
           const store2Quantity = manufacturer.inventories.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
-          const store1Special = specialInvs.filter((i) => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
-          const store2Special = specialInvs.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
+          const store1Special = (product.isTypeB || product.isTypeR) ? store1Quantity : 0;
+          const store2Special = (product.isTypeB || product.isTypeR) ? store2Quantity : 0;
 
           return {
             product,

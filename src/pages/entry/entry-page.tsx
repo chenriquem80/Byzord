@@ -241,20 +241,16 @@ export function EntryPage() {
   async function handleSaveEntry() {
     if (!supabase || entryItems.length === 0) return;
     setSaving(true);
-    const specialCond = isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null;
     try {
       for (const item of entryItems) {
         const isDifferentMf =
           selectedManufacturer && selectedManufacturer !== item.mf.manufacturer;
 
         if (!isDifferentMf) {
-          // Mesmo fabricante: incrementa estoque nas linhas existentes
           for (const store of stores) {
             const qty = Number(item.quantities[store.id] ?? 0);
             if (qty <= 0) continue;
-            const inv = item.mf.inventories.find(
-              (i) => i.storeId === store.id && (i as any).special_condition === specialCond,
-            );
+            const inv = item.mf.inventories.find((i) => i.storeId === store.id);
             if (inv) {
               await supabase
                 .from("product_store_inventory")
@@ -266,7 +262,6 @@ export function EntryPage() {
                 store_id: store.id,
                 stock: qty,
                 min_quantity: 0,
-                special_condition: specialCond,
               });
             }
           }
@@ -274,6 +269,12 @@ export function EntryPage() {
             .from("product_manufacturers")
             .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
             .eq("id", item.mf.id);
+          if (isTypeB || isTypeR) {
+            await supabase
+              .from("products")
+              .update({ is_type_b: isTypeB, is_type_r: isTypeR })
+              .eq("id", item.product.id);
+          }
         } else {
           const existingMf = item.product.manufacturers.find(
             (m) => m.manufacturer === selectedManufacturer,
@@ -283,9 +284,7 @@ export function EntryPage() {
             for (const store of stores) {
               const qty = Number(item.quantities[store.id] ?? 0);
               if (qty <= 0) continue;
-              const inv = existingMf.inventories.find(
-                (i) => i.storeId === store.id && (i as any).special_condition === specialCond,
-              );
+              const inv = existingMf.inventories.find((i) => i.storeId === store.id);
               if (inv) {
                 await supabase
                   .from("product_store_inventory")
@@ -297,7 +296,6 @@ export function EntryPage() {
                   store_id: store.id,
                   stock: qty,
                   min_quantity: 0,
-                  special_condition: specialCond,
                 });
               }
             }
@@ -305,6 +303,12 @@ export function EntryPage() {
               .from("product_manufacturers")
               .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
               .eq("id", existingMf.id);
+            if (isTypeB || isTypeR) {
+              await supabase
+                .from("products")
+                .update({ is_type_b: isTypeB, is_type_r: isTypeR })
+                .eq("id", item.product.id);
+            }
           } else {
             const { data: newMfData, error: mfErr } = await supabase
               .from("product_manufacturers")
@@ -328,8 +332,13 @@ export function EntryPage() {
                 store_id: store.id,
                 stock: qty,
                 min_quantity: 0,
-                special_condition: specialCond,
               });
+            }
+            if (isTypeB || isTypeR) {
+              await supabase
+                .from("products")
+                .update({ is_type_b: isTypeB, is_type_r: isTypeR })
+                .eq("id", item.product.id);
             }
           }
         }
