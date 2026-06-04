@@ -71,11 +71,51 @@ export function EntryPage() {
         #print-label-area {
           position: fixed !important;
           top: 0 !important; left: 0 !important;
-          width: 10cm !important; height: 15cm !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
+          width: 10cm !important;
+          padding: 0.6cm !important;
           background: white !important;
+          display: block !important;
+          font-family: sans-serif !important;
+          color: #0f172a !important;
+        }
+        /* Logo */
+        #print-label-area .mb-4 {
+          display: flex !important;
+          justify-content: center !important;
+          margin-bottom: 0.4cm !important;
+        }
+        #print-label-area img {
+          height: 1.3cm !important;
+          width: auto !important;
+          display: block !important;
+        }
+        /* Linhas de texto */
+        #print-label-area .space-y-1 {
+          display: block !important;
+          margin-bottom: 0.3cm !important;
+        }
+        #print-label-area .space-y-1 p {
+          display: block !important;
+          font-size: 12pt !important;
+          line-height: 1.5 !important;
+          margin: 0 !important;
+        }
+        /* Caixa do código de barras */
+        #print-label-area .mt-6 {
+          display: block !important;
+          margin-top: 0.4cm !important;
+          border: 2px solid #0f172a !important;
+          border-radius: 10px !important;
+          padding: 0.25cm !important;
+          text-align: center !important;
+        }
+        #print-label-area .mt-6 .flex {
+          display: flex !important;
+          justify-content: center !important;
+        }
+        #print-label-area svg {
+          max-width: 100% !important;
+          height: auto !important;
         }
       }
     `;
@@ -84,7 +124,7 @@ export function EntryPage() {
     setTimeout(() => {
       const el = document.getElementById("print-label-style");
       if (el) el.remove();
-    }, 1000);
+    }, 1500);
   }
 
   useEffect(() => {
