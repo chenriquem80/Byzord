@@ -422,122 +422,121 @@ export function ExitPage() {
         title="Registrar saída"
         description="O fluxo está preparado para baixar estoque, registrar saída e gerar movimentação com log."
         action={
-          selectedInventory && selectedInventory.stock === 0 ? (
-            <Badge className="bg-rose-100 text-rose-700">Venda bloqueada sem estoque</Badge>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            {selectedInventory && selectedInventory.stock === 0 && (
+              <Badge className="bg-rose-100 text-rose-700">Venda bloqueada sem estoque</Badge>
+            )}
+            <button
+              type="button"
+              onClick={() => setScannerOpen(true)}
+              title="Escanear código de barras"
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
+            >
+              <Camera className="size-4" />
+              <span className="hidden sm:inline">Ler código</span>
+            </button>
+          </div>
         }
       >
-        <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" onSubmit={form.handleSubmit(onSubmit)}>
-          <FormField label="Loja" error={form.formState.errors.storeId?.message}>
-            <Select {...form.register("storeId")}>
-              {allStores.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </Select>
-          </FormField>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
-          <div className="col-span-3 space-y-2">
-            <div className="flex gap-2">
-              <div className="flex-1 space-y-2">
-                <label className="text-sm font-medium text-slate-700">Produto</label>
-                <Select {...form.register("productId")}>
-                  {allProducts.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="w-40 shrink-0 space-y-2">
-                <label className="text-sm font-medium text-slate-700">Característica</label>
-                <Input disabled value={selectedProduct.feature} />
-              </div>
-              <div className="flex shrink-0 items-end pb-0.5">
-                <button
-                  type="button"
-                  onClick={() => setScannerOpen(true)}
-                  title="Escanear código de barras"
-                  className="flex items-center justify-center rounded-2xl border border-border bg-white px-3 py-2.5 text-slate-600 transition-colors hover:border-primary hover:text-primary"
-                >
-                  <Camera className="size-5" />
-                </button>
+          {/* Linha 1: Loja | Produto */}
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            <FormField label="Loja" error={form.formState.errors.storeId?.message}>
+              <Select {...form.register("storeId")}>
+                {allStores.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Produto" error={form.formState.errors.productId?.message} className="xl:col-span-3">
+              <Select {...form.register("productId")}>
+                {allProducts.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+
+          {/* Linha 2: Característica | Fabricante */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Característica">
+              <Input disabled value={selectedProduct.feature} />
+            </FormField>
+            <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
+              <Select {...form.register("manufacturer")}>
+                {selectedProduct.manufacturers.map((item) => (
+                  <option key={item.id} value={item.manufacturer}>{item.manufacturer}</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+
+          {/* Linha 3: Quantidade | Em estoque */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Quantidade</label>
+              <Input type="number" {...form.register("quantity")} />
+              {form.formState.errors.quantity?.message && (
+                <p className="text-sm text-danger">{form.formState.errors.quantity.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Em estoque</label>
+              <div className="flex h-10 items-center rounded-2xl border border-border bg-slate-50 px-3 text-sm">
+                <span className="text-slate-500">Disponível:</span>
+                <span className="ml-1.5 font-semibold text-slate-900">{selectedInventory?.stock ?? 0}</span>
               </div>
             </div>
-            {form.formState.errors.productId?.message && (
-              <p className="text-sm text-danger">{form.formState.errors.productId.message}</p>
-            )}
           </div>
-          <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
-            <Select {...form.register("manufacturer")}>
-              {selectedProduct.manufacturers.map((item) => (
-                <option key={item.id} value={item.manufacturer}>
-                  {item.manufacturer}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Quantidade</label>
-            <div className="flex gap-2">
-              <Input type="number" {...form.register("quantity")} className="flex-1" />
-              <div className="flex min-w-[100px] items-center justify-center rounded-2xl border border-border bg-slate-50 px-3 text-sm text-slate-500">
-                Em estoque: <span className="ml-1 font-semibold text-slate-900">{selectedInventory?.stock ?? 0}</span>
-              </div>
-            </div>
-            {form.formState.errors.quantity?.message && (
-              <p className="text-sm text-danger">{form.formState.errors.quantity.message}</p>
-            )}
-          </div>
-          <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
-            <Input type="number" step="0.01" {...form.register("price")} />
-          </FormField>
+
+          {/* Condição especial (se houver) */}
           {specialInventories.length > 0 && (
             <FormField label="Condição especial">
               <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setSaleSpecialCond(null)}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${!saleSpecialCond ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-                >
+                <button type="button" onClick={() => setSaleSpecialCond(null)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${!saleSpecialCond ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
                   Regular
                 </button>
                 {specialInventories.map((inv) => (
-                  <button
-                    key={(inv as any).specialCondition}
-                    type="button"
+                  <button key={(inv as any).specialCondition} type="button"
                     onClick={() => setSaleSpecialCond((inv as any).specialCondition)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${saleSpecialCond === (inv as any).specialCondition ? "bg-sky-600 text-white" : "bg-sky-100 text-sky-700 hover:bg-sky-200"}`}
-                  >
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${saleSpecialCond === (inv as any).specialCondition ? "bg-sky-600 text-white" : "bg-sky-100 text-sky-700 hover:bg-sky-200"}`}>
                     {(inv as any).specialCondition} ({inv.stock} un.)
                   </button>
                 ))}
               </div>
             </FormField>
           )}
-          <FormField label="Observação" className="md:col-span-2 xl:col-span-4">
+
+          {/* Linha 4: Observação */}
+          <FormField label="Observação">
             <Textarea {...form.register("note")} />
           </FormField>
+
+          {/* Linha 5: Preço | Confirmar */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
+              <Input type="number" step="0.01" {...form.register("price")} />
+            </FormField>
+            <div className="flex flex-col justify-end">
+              {!readOnly && (
+                <Button type="submit" size="lg" className="h-10 w-full"
+                  disabled={saving || !selectedInventory || selectedInventory.stock <= 0}>
+                  {saving ? "Registrando..." : "Confirmar saída"}
+                </Button>
+              )}
+            </div>
+          </div>
+
           {saveSuccess && (
-            <div className="xl:col-span-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
               Saída registrada com sucesso!
             </div>
           )}
           {saveError && (
-            <div className="xl:col-span-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
               {saveError}
-            </div>
-          )}
-          {!readOnly && (
-            <div className="xl:col-span-4">
-              <Button
-                type="submit"
-                size="lg"
-                disabled={saving || !selectedInventory || selectedInventory.stock <= 0}
-              >
-                {saving ? "Registrando..." : "Confirmar saída"}
-              </Button>
             </div>
           )}
         </form>
