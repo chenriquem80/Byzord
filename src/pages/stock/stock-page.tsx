@@ -71,7 +71,7 @@ export function StockPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [glassType, setGlassType] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedCharGroup, setSelectedCharGroup] = useState<string | null>(null);
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [dbStores, setDbStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -250,7 +250,7 @@ export function StockPage() {
           return {
             product,
             manufacturerId: manufacturer.id,
-            characteristic: product.feature,
+            characteristic: `${product.feature}${product.isTypeB ? " B" : ""}${product.isTypeR ? " R" : ""}`,
             store1Quantity,
             store2Quantity,
             totalQuantity: store1Quantity + store2Quantity,
@@ -299,7 +299,7 @@ export function StockPage() {
           <div className="text-center">
             <button
               className="font-semibold text-primary underline-offset-4 hover:underline"
-              onClick={() => setSelectedProduct(row.original.product)}
+              onClick={() => setSelectedCharGroup(row.original.characteristic)}
             >
               {row.original.characteristic}
             </button>
@@ -461,71 +461,59 @@ export function StockPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-        {selectedProduct ? (
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Produto selecionado: {selectedProduct.internalCode}</DialogTitle>
-              <DialogDescription>
-                {selectedProduct.name} • {selectedProduct.feature} • consulta das duas lojas
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-6 overflow-x-auto rounded-2xl border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Loja</th>
-                    <th className="px-4 py-3 text-left">Estoque</th>
-                    <th className="px-4 py-3 text-left">Custo</th>
-                    <th className="px-4 py-3 text-left">Venda</th>
-                    <th className="px-4 py-3 text-left">Data</th>
-                    <th className="px-4 py-3 text-left">Localização</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedProduct.manufacturers.map((mf) => (
-                    <>
-                      <tr key={`mf-${mf.id}`}>
-                        <td
-                          colSpan={6}
-                          className="border-t border-border bg-slate-100 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600"
-                        >
-                          {mf.manufacturer || "—"} &nbsp;•&nbsp; Total:{" "}
-                          {mf.inventories.reduce((s, i) => s + i.stock, 0)} un.
-                          &nbsp;•&nbsp; Última compra: {formatMonthYear(mf.lastPurchaseDate)}
-                        </td>
-                      </tr>
-                      {mf.inventories.map((inventory) => (
-                        <tr key={`${mf.id}-${inventory.id}`} className="border-t border-border">
-                          <td className="px-4 py-3">{inventory.storeName}</td>
-                          <td className="px-4 py-3">{inventory.stock}</td>
-                          <td className="px-4 py-3">{formatCurrency(mf.cost)}</td>
-                          <td className="px-4 py-3">{formatCurrency(mf.price)}</td>
-                          <td className="px-4 py-3">{formatMonthYear(mf.lastPurchaseDate)}</td>
-                          <td className="px-4 py-3">{inventory.location}</td>
+      <Dialog open={!!selectedCharGroup} onOpenChange={(open) => !open && setSelectedCharGroup(null)}>
+        {selectedCharGroup ? (() => {
+          const groupRows = rows.filter((r) => r.characteristic === selectedCharGroup);
+          return (
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Característica: {selectedCharGroup}</DialogTitle>
+                <DialogDescription>
+                  {groupRows.length} produto{groupRows.length !== 1 ? "s" : ""} com esta característica — estoque por loja e fabricante.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-4 space-y-4 overflow-y-auto max-h-[60vh]">
+                {groupRows.map((row) => (
+                  <div key={`${row.product.id}-${row.manufacturerId}`} className="rounded-2xl border border-border overflow-hidden">
+                    <div className="bg-slate-50 px-4 py-2 flex items-center justify-between">
+                      <div>
+                        <span className="font-semibold text-slate-900 text-sm">{row.productName}</span>
+                        <span className="ml-2 text-xs text-slate-500">{row.manufacturer}</span>
+                      </div>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${(row.store1Quantity + row.store2Quantity) > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                        {row.store1Quantity + row.store2Quantity} un.
+                      </span>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead className="bg-white border-b border-border">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Loja</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Estoque</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Custo</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Venda</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Localização</th>
                         </tr>
-                      ))}
-                    </>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-6 grid gap-3 md:grid-cols-2">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Descrição</p>
-                <p className="mt-2 font-medium text-slate-900">{selectedProduct.description}</p>
+                      </thead>
+                      <tbody>
+                        {row.product.manufacturers
+                          .find((m) => m.id === row.manufacturerId)
+                          ?.inventories.map((inv) => (
+                            <tr key={inv.id} className="border-t border-border">
+                              <td className="px-4 py-2">{inv.storeName}</td>
+                              <td className="px-4 py-2">{inv.stock}</td>
+                              <td className="px-4 py-2">{formatCurrency(row.cost)}</td>
+                              <td className="px-4 py-2">{formatCurrency(row.price)}</td>
+                              <td className="px-4 py-2 text-slate-500">{inv.location || "—"}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Compatibilidade</p>
-                <p className="mt-2 font-medium text-slate-900">
-                  {selectedProduct.compatibilities
-                    .map((item) => `${item.model} ${item.generation} ${item.startYear}/${item.endYear}`)
-                    .join(" • ")}
-                </p>
-              </div>
-            </div>
-          </DialogContent>
-        ) : null}
+            </DialogContent>
+          );
+        })() : null}
       </Dialog>
 
       {/* Dialog de fotos do produto */}
