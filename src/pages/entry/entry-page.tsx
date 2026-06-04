@@ -504,60 +504,62 @@ export function EntryPage() {
                     <FormField label="Data da compra">
                       <Input value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} type="date" />
                     </FormField>
-                    <FormField label="Condição especial">
-                      <div className="flex items-center gap-4 rounded-xl border border-border bg-white px-4 py-2.5 shadow-sm">
-                        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
-                          <input type="checkbox" checked={isTypeB} onChange={(e) => setIsTypeB(e.target.checked)} className="size-4 accent-primary" />
-                          B
-                        </label>
-                        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
-                          <input type="checkbox" checked={isTypeR} onChange={(e) => setIsTypeR(e.target.checked)} className="size-4 accent-primary" />
-                          R
-                        </label>
-                      </div>
-                    </FormField>
+                    <div className="space-y-4">
+                      <FormField label="Condição especial">
+                        <div className="flex items-center gap-4 rounded-xl border border-border bg-white px-4 py-2.5 shadow-sm">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                            <input type="checkbox" checked={isTypeB} onChange={(e) => setIsTypeB(e.target.checked)} className="size-4 accent-primary" />
+                            B
+                          </label>
+                          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                            <input type="checkbox" checked={isTypeR} onChange={(e) => setIsTypeR(e.target.checked)} className="size-4 accent-primary" />
+                            R
+                          </label>
+                        </div>
+                      </FormField>
+                      <FormField label="Foto">
+                        <input
+                          ref={entryPhotoRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setEntryPhoto(ev.target?.result as string);
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                        {entryPhoto ? (
+                          <div className="relative w-fit">
+                            <img
+                              src={entryPhoto}
+                              alt="Foto da entrada"
+                              className="h-24 w-36 rounded-xl border border-border object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setEntryPhoto(null)}
+                              className="absolute -right-2 -top-2 rounded-full border border-border bg-white p-0.5 text-slate-500 shadow hover:text-rose-600"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <Button type="button" variant="outline" className="w-full" onClick={() => entryPhotoRef.current?.click()}>
+                            <Camera className="size-4" />
+                            Adicionar foto
+                          </Button>
+                        )}
+                      </FormField>
+                    </div>
                     <FormField label="Número da NF">
                       <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="000123" />
                     </FormField>
                     <FormField label="Observação">
                       <Textarea value={note} onChange={(e) => setNote(e.target.value)} />
-                    </FormField>
-                    <FormField label="Foto">
-                      <input
-                        ref={entryPhotoRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = (ev) => setEntryPhoto(ev.target?.result as string);
-                          reader.readAsDataURL(file);
-                        }}
-                      />
-                      {entryPhoto ? (
-                        <div className="relative w-fit">
-                          <img
-                            src={entryPhoto}
-                            alt="Foto da entrada"
-                            className="h-24 w-36 rounded-xl border border-border object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setEntryPhoto(null)}
-                            className="absolute -right-2 -top-2 rounded-full border border-border bg-white p-0.5 text-slate-500 shadow hover:text-rose-600"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <Button type="button" variant="outline" className="w-full" onClick={() => entryPhotoRef.current?.click()}>
-                          <Camera className="size-4" />
-                          Adicionar foto
-                        </Button>
-                      )}
                     </FormField>
                   </div>
 
