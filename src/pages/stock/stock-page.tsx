@@ -306,6 +306,21 @@ export function StockPage() {
           </div>
         ),
       },
+      {
+        id: "specialCondition",
+        header: "Cond.",
+        size: 70,
+        cell: ({ row }) => {
+          const { isTypeB, isTypeR } = row.original.product;
+          if (!isTypeB && !isTypeR) return <span className="text-slate-300">—</span>;
+          return (
+            <div className="flex gap-1">
+              {isTypeB && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">B</span>}
+              {isTypeR && <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-bold text-sky-700">R</span>}
+            </div>
+          );
+        },
+      },
       { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1", size: 60 },
       { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2", size: 60 },
       { accessorKey: "manufacturer", header: "Fabricante" },

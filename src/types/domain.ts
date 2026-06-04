@@ -79,6 +79,8 @@ export interface Product {
   photos: string[];
   status: ProductStatus;
   notes: string;
+  isTypeB?: boolean;
+  isTypeR?: boolean;
   manufacturers: ManufacturerStock[];
   compatibilities: VehicleCompatibility[];
 }
