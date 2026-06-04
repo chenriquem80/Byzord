@@ -685,6 +685,9 @@ export function EntryPage() {
               {lastItem && (
                 <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
                   <div className="mx-auto w-full max-w-[280px] rounded-[22px] bg-white p-5 text-slate-950 shadow-sm">
+                    <div className="mb-4 flex justify-center">
+                      <img src="/logo.png" alt="Byzord Auto Vitrais" className="h-12 object-contain" />
+                    </div>
                     <div className="mt-2 space-y-1 text-[18px] leading-tight">
                       <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
                       <p>{currentLabel.yearRange}</p>
