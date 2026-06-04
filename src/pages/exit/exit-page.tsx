@@ -63,6 +63,7 @@ export function ExitPage() {
   const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [dbStores, setDbStores] = useState<typeof mockStores | null>(null);
+  const [saleSpecialCond, setSaleSpecialCond] = useState<string | null>(null);
 
   const allProducts = useMemo(() => dbProducts ?? mockProducts, [dbProducts]);
   const allStores = useMemo(() => dbStores ?? mockStores, [dbStores]);
@@ -112,6 +113,7 @@ export function ExitPage() {
                   location: inv.location ?? "",
                   stock: inv.stock ?? inv.stock_quantity ?? 0,
                   minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
+                  specialCondition: inv.special_condition ?? null,
                 };
               }),
             };
@@ -204,7 +206,18 @@ export function ExitPage() {
   );
 
   const selectedInventory = useMemo(
-    () => manufacturerStock?.inventories.find((inventory) => inventory.storeId === form.watch("storeId")),
+    () => manufacturerStock?.inventories.find(
+      (inv) => inv.storeId === form.watch("storeId") &&
+        ((saleSpecialCond ? (inv as any).specialCondition === saleSpecialCond : !(inv as any).specialCondition))
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [form.watch("storeId"), manufacturerStock, saleSpecialCond],
+  );
+
+  const specialInventories = useMemo(
+    () => (manufacturerStock?.inventories ?? []).filter(
+      (inv) => inv.storeId === form.watch("storeId") && (inv as any).specialCondition
+    ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [form.watch("storeId"), manufacturerStock],
   );
@@ -478,6 +491,29 @@ export function ExitPage() {
           <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
             <Input type="number" step="0.01" {...form.register("price")} />
           </FormField>
+          {specialInventories.length > 0 && (
+            <FormField label="Condição especial">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setSaleSpecialCond(null)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${!saleSpecialCond ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                >
+                  Regular
+                </button>
+                {specialInventories.map((inv) => (
+                  <button
+                    key={(inv as any).specialCondition}
+                    type="button"
+                    onClick={() => setSaleSpecialCond((inv as any).specialCondition)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${saleSpecialCond === (inv as any).specialCondition ? "bg-sky-600 text-white" : "bg-sky-100 text-sky-700 hover:bg-sky-200"}`}
+                  >
+                    {(inv as any).specialCondition} ({inv.stock} un.)
+                  </button>
+                ))}
+              </div>
+            </FormField>
+          )}
           <FormField label="Observação" className="md:col-span-2 xl:col-span-4">
             <Textarea {...form.register("note")} />
           </FormField>
