@@ -54,19 +54,19 @@ export function DashboardPage() {
     if (!supabase) { setLoadingLowStock(false); return; }
     const { data } = await supabase
       .from("product_store_inventory")
-      .select("id, stock, min_quantity, store_id, special_condition, product_manufacturers(manufacturer, products(name)), stores(name)")
-      .is("special_condition", null)
-      .gt("min_quantity", 0)
-      .filter("stock", "lt", "min_quantity");
+      .select("id, stock, min_quantity, store_id, product_manufacturers(manufacturer, products(name)), stores(name)")
+      .gt("min_quantity", 0);
 
-    const mapped: LowStockItem[] = (data ?? []).map((row: any) => ({
-      id: row.id,
-      product_name: row.product_manufacturers?.products?.name ?? "—",
-      store_name: row.stores?.name ?? "—",
-      manufacturer: row.product_manufacturers?.manufacturer ?? "—",
-      stock: row.stock,
-      min_quantity: row.min_quantity,
-    }));
+    const mapped: LowStockItem[] = (data ?? [])
+      .filter((row: any) => (row.stock ?? 0) < (row.min_quantity ?? 0))
+      .map((row: any) => ({
+        id: row.id,
+        product_name: row.product_manufacturers?.products?.name ?? "—",
+        store_name: row.stores?.name ?? "—",
+        manufacturer: row.product_manufacturers?.manufacturer ?? "—",
+        stock: row.stock ?? 0,
+        min_quantity: row.min_quantity ?? 0,
+      }));
     setLowStock(mapped);
     setLoadingLowStock(false);
   }
