@@ -429,29 +429,36 @@ export function ExitPage() {
             </Select>
           </FormField>
 
-          <div className="col-span-3 flex items-end gap-2">
-            <FormField label="Produto" error={form.formState.errors.productId?.message} className="flex-1">
-              <div className="flex gap-2">
-                <Select {...form.register("productId")} className="flex-1">
+          <div className="col-span-3 space-y-2">
+            <div className="flex gap-2">
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-medium text-slate-700">Produto</label>
+                <Select {...form.register("productId")}>
                   {allProducts.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
                     </option>
                   ))}
                 </Select>
+              </div>
+              <div className="w-40 shrink-0 space-y-2">
+                <label className="text-sm font-medium text-slate-700">Característica</label>
+                <Input disabled value={selectedProduct.feature} />
+              </div>
+              <div className="flex shrink-0 items-end pb-0.5">
                 <button
                   type="button"
                   onClick={() => setScannerOpen(true)}
                   title="Escanear código de barras"
-                  className="flex shrink-0 items-center justify-center rounded-2xl border border-border bg-white px-3 text-slate-600 transition-colors hover:border-primary hover:text-primary"
+                  className="flex items-center justify-center rounded-2xl border border-border bg-white px-3 py-2.5 text-slate-600 transition-colors hover:border-primary hover:text-primary"
                 >
                   <Camera className="size-5" />
                 </button>
               </div>
-            </FormField>
-            <FormField label="Característica" className="w-40 shrink-0">
-              <Input disabled value={selectedProduct.feature} />
-            </FormField>
+            </div>
+            {form.formState.errors.productId?.message && (
+              <p className="text-sm text-danger">{form.formState.errors.productId.message}</p>
+            )}
           </div>
           <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
             <Select {...form.register("manufacturer")}>
