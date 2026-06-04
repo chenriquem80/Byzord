@@ -276,6 +276,7 @@ export function StockPage() {
       {
         accessorKey: "productName",
         header: "Produto",
+        size: 260,
         cell: ({ row }) => (
           <span
             onContextMenu={(e) => handleContextMenu(e, row.original)}
@@ -305,9 +306,8 @@ export function StockPage() {
           </div>
         ),
       },
-      { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1" },
-      { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2" },
-      { accessorKey: "totalQuantity", header: "Total" },
+      { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1", size: 60 },
+      { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2", size: 60 },
       { accessorKey: "manufacturer", header: "Fabricante" },
       {
         accessorKey: "price",
