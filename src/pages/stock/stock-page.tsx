@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Car, Check, Pencil, RefreshCw, X } from "lucide-react";
+import { Car, Check, Images, Pencil, RefreshCw, X } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,21 @@ export function StockPage() {
   const [editDialog, setEditDialog] = useState<{ open: boolean; productId: string; name: string; saving: boolean }>({
     open: false, productId: "", name: "", saving: false,
   });
+
+  // Dialog de fotos
+  const [photoDialog, setPhotoDialog] = useState<{ open: boolean; productName: string; urls: string[]; loading: boolean }>({
+    open: false, productName: "", urls: [], loading: false,
+  });
+
+  async function openPhotoDialog(product: Product) {
+    setPhotoDialog({ open: true, productName: product.name, urls: [], loading: true });
+    if (supabase) {
+      const { data } = await supabase.from("product_photos").select("url").eq("product_id", product.id);
+      setPhotoDialog((d) => ({ ...d, loading: false, urls: (data ?? []).map((p: any) => p.url) }));
+    } else {
+      setPhotoDialog((d) => ({ ...d, loading: false, urls: product.photos ?? [] }));
+    }
+  }
 
   // Fecha o menu de contexto ao clicar fora
   useEffect(() => {
@@ -305,6 +320,20 @@ export function StockPage() {
         cell: ({ row }) => formatMonthYear(row.original.lastPurchaseDate),
       },
       {
+        id: "photos",
+        header: "",
+        cell: ({ row }) => (
+          <button
+            type="button"
+            title="Ver fotos"
+            onClick={() => openPhotoDialog(row.original.product)}
+            className="flex items-center justify-center rounded-lg border border-border bg-white p-2 text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
+          >
+            <Images className="size-4" />
+          </button>
+        ),
+      },
+      {
         id: "compat",
         header: "Compatíveis",
         cell: ({ row }) => <CompatPopup compatibilities={row.original.product.compatibilities} />,
@@ -482,6 +511,38 @@ export function StockPage() {
             </div>
           </DialogContent>
         ) : null}
+      </Dialog>
+
+      {/* Dialog de fotos do produto */}
+      <Dialog open={photoDialog.open} onOpenChange={(open) => !open && setPhotoDialog((d) => ({ ...d, open: false }))}>
+        <DialogContent className="w-[60vw] max-w-[60vw]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Images className="size-5 text-primary" />
+              Fotos — {photoDialog.productName}
+            </DialogTitle>
+            <DialogDescription>Imagens cadastradas para este produto.</DialogDescription>
+          </DialogHeader>
+          <div className="mt-2">
+            {photoDialog.loading ? (
+              <p className="py-8 text-center text-sm text-slate-500">Carregando fotos...</p>
+            ) : photoDialog.urls.length === 0 ? (
+              <p className="py-8 text-center text-sm text-slate-400">Nenhuma foto cadastrada para este produto.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {photoDialog.urls.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={url}
+                      alt={`Foto ${i + 1}`}
+                      className="aspect-square w-full rounded-xl border border-border object-cover shadow-sm transition hover:opacity-90"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
   );
