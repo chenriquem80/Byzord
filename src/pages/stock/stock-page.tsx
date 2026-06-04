@@ -259,23 +259,6 @@ export function StockPage() {
   const columns = useMemo<ColumnDef<StockRow>[]>(
     () => [
       {
-        accessorKey: "characteristic",
-        header: () => <span className="block text-center">Característica</span>,
-        cell: ({ row }) => (
-          <div className="text-center">
-            <button
-              className="font-semibold text-primary underline-offset-4 hover:underline"
-              onClick={() => setSelectedProduct(row.original.product)}
-            >
-              {row.original.characteristic}
-            </button>
-          </div>
-        ),
-      },
-      { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1" },
-      { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2" },
-      { accessorKey: "totalQuantity", header: "Total" },
-      {
         accessorKey: "productName",
         header: "Produto",
         cell: ({ row }) => (
@@ -293,6 +276,23 @@ export function StockPage() {
           </span>
         ),
       },
+      {
+        accessorKey: "characteristic",
+        header: () => <span className="block text-center">Característica</span>,
+        cell: ({ row }) => (
+          <div className="text-center">
+            <button
+              className="font-semibold text-primary underline-offset-4 hover:underline"
+              onClick={() => setSelectedProduct(row.original.product)}
+            >
+              {row.original.characteristic}
+            </button>
+          </div>
+        ),
+      },
+      { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1" },
+      { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2" },
+      { accessorKey: "totalQuantity", header: "Total" },
       { accessorKey: "manufacturer", header: "Fabricante" },
       {
         accessorKey: "price",
