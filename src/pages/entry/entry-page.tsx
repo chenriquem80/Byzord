@@ -688,8 +688,7 @@ export function EntryPage() {
                     <div className="mt-2 space-y-1 text-[18px] leading-tight">
                       <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
                       <p>{currentLabel.yearRange}</p>
-                      <p>{currentLabel.feature}</p>
-                      <p>{currentLabel.manufacturer}</p>
+                      <p>{currentLabel.feature} • {currentLabel.manufacturer}</p>
                       <p>{currentLabel.purchaseSummary}</p>
                     </div>
 
