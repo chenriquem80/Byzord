@@ -192,6 +192,8 @@ export function ExitPage() {
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const scannerControlsRef = useRef<IScannerControls | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   const selectedProduct = useMemo(
     () => allProducts.find((item) => item.id === form.watch("productId")) ?? allProducts[0],
@@ -271,6 +273,35 @@ export function ExitPage() {
       setSaveError("Erro ao registrar saída. Tente novamente.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePhotoScan(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScannerError(null);
+    setScannedCode(null);
+    try {
+      const codeReader = new BrowserMultiFormatReader();
+      const imageUrl = URL.createObjectURL(file);
+      const result = await codeReader.decodeFromImageUrl(imageUrl);
+      URL.revokeObjectURL(imageUrl);
+      const code = result.getText();
+      const found = allProducts.find((p) => p.barcode === code);
+      if (found) {
+        form.setValue("productId", found.id);
+        form.setValue("manufacturer", found.manufacturers[0].manufacturer);
+        form.setValue("price", found.manufacturers[0].price);
+      } else {
+        setScannedCode(code);
+        setScannerError(`Código "${code}" não encontrado no cadastro.`);
+        setScannerOpen(true);
+      }
+    } catch {
+      setScannerError("Não foi possível ler o código. Tente novamente com a câmera mais próxima.");
+      setScannerOpen(true);
+    } finally {
+      if (photoInputRef.current) photoInputRef.current.value = "";
     }
   }
 
@@ -426,15 +457,35 @@ export function ExitPage() {
             {selectedInventory && selectedInventory.stock === 0 && (
               <Badge className="bg-rose-100 text-rose-700">Venda bloqueada sem estoque</Badge>
             )}
-            <button
-              type="button"
-              onClick={() => setScannerOpen(true)}
-              title="Escanear código de barras"
-              className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
-            >
-              <Camera className="size-4" />
-              <span className="hidden sm:inline">Ler código</span>
-            </button>
+            {isMobile ? (
+              <>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handlePhotoScan}
+                />
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
+                >
+                  <Camera className="size-4" />
+                  Ler código
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
+              >
+                <Camera className="size-4" />
+                Ler código
+              </button>
+            )}
           </div>
         }
       >
