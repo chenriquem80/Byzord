@@ -6,7 +6,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { attendanceQueue, dashboardMetrics, purchaseOrders, stores } from "@/data/mock-data";
+import { dashboardMetrics, purchaseOrders, stores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
 
 type Movement = {
@@ -163,31 +163,7 @@ export function DashboardPage() {
         </SectionCard>
       </div>
 
-      <SectionCard
-        title="Atendimentos pendentes para estoque"
-        description="Fila que o estoquista deve consultar para separar os produtos do próximo passo."
-      >
-        <div className="space-y-3">
-          {attendanceQueue.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 md:flex-row md:items-center md:justify-between"
-            >
-              <div>
-                <p className="font-semibold text-slate-900">
-                  {item.plate} • {item.serviceType}
-                </p>
-                <p className="text-sm text-slate-500">
-                  {item.employeeName} • {item.storeName} • {item.billingType}
-                </p>
-              </div>
-              <Badge className="bg-amber-100 text-amber-700">{item.status}</Badge>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {dashboardMetrics.map((metric) => (
           <StatCard key={metric.label} {...metric} />
         ))}
