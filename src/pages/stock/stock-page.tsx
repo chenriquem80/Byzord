@@ -358,9 +358,9 @@ export function StockPage() {
       { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2", size: 60 },
       { accessorKey: "manufacturer", header: "Fabricante" },
       {
-        accessorKey: "price",
-        header: "Preço venda",
-        cell: ({ row }) => formatCurrency(row.original.price),
+        accessorKey: "cost",
+        header: "Preço compra",
+        cell: ({ row }) => formatCurrency(row.original.cost),
       },
       {
         accessorKey: "lastPurchaseDate",
