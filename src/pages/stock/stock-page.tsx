@@ -309,20 +309,45 @@ export function StockPage() {
       {
         id: "specialCondition",
         header: "Cond.",
-        size: 70,
+        size: 90,
         cell: ({ row }) => {
           const { isTypeB, isTypeR } = row.original.product;
           if (!isTypeB && !isTypeR) return <span className="text-slate-300">—</span>;
+          const s1 = row.original.store1Quantity;
+          const s2 = row.original.store2Quantity;
           return (
-            <div className="flex gap-1">
-              {isTypeB && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">B</span>}
-              {isTypeR && <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-bold text-sky-700">R</span>}
+            <div className="flex flex-col gap-0.5">
+              <div className="flex gap-1">
+                {isTypeB && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">B</span>}
+                {isTypeR && <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-bold text-sky-700">R</span>}
+              </div>
+              <span className="text-xs text-slate-500">
+                {stores[0]?.code ?? "L1"}: {s1} · {stores[1]?.code ?? "L2"}: {s2}
+              </span>
             </div>
           );
         },
       },
-      { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1", size: 60 },
-      { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2", size: 60 },
+      {
+        accessorKey: "store1Quantity",
+        header: stores[0]?.code ?? "Loja 1",
+        size: 60,
+        cell: ({ row }) => {
+          if (row.original.product.isTypeB || row.original.product.isTypeR)
+            return <span className="text-slate-300">—</span>;
+          return row.original.store1Quantity;
+        },
+      },
+      {
+        accessorKey: "store2Quantity",
+        header: stores[1]?.code ?? "Loja 2",
+        size: 60,
+        cell: ({ row }) => {
+          if (row.original.product.isTypeB || row.original.product.isTypeR)
+            return <span className="text-slate-300">—</span>;
+          return row.original.store2Quantity;
+        },
+      },
       { accessorKey: "manufacturer", header: "Fabricante" },
       {
         accessorKey: "price",
