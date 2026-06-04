@@ -245,11 +245,10 @@ export function StockPage() {
       .flatMap((product) => {
         if (product.manufacturers.length === 0) return [];
         return product.manufacturers.map((manufacturer) => {
-          const regularInvs = manufacturer.inventories.filter((i) => !(i as any).specialCondition);
           const specialInvs = manufacturer.inventories.filter((i) => (i as any).specialCondition);
 
-          const store1Quantity = regularInvs.filter((i) => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
-          const store2Quantity = regularInvs.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
+          const store1Quantity = manufacturer.inventories.filter((i) => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
+          const store2Quantity = manufacturer.inventories.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
           const store1Special = specialInvs.filter((i) => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
           const store2Special = specialInvs.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
 
@@ -323,15 +322,9 @@ export function StockPage() {
           const hasSpecial = store1Special > 0 || store2Special > 0;
           if (!hasSpecial) return <span className="text-slate-300">—</span>;
           return (
-            <div className="flex flex-col gap-0.5">
-              <div className="flex gap-1">
-                {row.original.product.isTypeB && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">B</span>}
-                {row.original.product.isTypeR && <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-bold text-sky-700">R</span>}
-                {!row.original.product.isTypeB && !row.original.product.isTypeR && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold text-slate-600">E</span>}
-              </div>
-              <span className="text-xs text-slate-500">
-                {stores[0]?.code ?? "L1"}: {store1Special} · {stores[1]?.code ?? "L2"}: {store2Special}
-              </span>
+            <div className="space-y-0.5 text-xs text-slate-600">
+              <div>{stores[0]?.code ?? "L1"}: <span className="font-semibold">{store1Special}</span></div>
+              <div>{stores[1]?.code ?? "L2"}: <span className="font-semibold">{store2Special}</span></div>
             </div>
           );
         },
