@@ -45,13 +45,6 @@ export function DashboardPage() {
     return movements.filter((item) => item.created_at.startsWith(selectedDate));
   }, [selectedDate, movements]);
 
-  const filteredPendingAttendances = useMemo(() => {
-    if (!selectedDate) {
-      return attendanceQueue;
-    }
-
-    return attendanceQueue.filter((item) => item.openedAt.startsWith(selectedDate));
-  }, [selectedDate]);
 
   return (
     <div className="space-y-6">
@@ -73,20 +66,15 @@ export function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {stores.map((store) => {
             const movementsCount = filteredMovements.filter((item) => item.store_name === store.name).length;
-            const pendingCount = filteredPendingAttendances.filter((item) => item.storeName === store.name).length;
 
             return (
               <div key={store.id} className="rounded-2xl border border-border bg-white p-5">
                 <p className="text-lg font-semibold text-slate-900">{store.name}</p>
                 <p className="mt-1 text-sm text-slate-500">{store.city}</p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="mt-4">
                   <div className="rounded-2xl bg-slate-50 p-4">
                     <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Movimentações</p>
                     <p className="mt-2 text-2xl font-bold text-slate-900">{movementsCount}</p>
-                  </div>
-                  <div className="rounded-2xl bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Pendências</p>
-                    <p className="mt-2 text-2xl font-bold text-slate-900">{pendingCount}</p>
                   </div>
                 </div>
               </div>
