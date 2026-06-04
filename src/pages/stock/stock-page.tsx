@@ -92,6 +92,14 @@ export function StockPage() {
     open: false, productName: "", urls: [], loading: false,
   });
 
+  // Dialog de detalhes da condição especial
+  const [condDialog, setCondDialog] = useState<{
+    open: boolean;
+    productName: string;
+    manufacturer: string;
+    items: { condition: string; storeName: string; stock: number }[];
+  }>({ open: false, productName: "", manufacturer: "", items: [] });
+
   async function openPhotoDialog(product: Product) {
     setPhotoDialog({ open: true, productName: product.name, urls: [], loading: true });
     if (supabase) {
@@ -325,10 +333,24 @@ export function StockPage() {
           const hasSpecial = store1Special > 0 || store2Special > 0;
           if (!hasSpecial) return <span className="text-slate-300">—</span>;
           return (
-            <div className="space-y-0.5 text-xs text-slate-600">
+            <button
+              type="button"
+              className="space-y-0.5 text-left text-xs text-slate-600 underline-offset-2 hover:text-primary hover:underline"
+              onClick={() => {
+                const mf = row.original.product.manufacturers.find(m => m.id === row.original.manufacturerId);
+                const items = (mf?.inventories ?? [])
+                  .filter((i) => (i as any).specialCondition)
+                  .map((i) => ({
+                    condition: (i as any).specialCondition as string,
+                    storeName: i.storeName,
+                    stock: i.stock,
+                  }));
+                setCondDialog({ open: true, productName: row.original.productName, manufacturer: row.original.manufacturer, items });
+              }}
+            >
               <div>{stores[0]?.code ?? "L1"}: <span className="font-semibold">{store1Special}</span></div>
               <div>{stores[1]?.code ?? "L2"}: <span className="font-semibold">{store2Special}</span></div>
-            </div>
+            </button>
           );
         },
       },
@@ -525,6 +547,33 @@ export function StockPage() {
             </DialogContent>
           );
         })() : null}
+      </Dialog>
+
+      {/* Dialog de detalhe da condição especial */}
+      <Dialog open={condDialog.open} onOpenChange={(open) => !open && setCondDialog((d) => ({ ...d, open: false }))}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Condição especial — {condDialog.productName}</DialogTitle>
+            <DialogDescription>{condDialog.manufacturer}</DialogDescription>
+          </DialogHeader>
+          <div className="mt-2 divide-y divide-border rounded-xl border border-border overflow-hidden">
+            {condDialog.items.length === 0 ? (
+              <p className="p-4 text-sm text-slate-400">Nenhum item com condição especial encontrado.</p>
+            ) : (
+              condDialog.items.map((item, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded px-2 py-0.5 text-xs font-bold ${item.condition === 'B' ? 'bg-amber-100 text-amber-700' : item.condition === 'R' ? 'bg-sky-100 text-sky-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {item.condition}
+                    </span>
+                    <span className="text-sm text-slate-700">{item.storeName}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-slate-900">{item.stock} un.</span>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
       </Dialog>
 
       {/* Dialog de fotos do produto */}
