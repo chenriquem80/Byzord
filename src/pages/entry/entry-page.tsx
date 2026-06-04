@@ -685,12 +685,7 @@ export function EntryPage() {
               {lastItem && (
                 <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
                   <div className="mx-auto w-full max-w-[280px] rounded-[22px] bg-white p-5 text-slate-950 shadow-sm">
-                    <p className="text-[13px] font-medium">Codigo:</p>
-                    <p className="mt-2 break-all text-[30px] font-semibold leading-none tracking-tight">
-                      {currentLabel.productCode}
-                    </p>
-
-                    <div className="mt-7 space-y-1 text-[18px] leading-tight">
+                    <div className="mt-2 space-y-1 text-[18px] leading-tight">
                       <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
                       <p>{currentLabel.yearRange}</p>
                       <p>{currentLabel.feature}</p>
@@ -711,9 +706,6 @@ export function EntryPage() {
                             background="transparent"
                           />
                         </div>
-                        <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                          {currentLabel.storeName}
-                        </p>
                       </div>
                     )}
                   </div>
