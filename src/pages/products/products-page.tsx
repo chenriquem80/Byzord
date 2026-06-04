@@ -607,6 +607,7 @@ export function ProductsPage() {
               .update({ stock: invQuantity, min_quantity: invMinimum, location: invLocation })
               .eq("manufacturer_id", activeMfId)
               .eq("store_id", storeId)
+              .is("special_condition", null)
               .select("id");
 
             if (upErr) throw new Error(`Erro ao salvar estoque: ${upErr.message}`);
