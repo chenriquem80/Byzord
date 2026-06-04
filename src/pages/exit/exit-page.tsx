@@ -429,8 +429,8 @@ export function ExitPage() {
             </Select>
           </FormField>
 
-          <div className="col-span-2 space-y-2">
-            <FormField label="Produto" error={form.formState.errors.productId?.message}>
+          <div className="col-span-3 flex items-end gap-2">
+            <FormField label="Produto" error={form.formState.errors.productId?.message} className="flex-1">
               <div className="flex gap-2">
                 <Select {...form.register("productId")} className="flex-1">
                   {allProducts.map((item) => (
@@ -449,11 +449,10 @@ export function ExitPage() {
                 </button>
               </div>
             </FormField>
+            <FormField label="Característica" className="w-40 shrink-0">
+              <Input disabled value={selectedProduct.feature} />
+            </FormField>
           </div>
-
-          <FormField label="Característica">
-            <Input disabled value={selectedProduct.feature} />
-          </FormField>
           <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
             <Select {...form.register("manufacturer")}>
               {selectedProduct.manufacturers.map((item) => (
