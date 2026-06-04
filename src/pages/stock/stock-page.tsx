@@ -336,7 +336,7 @@ export function StockPage() {
       },
       {
         id: "photos",
-        header: "",
+        header: "Foto",
         cell: ({ row }) => (
           <button
             type="button"
