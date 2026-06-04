@@ -495,9 +495,18 @@ export function ExitPage() {
               ))}
             </Select>
           </FormField>
-          <FormField label="Quantidade" error={form.formState.errors.quantity?.message}>
-            <Input type="number" {...form.register("quantity")} />
-          </FormField>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">Quantidade</label>
+            <div className="flex gap-2">
+              <Input type="number" {...form.register("quantity")} className="flex-1" />
+              <div className="flex min-w-[100px] items-center justify-center rounded-2xl border border-border bg-slate-50 px-3 text-sm text-slate-500">
+                Em estoque: <span className="ml-1 font-semibold text-slate-900">{selectedInventory?.stock ?? 0}</span>
+              </div>
+            </div>
+            {form.formState.errors.quantity?.message && (
+              <p className="text-sm text-danger">{form.formState.errors.quantity.message}</p>
+            )}
+          </div>
           <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
             <Input type="number" step="0.01" {...form.register("price")} />
           </FormField>
