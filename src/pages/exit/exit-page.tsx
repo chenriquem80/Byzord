@@ -282,10 +282,32 @@ export function ExitPage() {
     setScannerError(null);
     setScannedCode(null);
     try {
+      // Carrega imagem em um elemento HTML para decodificação via canvas
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+
+      // Reduz imagem grande para melhorar performance do decodificador
+      const MAX = 1280;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
       const codeReader = new BrowserMultiFormatReader();
-      const imageUrl = URL.createObjectURL(file);
-      const result = await codeReader.decodeFromImageUrl(imageUrl);
-      URL.revokeObjectURL(imageUrl);
+      const result = await codeReader.decodeFromCanvas(canvas);
       const code = result.getText();
       const found = allProducts.find((p) => p.barcode === code);
       if (found) {
@@ -298,7 +320,7 @@ export function ExitPage() {
         setScannerOpen(true);
       }
     } catch {
-      setScannerError("Não foi possível ler o código. Tente novamente com a câmera mais próxima.");
+      setScannerError("Código não identificado. Certifique-se que o código está nítido e tente novamente.");
       setScannerOpen(true);
     } finally {
       if (photoInputRef.current) photoInputRef.current.value = "";
