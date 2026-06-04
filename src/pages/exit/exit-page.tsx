@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, X } from "lucide-react";
 import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
+import { Html5Qrcode } from "html5-qrcode";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -281,34 +282,11 @@ export function ExitPage() {
     if (!file) return;
     setScannerError(null);
     setScannedCode(null);
+    const scannerId = "html5qrcode-exit-scanner";
+    let scanner: Html5Qrcode | null = null;
     try {
-      // Carrega imagem em um elemento HTML para decodificação via canvas
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      const img = new Image();
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = reject;
-        img.src = dataUrl;
-      });
-
-      // Reduz imagem grande para melhorar performance do decodificador
-      const MAX = 1280;
-      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      const codeReader = new BrowserMultiFormatReader();
-      const result = await codeReader.decodeFromCanvas(canvas);
-      const code = result.getText();
+      scanner = new Html5Qrcode(scannerId, { verbose: false });
+      const code = await scanner.scanFile(file, false);
       const found = allProducts.find((p) => p.barcode === code);
       if (found) {
         form.setValue("productId", found.id);
@@ -320,9 +298,10 @@ export function ExitPage() {
         setScannerOpen(true);
       }
     } catch {
-      setScannerError("Código não identificado. Certifique-se que o código está nítido e tente novamente.");
+      setScannerError("Código não identificado. Aproxime mais a câmera do código e tente novamente.");
       setScannerOpen(true);
     } finally {
+      scanner?.clear().catch(() => {});
       if (photoInputRef.current) photoInputRef.current.value = "";
     }
   }
@@ -614,6 +593,9 @@ export function ExitPage() {
           )}
         </form>
       </SectionCard>
+
+      {/* Elemento oculto para html5-qrcode */}
+      <div id="html5qrcode-exit-scanner" className="hidden" />
 
       {/* Scanner de câmera */}
       <Dialog open={scannerOpen} onOpenChange={(open) => { if (!open) stopScanner(); }}>
