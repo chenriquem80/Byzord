@@ -9,7 +9,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { labels, products as mockProducts, stores as mockStores, suppliers } from "@/data/mock-data";
+import { currentUser, labels, products as mockProducts, stores as mockStores, suppliers } from "@/data/mock-data";
 import { formatCurrency } from "@/lib/format";
 import { supabase } from "@/lib/database";
 import type { Product } from "@/types/domain";
@@ -321,6 +321,25 @@ export function EntryPage() {
               await upsertInventory(newMfData.id, store.id, qty);
             }
           }
+        }
+      }
+      // Registra movimentação no log
+      for (const item of entryItems) {
+        const totalQty = Object.values(item.quantities).reduce((s, v) => s + (Number(v) > 0 ? Number(v) : 0), 0);
+        if (totalQty <= 0) continue;
+        const mfName = selectedManufacturer || item.mf.manufacturer;
+        for (const store of stores) {
+          const qty = Number(item.quantities[store.id] ?? 0);
+          if (qty <= 0) continue;
+          await supabase.from("stock_movements").insert({
+            type: "Entrada",
+            product_name: item.product.name,
+            store_name: store.name,
+            manufacturer: mfName,
+            user_name: currentUser?.name ?? "",
+            quantity: qty,
+            note: note || null,
+          });
         }
       }
       setSaveSuccess(true);

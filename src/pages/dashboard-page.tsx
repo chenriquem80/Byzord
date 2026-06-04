@@ -1,22 +1,49 @@
-import { BellRing } from "lucide-react";
-import { useMemo, useState } from "react";
+import { BellRing, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { SectionCard } from "@/components/shared/section-card";
 import { StatCard } from "@/components/shared/stat-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { attendanceQueue, dashboardMetrics, purchaseOrders, stockMovements, stores } from "@/data/mock-data";
+import { attendanceQueue, dashboardMetrics, purchaseOrders, stores } from "@/data/mock-data";
+import { supabase } from "@/lib/database";
+
+type Movement = {
+  id: string;
+  type: string;
+  product_name: string;
+  store_name: string;
+  manufacturer: string | null;
+  user_name: string | null;
+  quantity: number;
+  note: string | null;
+  created_at: string;
+};
 
 export function DashboardPage() {
-  const [selectedDate, setSelectedDate] = useState("2026-05-02");
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [movements, setMovements] = useState<Movement[]>([]);
+  const [loadingMovements, setLoadingMovements] = useState(true);
+
+  async function fetchMovements() {
+    setLoadingMovements(true);
+    if (!supabase) { setLoadingMovements(false); return; }
+    const { data } = await supabase
+      .from("stock_movements")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setMovements(data ?? []);
+    setLoadingMovements(false);
+  }
+
+  useEffect(() => { fetchMovements(); }, []);
 
   const filteredMovements = useMemo(() => {
-    if (!selectedDate) {
-      return stockMovements;
-    }
-
-    return stockMovements.filter((item) => item.date.startsWith(selectedDate));
-  }, [selectedDate]);
+    if (!selectedDate) return movements;
+    return movements.filter((item) => item.created_at.startsWith(selectedDate));
+  }, [selectedDate, movements]);
 
   const filteredPendingAttendances = useMemo(() => {
     if (!selectedDate) {
@@ -45,7 +72,7 @@ export function DashboardPage() {
       >
         <div className="grid gap-4 md:grid-cols-2">
           {stores.map((store) => {
-            const movementsCount = filteredMovements.filter((item) => item.storeId === store.id).length;
+            const movementsCount = filteredMovements.filter((item) => item.store_name === store.name).length;
             const pendingCount = filteredPendingAttendances.filter((item) => item.storeName === store.name).length;
 
             return (
@@ -72,27 +99,41 @@ export function DashboardPage() {
         <SectionCard
           title="Movimentações recentes"
           description="Últimos registros de entrada, saída e ajustes com responsável."
+          action={
+            <Button size="sm" variant="outline" onClick={fetchMovements} disabled={loadingMovements}>
+              <RefreshCw className={`size-3.5 ${loadingMovements ? "animate-spin" : ""}`} />
+              Atualizar
+            </Button>
+          }
         >
           <div className="space-y-3">
-            {stockMovements.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 md:flex-row md:items-center md:justify-between"
-              >
-                <div>
-                  <p className="font-semibold text-slate-900">
-                    {item.type} • {item.productName}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {item.storeName} • {item.manufacturer} • {item.user} • {new Date(item.date).toLocaleString("pt-BR")}
-                  </p>
+            {loadingMovements ? (
+              <p className="py-6 text-center text-sm text-slate-400">Carregando...</p>
+            ) : filteredMovements.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">Nenhuma movimentação nesta data.</p>
+            ) : (
+              filteredMovements.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      {item.type} • {item.product_name}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {item.store_name}{item.manufacturer ? ` • ${item.manufacturer}` : ""}{item.user_name ? ` • ${item.user_name}` : ""} • {new Date(item.created_at).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+                  <div className="text-left md:text-right">
+                    <p className={`font-semibold ${item.quantity < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                      {item.quantity > 0 ? "+" : ""}{item.quantity} un.
+                    </p>
+                    {item.note && <p className="text-sm text-slate-500">{item.note}</p>}
+                  </div>
                 </div>
-                <div className="text-left md:text-right">
-                  <p className="font-semibold text-slate-900">{item.quantity} un.</p>
-                  <p className="text-sm text-slate-500">{item.note}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </SectionCard>
 
