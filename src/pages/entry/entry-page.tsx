@@ -52,6 +52,8 @@ export function EntryPage() {
   const [note, setNote] = useState("");
   const [entryPhoto, setEntryPhoto] = useState<string | null>(null);
   const entryPhotoRef = useRef<HTMLInputElement>(null);
+  const [isTypeB, setIsTypeB] = useState(false);
+  const [isTypeR, setIsTypeR] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -501,6 +503,18 @@ export function EntryPage() {
                     </FormField>
                     <FormField label="Data da compra">
                       <Input value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} type="date" />
+                    </FormField>
+                    <FormField label="Condição especial">
+                      <div className="flex items-center gap-4 rounded-xl border border-border bg-white px-4 py-2.5 shadow-sm">
+                        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                          <input type="checkbox" checked={isTypeB} onChange={(e) => setIsTypeB(e.target.checked)} className="size-4 accent-primary" />
+                          B
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                          <input type="checkbox" checked={isTypeR} onChange={(e) => setIsTypeR(e.target.checked)} className="size-4 accent-primary" />
+                          R
+                        </label>
+                      </div>
                     </FormField>
                     <FormField label="Número da NF">
                       <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="000123" />
