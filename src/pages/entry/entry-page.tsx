@@ -61,30 +61,30 @@ export function EntryPage() {
   const entryListRef = useRef<HTMLDivElement>(null);
 
   function printLabel() {
-    if (!labelRef.current) return;
-    const content = labelRef.current.innerHTML;
-    const win = window.open("", "_blank", "width=400,height=600");
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  @page { size: 10cm 15cm; margin: 0; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { width: 10cm; height: 15cm; display: flex; align-items: center; justify-content: center; background: white; }
-  .label { width: 9cm; padding: 0.5cm; font-family: sans-serif; color: #0f172a; }
-  .label img { display: block; margin: 0 auto 0.4cm; height: 1.2cm; object-fit: contain; }
-  .label p { font-size: 13pt; line-height: 1.4; margin-bottom: 0.15cm; }
-  .barcode-box { margin-top: 0.5cm; border: 2px solid #0f172a; border-radius: 8px; padding: 0.3cm; text-align: center; }
-  .barcode-box svg { width: 100%; height: auto; }
-</style>
-</head>
-<body><div class="label">${content}</div></body>
-</html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 400);
+    const style = document.createElement("style");
+    style.id = "print-label-style";
+    style.innerHTML = `
+      @media print {
+        @page { size: 10cm 15cm; margin: 0; }
+        body * { visibility: hidden !important; }
+        #print-label-area, #print-label-area * { visibility: visible !important; }
+        #print-label-area {
+          position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 10cm !important; height: 15cm !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          background: white !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    window.print();
+    setTimeout(() => {
+      const el = document.getElementById("print-label-style");
+      if (el) el.remove();
+    }, 1000);
   }
 
   useEffect(() => {
@@ -722,7 +722,7 @@ export function EntryPage() {
 
               {lastItem && currentLabel && (
                 <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
-                  <div ref={labelRef} className="mx-auto w-full max-w-[280px] rounded-[22px] bg-white p-5 text-slate-950 shadow-sm">
+                  <div id="print-label-area" ref={labelRef} className="mx-auto w-full max-w-[280px] rounded-[22px] bg-white p-5 text-slate-950 shadow-sm">
                     <div className="mb-4 flex justify-center">
                       <img src="/logo.png" alt="Byzord Auto Vitrais" className="h-12 object-contain" />
                     </div>
