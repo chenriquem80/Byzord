@@ -435,7 +435,7 @@ export function ExitPage() {
                 <Select {...form.register("productId")} className="flex-1">
                   {allProducts.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.internalCode} • {item.name}
+                      {item.name}
                     </option>
                   ))}
                 </Select>
