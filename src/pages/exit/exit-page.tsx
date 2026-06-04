@@ -282,11 +282,36 @@ export function ExitPage() {
     if (!file) return;
     setScannerError(null);
     setScannedCode(null);
-    const scannerId = "html5qrcode-exit-scanner";
-    let scanner: Html5Qrcode | null = null;
+
+    async function decodeCode(f: File): Promise<string> {
+      // 1. Tenta BarcodeDetector nativo (Android Chrome / iOS 17+)
+      if ("BarcodeDetector" in window) {
+        try {
+          const bd = new (window as any).BarcodeDetector({ formats: ["code_128", "ean_13", "ean_8", "code_39", "qr_code"] });
+          const bitmap = await createImageBitmap(f);
+          const results = await bd.detect(bitmap);
+          if (results.length > 0) return results[0].rawValue;
+        } catch { /* segue para próxima tentativa */ }
+      }
+
+      // 2. Html5Qrcode com div temporário no body
+      const tempId = `scanner-tmp-${Date.now()}`;
+      const tempDiv = document.createElement("div");
+      tempDiv.id = tempId;
+      tempDiv.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;";
+      document.body.appendChild(tempDiv);
+      const scanner = new Html5Qrcode(tempId, { verbose: false });
+      try {
+        const code = await scanner.scanFile(f, false);
+        return code;
+      } finally {
+        try { scanner.clear(); } catch { /* ignore */ }
+        document.body.removeChild(tempDiv);
+      }
+    }
+
     try {
-      scanner = new Html5Qrcode(scannerId, { verbose: false });
-      const code = await scanner.scanFile(file, false);
+      const code = await decodeCode(file);
       const found = allProducts.find((p) => p.barcode === code);
       if (found) {
         form.setValue("productId", found.id);
@@ -294,14 +319,13 @@ export function ExitPage() {
         form.setValue("price", found.manufacturers[0].price);
       } else {
         setScannedCode(code);
-        setScannerError(`Código "${code}" não encontrado no cadastro.`);
+        setScannerError(`Código "${code}" não encontrado no cadastro. Verifique se o produto está cadastrado.`);
         setScannerOpen(true);
       }
     } catch {
-      setScannerError("Código não identificado. Aproxime mais a câmera do código e tente novamente.");
+      setScannerError("Não foi possível ler o código. Tire a foto mais perto, com boa luz e sem reflexo.");
       setScannerOpen(true);
     } finally {
-      try { scanner?.clear(); } catch { /* ignore */ }
       if (photoInputRef.current) photoInputRef.current.value = "";
     }
   }
@@ -593,9 +617,6 @@ export function ExitPage() {
           )}
         </form>
       </SectionCard>
-
-      {/* Elemento oculto para html5-qrcode */}
-      <div id="html5qrcode-exit-scanner" className="hidden" />
 
       {/* Scanner de câmera */}
       <Dialog open={scannerOpen} onOpenChange={(open) => { if (!open) stopScanner(); }}>
