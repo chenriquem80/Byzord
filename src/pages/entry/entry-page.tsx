@@ -9,7 +9,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { currentUser, labels, products as mockProducts, stores as mockStores, suppliers } from "@/data/mock-data";
+import { currentUser, products as mockProducts, stores as mockStores, suppliers } from "@/data/mock-data";
 import { formatCurrency } from "@/lib/format";
 import { supabase } from "@/lib/database";
 import type { Product } from "@/types/domain";
@@ -151,16 +151,26 @@ export function EntryPage() {
   const lastItem = entryItems.length > 0 ? entryItems[entryItems.length - 1] : null;
 
   const currentLabel = useMemo(() => {
-    if (!lastItem) return labels[0];
-    return (
-      labels.find(
-        (label) =>
-          label.productCode === lastItem.product.internalCode &&
-          label.manufacturer === lastItem.mf.manufacturer.toLowerCase() &&
-          label.storeId === stores[0].id,
-      ) ?? labels[0]
-    );
-  }, [lastItem]);
+    if (!lastItem) return null;
+    const compat = lastItem.product.compatibilities[0];
+    const vehicleLabel = compat
+      ? `${compat.automaker} ${compat.model}`.trim()
+      : lastItem.product.name;
+    const yearRange = compat
+      ? `${compat.startYear}/${compat.endYear}`
+      : "";
+    const dateLabel = purchaseDate
+      ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
+      : "";
+    return {
+      vehicleLabel,
+      yearRange,
+      feature: lastItem.product.feature,
+      manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
+      purchaseSummary: `${formatCurrency(lastItem.mf.price)} - ${dateLabel}`,
+      storeName: stores[0]?.name ?? "",
+    };
+  }, [lastItem, selectedManufacturer]);
 
   const totalQuantity = useMemo(
     () =>
@@ -682,7 +692,7 @@ export function EntryPage() {
                 )}
               </div>
 
-              {lastItem && (
+              {lastItem && currentLabel && (
                 <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
                   <div className="mx-auto w-full max-w-[280px] rounded-[22px] bg-white p-5 text-slate-950 shadow-sm">
                     <div className="mb-4 flex justify-center">
