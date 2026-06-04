@@ -388,11 +388,14 @@ export function ExitPage() {
                     }}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900">
-                        {row.product.internalCode} • {row.product.name}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-slate-900">{row.product.name}</p>
+                        <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                          {row.product.feature}
+                        </span>
+                      </div>
                       <p className="text-sm text-slate-500">
-                        {row.product.glassType} • {row.product.feature} • {row.product.brand}
+                        {row.product.glassType} • {row.product.brand}
                       </p>
                       <p className="mt-0.5 text-xs font-medium text-slate-400">
                         Fabricante: {row.mf.manufacturer} • Preço: {formatCurrency(row.mf.price)}
