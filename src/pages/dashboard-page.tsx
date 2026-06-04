@@ -78,7 +78,11 @@ export function DashboardPage() {
 
   const filteredMovements = useMemo(() => {
     if (!selectedDate) return movements;
-    return movements.filter((item) => item.created_at.startsWith(selectedDate));
+    return movements.filter((item) => {
+      const localDate = new Date(item.created_at).toLocaleDateString("pt-BR", { year: "numeric", month: "2-digit", day: "2-digit" });
+      const [d, m, y] = localDate.split("/");
+      return `${y}-${m}-${d}` === selectedDate;
+    });
   }, [selectedDate, movements]);
 
   return (

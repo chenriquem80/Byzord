@@ -239,7 +239,7 @@ export function ExitPage() {
         .eq("id", selectedInventory.id);
       if (error) throw error;
       const storeName = allStores.find((s) => s.id === values.storeId)?.name ?? values.storeId;
-      await supabase.from("stock_movements").insert({
+      const { error: mvErr } = await supabase.from("stock_movements").insert({
         type: "Saída",
         product_name: selectedProduct.name,
         store_name: storeName,
@@ -248,6 +248,7 @@ export function ExitPage() {
         quantity: -qty,
         note: values.note || null,
       });
+      if (mvErr) console.error("Erro ao registrar movimentação:", mvErr.message);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
       form.reset({
