@@ -301,7 +301,7 @@ export function ExitPage() {
       setScannerError("Código não identificado. Aproxime mais a câmera do código e tente novamente.");
       setScannerOpen(true);
     } finally {
-      scanner?.clear().catch(() => {});
+      try { scanner?.clear(); } catch { /* ignore */ }
       if (photoInputRef.current) photoInputRef.current.value = "";
     }
   }
