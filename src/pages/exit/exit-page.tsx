@@ -293,50 +293,34 @@ export function ExitPage() {
 
     const codeReader = new BrowserMultiFormatReader();
     let active = true;
-    let mediaStream: MediaStream | null = null;
 
     async function start() {
       if (!videoRef.current) return;
-
       try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-          audio: false,
-        });
-
-        if (!active || !videoRef.current) {
-          mediaStream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        videoRef.current.srcObject = mediaStream;
-
-        try {
-          await videoRef.current.play();
-        } catch {
-          // autoPlay attribute já cuida disso na maioria dos casos
-        }
-
-        const controls = await codeReader.decodeFromVideoElement(
+        const controls = await codeReader.decodeFromConstraints(
+          { video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
           videoRef.current,
-          (result, _err) => {
-            if (!active || !result) return;
-            const code = result.getText();
-            const found = allProducts.find((p) => p.barcode === code);
-            if (found) {
-              form.setValue("productId", found.id);
-              form.setValue("manufacturer", found.manufacturers[0].manufacturer);
-              form.setValue("price", found.manufacturers[0].price);
-              controls.stop();
-              scannerControlsRef.current = null;
-              setScannerOpen(false);
-            } else {
-              setScannedCode(code);
-              setScannerError(`Código "${code}" não encontrado no cadastro.`);
+          (result, err) => {
+            if (!active) return;
+            if (result) {
+              const code = result.getText();
+              const found = allProducts.find((p) => p.barcode === code);
+              if (found) {
+                form.setValue("productId", found.id);
+                form.setValue("manufacturer", found.manufacturers[0].manufacturer);
+                form.setValue("price", found.manufacturers[0].price);
+                controls.stop();
+                scannerControlsRef.current = null;
+                setScannerOpen(false);
+              } else {
+                setScannedCode(code);
+                setScannerError(`Código "${code}" não encontrado no cadastro.`);
+              }
+            } else if (err && (err as any)?.name !== "NotFoundException") {
+              console.warn("Scanner error:", err);
             }
           },
         );
-
         if (active) {
           scannerControlsRef.current = controls;
         } else {
@@ -350,7 +334,7 @@ export function ExitPage() {
         } else if (name === "NotFoundError") {
           setScannerError("Nenhuma câmera encontrada neste dispositivo.");
         } else {
-          setScannerError("Não foi possível iniciar a câmera. Verifique as permissões.");
+          setScannerError(`Não foi possível iniciar a câmera: ${(err as Error)?.message ?? "erro desconhecido"}`);
         }
       }
     }
@@ -363,10 +347,8 @@ export function ExitPage() {
         scannerControlsRef.current.stop();
         scannerControlsRef.current = null;
       }
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((t) => t.stop());
-      }
-      if (videoRef.current) {
+      if (videoRef.current?.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
         videoRef.current.srcObject = null;
       }
     };
