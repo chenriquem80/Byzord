@@ -193,8 +193,7 @@ export function ExitPage() {
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const scannerControlsRef = useRef<IScannerControls | null>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const isMobile = typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const html5ScannerRef = useRef<Html5Qrcode | null>(null);
 
   const selectedProduct = useMemo(
     () => allProducts.find((item) => item.id === form.watch("productId")) ?? allProducts[0],
@@ -277,60 +276,47 @@ export function ExitPage() {
     }
   }
 
-  async function handlePhotoScan(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function handleBarcodeScan(code: string) {
+    const found = allProducts.find((p) => p.barcode === code);
+    if (found) {
+      form.setValue("productId", found.id);
+      form.setValue("manufacturer", found.manufacturers[0].manufacturer);
+      form.setValue("price", found.manufacturers[0].price);
+      stopScanner();
+    } else {
+      setScannedCode(code);
+      setScannerError(`Código "${code}" não encontrado no cadastro.`);
+    }
+  }
+
+  async function startHtml5Scanner() {
     setScannerError(null);
     setScannedCode(null);
-
-    async function decodeCode(f: File): Promise<string> {
-      // 1. Tenta BarcodeDetector nativo (Android Chrome / iOS 17+)
-      if ("BarcodeDetector" in window) {
-        try {
-          const bd = new (window as any).BarcodeDetector({ formats: ["code_128", "ean_13", "ean_8", "code_39", "qr_code"] });
-          const bitmap = await createImageBitmap(f);
-          const results = await bd.detect(bitmap);
-          if (results.length > 0) return results[0].rawValue;
-        } catch { /* segue para próxima tentativa */ }
-      }
-
-      // 2. Html5Qrcode com div temporário no body
-      const tempId = `scanner-tmp-${Date.now()}`;
-      const tempDiv = document.createElement("div");
-      tempDiv.id = tempId;
-      tempDiv.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;";
-      document.body.appendChild(tempDiv);
-      const scanner = new Html5Qrcode(tempId, { verbose: false });
-      try {
-        const code = await scanner.scanFile(f, false);
-        return code;
-      } finally {
-        try { scanner.clear(); } catch { /* ignore */ }
-        document.body.removeChild(tempDiv);
-      }
-    }
-
+    const scannerId = "html5qr-live-reader";
+    await new Promise((r) => setTimeout(r, 100)); // aguarda DOM renderizar
     try {
-      const code = await decodeCode(file);
-      const found = allProducts.find((p) => p.barcode === code);
-      if (found) {
-        form.setValue("productId", found.id);
-        form.setValue("manufacturer", found.manufacturers[0].manufacturer);
-        form.setValue("price", found.manufacturers[0].price);
-      } else {
-        setScannedCode(code);
-        setScannerError(`Código "${code}" não encontrado no cadastro. Verifique se o produto está cadastrado.`);
-        setScannerOpen(true);
-      }
-    } catch {
-      setScannerError("Não foi possível ler o código. Tire a foto mais perto, com boa luz e sem reflexo.");
-      setScannerOpen(true);
-    } finally {
-      if (photoInputRef.current) photoInputRef.current.value = "";
+      const scanner = new Html5Qrcode(scannerId, { verbose: false });
+      html5ScannerRef.current = scanner;
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 15, qrbox: { width: 280, height: 120 }, aspectRatio: 1.5 },
+        (code) => { handleBarcodeScan(code); },
+        () => { /* frame sem leitura — ignorar */ },
+      );
+    } catch (err: any) {
+      setScannerError(err?.message?.includes("permission") || err?.name === "NotAllowedError"
+        ? "Permissão de câmera negada. Habilite nas configurações do navegador."
+        : "Não foi possível iniciar a câmera.");
     }
   }
 
   function stopScanner() {
+    if (html5ScannerRef.current) {
+      html5ScannerRef.current.stop().then(() => {
+        html5ScannerRef.current?.clear();
+        html5ScannerRef.current = null;
+      }).catch(() => { html5ScannerRef.current = null; });
+    }
     if (scannerControlsRef.current) {
       scannerControlsRef.current.stop();
       scannerControlsRef.current = null;
@@ -482,35 +468,14 @@ export function ExitPage() {
             {selectedInventory && selectedInventory.stock === 0 && (
               <Badge className="bg-rose-100 text-rose-700">Venda bloqueada sem estoque</Badge>
             )}
-            {isMobile ? (
-              <>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={handlePhotoScan}
-                />
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
-                >
-                  <Camera className="size-4" />
-                  Ler código
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setScannerOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
-              >
-                <Camera className="size-4" />
-                Ler código
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => { setScannerOpen(true); startHtml5Scanner(); }}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
+            >
+              <Camera className="size-4" />
+              Ler código
+            </button>
           </div>
         }
       >
@@ -629,19 +594,8 @@ export function ExitPage() {
           </DialogHeader>
 
           <div className="space-y-3">
-            <div className="relative overflow-hidden rounded-2xl bg-black">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full"
-              />
-              {/* guia de leitura */}
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="h-16 w-64 rounded border-2 border-white/70 shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]" />
-              </div>
-            </div>
+            {/* html5-qrcode renderiza o vídeo aqui */}
+            <div id="html5qr-live-reader" className="overflow-hidden rounded-2xl" />
 
             {scannerError && (
               <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{scannerError}</p>
@@ -653,10 +607,9 @@ export function ExitPage() {
             )}
             {!scannerError && !scannedCode && (
               <p className="text-center text-sm text-slate-500">
-                Aponte a câmera para o código de barras do produto
+                Aponte a câmera para o código de barras
               </p>
             )}
-
             <Button variant="outline" className="w-full" onClick={stopScanner}>
               <X className="size-4" />
               Cancelar
