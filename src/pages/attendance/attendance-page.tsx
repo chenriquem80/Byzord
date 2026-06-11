@@ -31,6 +31,8 @@ export function AttendancePage() {
   const [serviceDescription, setServiceDescription] = useState("");
   const [observations, setObservations] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Loja do atendimento
   const [dbStores, setDbStores] = useState<{ id: string; name: string }[]>([]);
@@ -76,21 +78,43 @@ export function AttendancePage() {
   }, []);
 
   async function handleSave() {
-    if (supabase) {
-      const service = services.find((s) => s.id === selectedServiceId);
-      const store = dbStores.find((s) => s.id === selectedAttendanceStoreId);
-      await supabase.from("pending_attendances").insert({
-        plate,
-        store_id: selectedAttendanceStoreId || null,
-        store_name: store?.name ?? null,
-        service_id: selectedServiceId || null,
-        service_title: service?.title ?? null,
-        billing_type: billingType || null,
-        executing_employee: executingEmployee || null,
-        observations: observations || null,
-      });
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (supabase) {
+        const service = services.find((s) => s.id === selectedServiceId);
+        const store = dbStores.find((s) => s.id === selectedAttendanceStoreId);
+        const { error } = await supabase.from("pending_attendances").insert({
+          plate,
+          store_id: selectedAttendanceStoreId || null,
+          store_name: store?.name ?? null,
+          service_id: selectedServiceId || null,
+          service_title: service?.title ?? null,
+          billing_type: billingType || null,
+          executing_employee: executingEmployee || null,
+          observations: observations || null,
+        });
+        if (error) throw error;
+      }
+      setSaved(true);
+    } catch (err: any) {
+      setSaveError(err?.message ?? "Erro ao salvar atendimento. Tente novamente.");
+    } finally {
+      setSaving(false);
     }
-    setSaved(true);
+  }
+
+  function handleReset() {
+    setPlate("");
+    setSelectedServiceId("");
+    setBillingType("");
+    setExecutingEmployee("");
+    setServiceDescription("");
+    setObservations("");
+    setVehiclePhoto(null);
+    setVideoDone(false);
+    setSaved(false);
+    setSaveError(null);
   }
 
 
@@ -364,18 +388,29 @@ export function AttendancePage() {
                 />
               </div>
 
+              {saveError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                  {saveError}
+                </div>
+              )}
+
               {saved ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                  Atendimento salvo com sucesso. O estoquista verá este item no menu lateral Pedido.
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                    Atendimento confirmado para a placa <strong>{plate}</strong>. Consulte pelo menu Atendimento → Consulta.
+                  </div>
+                  <Button size="lg" variant="outline" onClick={handleReset}>
+                    Novo atendimento
+                  </Button>
                 </div>
               ) : (
                 <Button
                   size="lg"
                   className="w-full md:w-auto"
-                  disabled={!canConfirm}
+                  disabled={!canConfirm || saving}
                   onClick={handleSave}
                 >
-                  Confirmar atendimento
+                  {saving ? "Salvando..." : "Confirmar atendimento"}
                 </Button>
               )}
             </div>
