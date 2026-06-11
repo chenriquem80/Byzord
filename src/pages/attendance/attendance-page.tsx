@@ -74,7 +74,21 @@ export function AttendancePage() {
     load();
   }, []);
 
-  function handleSave() {
+  async function handleSave() {
+    if (supabase) {
+      const service = services.find((s) => s.id === selectedServiceId);
+      const store = dbStores.find((s) => s.id === selectedAttendanceStoreId);
+      await supabase.from("pending_attendances").insert({
+        plate,
+        store_id: selectedAttendanceStoreId || null,
+        store_name: store?.name ?? null,
+        service_id: selectedServiceId || null,
+        service_title: service?.title ?? null,
+        billing_type: billingType || null,
+        executing_employee: executingEmployee || null,
+        observations: observations || null,
+      });
+    }
     setSaved(true);
   }
 

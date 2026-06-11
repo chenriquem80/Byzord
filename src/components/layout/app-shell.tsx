@@ -23,7 +23,7 @@ const menuItems: MenuItem[] = [
     icon: "ClipboardList",
     children: [
       { title: "Novo atendimento", route: "/app/atendimento", icon: "PlusCircle" },
-      { title: "Consulta", route: "/app/atendimento", icon: "Search" },
+      { title: "Consulta", route: "/app/atendimento-consulta", icon: "Search" },
       { title: "Alteração de atendimentos abertos", route: "/app/pedido", icon: "Pencil" },
     ],
   },
@@ -46,7 +46,7 @@ const menuItems: MenuItem[] = [
 
 // Routes that belong to each group (for auto-expand on navigation)
 const groupChildRoutes: Record<string, string[]> = {
-  "/app/atendimento": ["/app/atendimento", "/app/pedido"],
+  "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/pedido"],
   "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia"],
 };
 
