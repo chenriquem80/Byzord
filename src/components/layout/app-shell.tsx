@@ -4,7 +4,6 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { getIcon } from "@/components/shared/icon-map";
 import { homeModules } from "@/data/mock-data";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { UserRole } from "@/types/domain";
 
@@ -18,6 +17,15 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { title: "Inicial", route: "/app", icon: "LayoutDashboard" },
+  {
+    title: "Atendimento",
+    route: "/app/atendimento",
+    icon: "ClipboardList",
+    children: [
+      { title: "Consulta", route: "/app/atendimento", icon: "Search" },
+      { title: "Alteração de atendimentos abertos", route: "/app/pedido", icon: "Pencil" },
+    ],
+  },
   { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
   {
     title: "Estoque",
@@ -35,67 +43,71 @@ const menuItems: MenuItem[] = [
   { title: "Sair", route: "/login", icon: "LogOut" },
 ];
 
+// Routes that belong to each group (for auto-expand on navigation)
+const groupChildRoutes: Record<string, string[]> = {
+  "/app/atendimento": ["/app/atendimento", "/app/pedido"],
+  "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia"],
+};
+
 export function AppShell() {
   const { user, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [stockMenuOpen, setStockMenuOpen] = useState(false);
+  const [openMenus, setOpenMenus] = useState<Set<string>>(new Set());
   const location = useLocation();
   const navigate = useNavigate();
 
   const filteredMenuItems = useMemo(() => {
     return menuItems.filter(item => {
-      if (item.allowedRoles && user && !item.allowedRoles.includes(user.role)) {
-        return false;
-      }
+      if (item.allowedRoles && user && !item.allowedRoles.includes(user.role)) return false;
       return true;
     }).map(item => {
       if (item.children) {
         return {
           ...item,
           children: item.children.filter(child => {
-            if (child.allowedRoles && user && !child.allowedRoles.includes(user.role)) {
-              return false;
-            }
+            if (child.allowedRoles && user && !child.allowedRoles.includes(user.role)) return false;
             return true;
-          })
+          }),
         };
       }
       return item;
     });
   }, [user]);
 
+  function toggleMenu(route: string) {
+    setOpenMenus(prev => {
+      const next = new Set(prev);
+      if (next.has(route)) next.delete(route); else next.add(route);
+      return next;
+    });
+  }
+
   async function handleLogout() {
     await signOut();
     navigate("/login");
   }
 
-  const currentModule = useMemo(
-    () => {
-      for (const item of filteredMenuItems) {
-        if (item.route === location.pathname) {
-          return item;
-        }
-
-        if ("children" in item) {
-          const child = item.children?.find((entry) => entry.route === location.pathname);
-          if (child) {
-            return child;
-          }
-        }
+  const currentModule = useMemo(() => {
+    for (const item of filteredMenuItems) {
+      if (item.route === location.pathname) return item;
+      if (item.children) {
+        const child = item.children.find((c) => c.route === location.pathname);
+        if (child) return child;
       }
-
-      return homeModules.find((item) => item.route === location.pathname);
-    },
-    [location.pathname],
-  );
+    }
+    return homeModules.find((item) => item.route === location.pathname);
+  }, [location.pathname]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [location.pathname]);
 
+  // Auto-expand group when navigating to a child route
   useEffect(() => {
-    if (location.pathname === "/app/estoque" || location.pathname === "/app/entrada" || location.pathname === "/app/saida") {
-      setStockMenuOpen(true);
+    for (const [groupRoute, childRoutes] of Object.entries(groupChildRoutes)) {
+      if (childRoutes.includes(location.pathname)) {
+        setOpenMenus(prev => new Set([...prev, groupRoute]));
+      }
     }
   }, [location.pathname]);
 
@@ -104,9 +116,8 @@ export function AppShell() {
       <div className="mx-auto flex min-h-screen w-full max-w-[1600px]">
         <aside className="hidden w-80 shrink-0 border-r border-slate-200 bg-[#74777F] px-6 py-8 text-slate-900 lg:block">
           <SidebarContent
-            stockMenuOpen={stockMenuOpen}
-            onToggleStockMenu={() => setStockMenuOpen((value) => !value)}
-            onOpenAttendance={() => navigate("/app/atendimento")}
+            openMenus={openMenus}
+            onToggleMenu={toggleMenu}
             filteredMenuItems={filteredMenuItems}
             handleLogout={handleLogout}
           />
@@ -123,8 +134,8 @@ export function AppShell() {
               </div>
               <button
                 className="rounded-2xl bg-white/10 p-3"
-                onClick={() => setMobileOpen((value) => !value)}
-            >
+                onClick={() => setMobileOpen((v) => !v)}
+              >
                 <Menu className="size-5" />
               </button>
             </div>
@@ -138,12 +149,8 @@ export function AppShell() {
                 <div className="absolute left-0 right-0 top-full z-40 mt-0 border-t border-white/10 bg-white p-4 text-slate-900 shadow-2xl">
                   <MobileNav
                     close={() => setMobileOpen(false)}
-                    stockMenuOpen={stockMenuOpen}
-                    onToggleStockMenu={() => setStockMenuOpen((value) => !value)}
-                    onOpenAttendance={() => {
-                      setMobileOpen(false);
-                      navigate("/app/atendimento");
-                    }}
+                    openMenus={openMenus}
+                    onToggleMenu={toggleMenu}
                     filteredMenuItems={filteredMenuItems}
                     handleLogout={handleLogout}
                   />
@@ -162,15 +169,13 @@ export function AppShell() {
 }
 
 function SidebarContent({
-  stockMenuOpen,
-  onToggleStockMenu,
-  onOpenAttendance,
+  openMenus,
+  onToggleMenu,
   filteredMenuItems,
   handleLogout,
 }: {
-  stockMenuOpen: boolean;
-  onToggleStockMenu: () => void;
-  onOpenAttendance: () => void;
+  openMenus: Set<string>;
+  onToggleMenu: (route: string) => void;
   filteredMenuItems: MenuItem[];
   handleLogout: () => void;
 }) {
@@ -182,20 +187,14 @@ function SidebarContent({
           alt="Byzord Auto Vitrais"
           className="mx-auto w-full max-w-[220px] object-contain"
         />
-        <Button
-          size="lg"
-          className="mt-5 w-full rounded-2xl bg-slate-300 text-slate-800 hover:bg-slate-200"
-          onClick={onOpenAttendance}
-        >
-          Abrir atendimento
-        </Button>
       </div>
 
       <nav className="mt-8 flex-1 space-y-2">
         {filteredMenuItems.map((item) => {
           const Icon = getIcon(item.icon);
-          const isStockGroup = item.children && item.children.length > 0;
-          
+          const isGroup = item.children && item.children.length > 0;
+          const isOpen = openMenus.has(item.route);
+
           if (item.title === "Sair") {
             return (
               <button
@@ -211,28 +210,26 @@ function SidebarContent({
 
           return (
             <div key={item.route} className="space-y-2">
-              {isStockGroup ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={onToggleStockMenu}
-                    className={cn(
+              {isGroup ? (
+                <button
+                  type="button"
+                  onClick={() => onToggleMenu(item.route)}
+                  className={cn(
                     "flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium text-slate-100 transition hover:bg-white/20 hover:text-white",
-                      stockMenuOpen && "bg-white text-slate-800",
+                    isOpen && "bg-white text-slate-800",
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon className="size-5" />
+                    {item.title}
+                  </span>
+                  <ChevronRight
+                    className={cn(
+                      "size-4 opacity-70 transition-transform",
+                      isOpen && "rotate-90",
                     )}
-                  >
-                    <span className="flex items-center gap-3">
-                      <Icon className="size-5" />
-                      {item.title}
-                    </span>
-                    <ChevronRight
-                      className={cn(
-                        "size-4 opacity-70 transition-transform",
-                        stockMenuOpen && "rotate-90",
-                      )}
-                    />
-                  </button>
-                </>
+                  />
+                </button>
               ) : (
                 <NavLink
                   to={item.route}
@@ -251,13 +248,13 @@ function SidebarContent({
                 </NavLink>
               )}
 
-              {isStockGroup && stockMenuOpen ? (
+              {isGroup && isOpen ? (
                 <div className="ml-6 space-y-1 border-l border-white/25 pl-4">
                   {item.children?.map((child) => {
                     const ChildIcon = getIcon(child.icon);
                     return (
                       <NavLink
-                        key={child.route}
+                        key={child.route + child.title}
                         to={child.route}
                         className={({ isActive }) =>
                           cn(
@@ -277,43 +274,35 @@ function SidebarContent({
           );
         })}
       </nav>
-
     </div>
   );
 }
 
 function MobileNav({
   close,
-  stockMenuOpen,
-  onToggleStockMenu,
-  onOpenAttendance,
+  openMenus,
+  onToggleMenu,
   filteredMenuItems,
   handleLogout,
 }: {
   close: () => void;
-  stockMenuOpen: boolean;
-  onToggleStockMenu: () => void;
-  onOpenAttendance: () => void;
+  openMenus: Set<string>;
+  onToggleMenu: (route: string) => void;
   filteredMenuItems: MenuItem[];
   handleLogout: () => void;
 }) {
   return (
     <div className="space-y-3">
-      <Button size="lg" className="w-full" onClick={onOpenAttendance}>
-        Abrir atendimento
-      </Button>
       {filteredMenuItems.map((item) => {
         const Icon = getIcon(item.icon);
-        const isStockGroup = item.children && item.children.length > 0;
+        const isGroup = item.children && item.children.length > 0;
+        const isOpen = openMenus.has(item.route);
 
         if (item.title === "Sair") {
           return (
             <button
               key={item.route}
-              onClick={() => {
-                close();
-                handleLogout();
-              }}
+              onClick={() => { close(); handleLogout(); }}
               className="flex w-full items-center gap-3 rounded-2xl border border-border bg-slate-50 p-4 shadow-sm"
             >
               <Icon className="size-5 text-primary" />
@@ -324,10 +313,10 @@ function MobileNav({
 
         return (
           <div key={item.route} className="space-y-2">
-            {isStockGroup ? (
+            {isGroup ? (
               <button
                 type="button"
-                onClick={onToggleStockMenu}
+                onClick={() => onToggleMenu(item.route)}
                 className="flex w-full items-center justify-between rounded-2xl border border-border bg-slate-50 p-4 shadow-sm"
               >
                 <div className="flex items-center gap-3">
@@ -337,7 +326,7 @@ function MobileNav({
                 <ChevronRight
                   className={cn(
                     "size-5 text-slate-500 transition-transform",
-                    stockMenuOpen && "rotate-90",
+                    isOpen && "rotate-90",
                   )}
                 />
               </button>
@@ -352,13 +341,13 @@ function MobileNav({
               </Link>
             )}
 
-            {isStockGroup && stockMenuOpen ? (
+            {isGroup && isOpen ? (
               <div className="ml-4 space-y-2 border-l border-slate-200 pl-4">
                 {item.children?.map((child) => {
                   const ChildIcon = getIcon(child.icon);
                   return (
                     <Link
-                      key={child.route}
+                      key={child.route + child.title}
                       to={child.route}
                       onClick={close}
                       className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4 shadow-sm"

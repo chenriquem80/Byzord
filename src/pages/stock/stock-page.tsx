@@ -18,18 +18,22 @@ function CompatPopup({ compatibilities }: { compatibilities: Product["compatibil
   const [open, setOpen] = useState(false);
   if (compatibilities.length === 0) return <span className="text-xs text-slate-400">—</span>;
   return (
-    <div className="relative inline-block" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+    <>
       <button
         type="button"
+        onClick={() => setOpen(true)}
         className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-primary hover:text-primary"
       >
         <Car className="size-3.5" />
         {compatibilities.length} veículo{compatibilities.length !== 1 ? "s" : ""}
       </button>
-      {open && (
-        <div className="absolute bottom-full right-0 z-50 mb-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Veículos compatíveis</p>
-          <ul className="max-h-52 space-y-1 overflow-y-auto">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Veículos compatíveis</DialogTitle>
+            <DialogDescription>{compatibilities.length} veículo{compatibilities.length !== 1 ? "s" : ""} cadastrado{compatibilities.length !== 1 ? "s" : ""}</DialogDescription>
+          </DialogHeader>
+          <ul className="max-h-72 space-y-1 overflow-y-auto">
             {compatibilities.map((c) => (
               <li key={c.id} className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-700">
                 <span className="font-medium">{c.automaker} {c.model}</span>
@@ -39,9 +43,9 @@ function CompatPopup({ compatibilities }: { compatibilities: Product["compatibil
               </li>
             ))}
           </ul>
-        </div>
-      )}
-    </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
