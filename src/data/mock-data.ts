@@ -1,7 +1,6 @@
 import type {
   AttendanceRecord,
   Customer,
-  DashboardMetric,
   LabelRecord,
   ModuleSummary,
   Product,
@@ -436,32 +435,6 @@ export const labels: LabelRecord[] = products.flatMap((product) =>
   ),
 );
 
-export const dashboardMetrics: DashboardMetric[] = [
-  {
-    label: "Valor em estoque",
-    value: "R$ 61.480",
-    helper: "Soma consolidada das duas lojas",
-  },
-  {
-    label: "Estoque baixado",
-    value: "R$ 239",
-    helper: "Valor total de itens já baixados do estoque",
-    breakdown: ["Taubaté: R$ 239", "Pinda: R$ 0"],
-    tone: "success",
-  },
-  {
-    label: "Pendências de reposição",
-    value: "9 itens",
-    helper: "Alertas considerando saldo individual por loja",
-    tone: "danger",
-  },
-  {
-    label: "Transferência sugerida",
-    value: "3 itens",
-    helper: "Produtos com saldo em uma loja e falta na outra",
-    tone: "warning",
-  },
-];
 
 export const homeModules: ModuleSummary[] = [
   { title: "Produtos", description: "Cadastro único com saldo multiloja", route: "/app/produtos", icon: "Boxes" },
