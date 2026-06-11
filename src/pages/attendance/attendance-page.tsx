@@ -42,6 +42,7 @@ export function AttendancePage() {
   const [newServiceDescription, setNewServiceDescription] = useState("");
   const [newServiceStoreId, setNewServiceStoreId] = useState("");
   const [addingService, setAddingService] = useState(false);
+  const [addServiceError, setAddServiceError] = useState<string | null>(null);
 
   // Funcionário executante
   const [executingEmployee, setExecutingEmployee] = useState("");
@@ -106,29 +107,33 @@ export function AttendancePage() {
     const title = newServiceTitle.trim();
     if (!title) return;
     setAddingService(true);
+    setAddServiceError(null);
+    const description = newServiceDescription.trim();
+    const tempId = `svc-${Date.now()}`;
     try {
-      const description = newServiceDescription.trim();
+      let id = tempId;
       if (supabase) {
         const { data, error } = await supabase
           .from("services")
-          .insert({ title, description, store_id: newServiceStoreId || null })
+          .insert({ title, description: description || null, store_id: newServiceStoreId || null, active: true })
           .select("id")
           .single();
-        if (error) throw error;
-        const newSvc: ServiceOption = { id: data.id, title, description };
-        setServices((prev) => [...prev, newSvc]);
-        setSelectedServiceId(data.id);
-      } else {
-        const newSvc: ServiceOption = { id: `svc-${Date.now()}`, title, description };
-        setServices((prev) => [...prev, newSvc]);
-        setSelectedServiceId(newSvc.id);
+        if (error) {
+          setAddServiceError("Serviço salvo apenas nesta sessão — não foi possível gravar no banco.");
+        } else {
+          id = data.id;
+        }
       }
+      const newSvc: ServiceOption = { id, title, description };
+      setServices((prev) => [...prev, newSvc]);
+      setSelectedServiceId(id);
       setNewServiceTitle("");
       setNewServiceDescription("");
       setNewServiceStoreId("");
       setShowAddService(false);
     } catch (err) {
       console.error("Erro ao adicionar serviço:", err);
+      setAddServiceError("Erro inesperado ao salvar serviço.");
     } finally {
       setAddingService(false);
     }
@@ -200,7 +205,7 @@ export function AttendancePage() {
                   {!showAddService && (
                     <button
                       type="button"
-                      onClick={() => { setShowAddService(true); setNewServiceTitle(""); setNewServiceDescription(""); }}
+                      onClick={() => { setShowAddService(true); setNewServiceTitle(""); setNewServiceDescription(""); setAddServiceError(null); }}
                       className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
                     >
                       <Plus className="size-3.5" />
@@ -212,6 +217,9 @@ export function AttendancePage() {
                 {showAddService && (
                   <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
                     <p className="text-sm font-semibold text-slate-800">Novo serviço</p>
+                    {addServiceError && (
+                      <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700 border border-amber-200">{addServiceError}</p>
+                    )}
                     <Input
                       value={newServiceTitle}
                       onChange={(e) => setNewServiceTitle(e.target.value)}
