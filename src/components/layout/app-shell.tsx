@@ -22,6 +22,7 @@ const menuItems: MenuItem[] = [
     route: "/app/atendimento",
     icon: "ClipboardList",
     children: [
+      { title: "Novo atendimento", route: "/app/atendimento", icon: "PlusCircle" },
       { title: "Consulta", route: "/app/atendimento", icon: "Search" },
       { title: "Alteração de atendimentos abertos", route: "/app/pedido", icon: "Pencil" },
     ],
