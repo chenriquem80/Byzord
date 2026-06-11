@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(vercel --prod)",
+      "Bash(vercel login:*)",
+      "Bash(timeout 5)",
+      "Bash(vercel --prod --name byzord-autovitrais)",
+      "Bash(npx vercel:*)",
+      "Bash(npx tsc:*)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Asus\\\\OneDrive\\\\Documentos\\\\Projeto Autovitrais\" -Recurse -File -Name)",
+      "Bash(git -C \"c:\\\\Users\\\\Asus\\\\OneDrive\\\\Documentos\\\\Projeto Autovitrais\" status)",
+      "Bash(git -C \"c:\\\\Users\\\\Asus\\\\OneDrive\\\\Documentos\\\\Projeto Autovitrais\" diff HEAD)",
+      "Bash(git -C \"c:\\\\Users\\\\Asus\\\\OneDrive\\\\Documentos\\\\Projeto Autovitrais\" add src/pages/products/products-page.tsx)",
+      "Bash(git -C 'c:\\\\Users\\\\Asus\\\\OneDrive\\\\Documentos\\\\Projeto Autovitrais' commit -m ' *)",
+      "Bash(git -C \"c:\\\\Users\\\\Asus\\\\OneDrive\\\\Documentos\\\\Projeto Autovitrais\" push origin main)"
+    ]
+  }
+}

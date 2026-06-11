@@ -249,6 +249,7 @@ export function ExitPage() {
         user_name: currentUser?.name ?? "",
         quantity: -qty,
         note: values.note || null,
+        special_condition: saleSpecialCond,
       });
       if (mvErr) console.error("Erro ao registrar movimentação:", mvErr.message);
       setSaveSuccess(true);

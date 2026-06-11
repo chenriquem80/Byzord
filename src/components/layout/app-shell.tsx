@@ -30,10 +30,7 @@ const menuItems: MenuItem[] = [
       { title: "Transferir", route: "/app/transferencia", icon: "ArrowLeftRight", allowedRoles: ["ADMIN", "GERENTE", "ESTOQUISTA"] },
     ],
   },
-  { title: "Pedido", route: "/app/pedido", icon: "FileText", allowedRoles: ["ADMIN", "GERENTE"] },
-  { title: "Clientes", route: "/app/clientes", icon: "Users" },
   { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3", allowedRoles: ["ADMIN", "GERENTE"] },
-  { title: "Configuração", route: "/app/configuracoes", icon: "Settings" },
   { title: "Usuários", route: "/app/usuarios", icon: "UserCog", allowedRoles: ["ADMIN"] },
   { title: "Sair", route: "/login", icon: "LogOut" },
 ];

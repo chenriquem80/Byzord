@@ -2,11 +2,10 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { SectionCard } from "@/components/shared/section-card";
-import { StatCard } from "@/components/shared/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { dashboardMetrics, stores } from "@/data/mock-data";
+import { stores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
 
 type Movement = {
@@ -219,11 +218,7 @@ export function DashboardPage() {
         </SectionCard>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {dashboardMetrics.map((metric) => (
-          <StatCard key={metric.label} {...metric} />
-        ))}
-      </div>
+
     </div>
   );
 }
