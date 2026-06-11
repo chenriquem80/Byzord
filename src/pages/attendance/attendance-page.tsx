@@ -120,7 +120,7 @@ export function AttendancePage() {
     }
   }
 
-  const canConfirm = plate && videoDone && selectedServiceId && billingType && executingEmployee.trim() && selectedAttendanceStoreId;
+  const canConfirm = plate && selectedServiceId && billingType && executingEmployee.trim() && selectedAttendanceStoreId;
 
   return (
     <div className="space-y-6">
