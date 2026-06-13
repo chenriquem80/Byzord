@@ -195,6 +195,12 @@ export function ExitPage() {
   const html5ScannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // iOS Safari tem problema com scan ao vivo — usa apenas captura de foto
+  const isIOS = useMemo(() =>
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+  , []);
+
   const selectedProduct = useMemo(
     () => allProducts.find((item) => item.id === form.watch("productId")) ?? allProducts[0],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -326,9 +332,9 @@ export function ExitPage() {
     setScannedCode(null);
   }
 
-  // Inicia Html5Qrcode somente após o dialog estar montado no DOM
+  // Inicia Html5Qrcode somente após o dialog estar montado no DOM (não no iOS)
   useEffect(() => {
-    if (!scannerOpen) return;
+    if (!scannerOpen || isIOS) return;
 
     let cancelled = false;
 
@@ -609,15 +615,22 @@ export function ExitPage() {
               {photoProcessing ? "Processando foto..." : "Tirar foto do código de barras"}
             </Button>
 
-            {/* Divisor */}
-            <div className="flex items-center gap-2">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-xs text-slate-400">ou escaneie ao vivo</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-
-            {/* Opção 2: Scan ao vivo (html5-qrcode) */}
-            <div id="html5qr-live-reader" className="overflow-hidden rounded-2xl" />
+            {/* Scan ao vivo — apenas em Android/desktop (iOS usa só foto) */}
+            {!isIOS && (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-slate-200" />
+                  <span className="text-xs text-slate-400">ou escaneie ao vivo</span>
+                  <div className="h-px flex-1 bg-slate-200" />
+                </div>
+                <div id="html5qr-live-reader" className="overflow-hidden rounded-2xl" />
+                {!scannerError && !scannedCode && (
+                  <p className="text-center text-sm text-slate-500">
+                    Aponte a câmera para o código de barras
+                  </p>
+                )}
+              </>
+            )}
 
             {scannerError && (
               <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{scannerError}</p>
@@ -625,11 +638,6 @@ export function ExitPage() {
             {scannedCode && !scannerError && (
               <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
                 Código lido: <strong>{scannedCode}</strong>
-              </p>
-            )}
-            {!scannerError && !scannedCode && (
-              <p className="text-center text-sm text-slate-500">
-                Aponte a câmera para o código de barras
               </p>
             )}
             <Button variant="outline" className="w-full" onClick={stopScanner}>
