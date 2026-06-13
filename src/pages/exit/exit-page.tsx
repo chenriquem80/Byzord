@@ -3,7 +3,6 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, X } from "lucide-react";
-import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
 import { Html5Qrcode } from "html5-qrcode";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
@@ -191,8 +190,6 @@ export function ExitPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [scannedCode, setScannedCode] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const scannerControlsRef = useRef<IScannerControls | null>(null);
   const html5ScannerRef = useRef<Html5Qrcode | null>(null);
 
   const selectedProduct = useMemo(
@@ -290,94 +287,51 @@ export function ExitPage() {
     }
   }
 
-  async function startHtml5Scanner() {
-    setScannerError(null);
-    setScannedCode(null);
-    const scannerId = "html5qr-live-reader";
-    await new Promise((r) => setTimeout(r, 100)); // aguarda DOM renderizar
-    try {
-      const scanner = new Html5Qrcode(scannerId, { verbose: false });
-      html5ScannerRef.current = scanner;
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 15, qrbox: { width: 280, height: 120 }, aspectRatio: 1.5 },
-        (code) => { handleBarcodeScan(code); },
-        () => { /* frame sem leitura — ignorar */ },
-      );
-    } catch (err: any) {
-      setScannerError(err?.message?.includes("permission") || err?.name === "NotAllowedError"
-        ? "Permissão de câmera negada. Habilite nas configurações do navegador."
-        : "Não foi possível iniciar a câmera.");
-    }
-  }
-
   function stopScanner() {
     if (html5ScannerRef.current) {
-      html5ScannerRef.current.stop().then(() => {
-        html5ScannerRef.current?.clear();
-        html5ScannerRef.current = null;
-      }).catch(() => { html5ScannerRef.current = null; });
-    }
-    if (scannerControlsRef.current) {
-      scannerControlsRef.current.stop();
-      scannerControlsRef.current = null;
-    }
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-      videoRef.current.srcObject = null;
+      html5ScannerRef.current.stop()
+        .then(() => html5ScannerRef.current?.clear())
+        .catch(() => {})
+        .finally(() => { html5ScannerRef.current = null; });
     }
     setScannerOpen(false);
     setScannerError(null);
     setScannedCode(null);
   }
 
+  // Inicia Html5Qrcode somente após o dialog estar montado no DOM
   useEffect(() => {
     if (!scannerOpen) return;
 
-    const codeReader = new BrowserMultiFormatReader();
-    let active = true;
+    let cancelled = false;
 
     async function start() {
-      if (!videoRef.current) return;
+      setScannerError(null);
+      setScannedCode(null);
+      // Aguarda o dialog renderizar completamente
+      await new Promise((r) => setTimeout(r, 400));
+      if (cancelled) return;
       try {
-        const controls = await codeReader.decodeFromConstraints(
-          { video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
-          videoRef.current,
-          (result, err) => {
-            if (!active) return;
-            if (result) {
-              const code = result.getText();
-              const found = allProducts.find((p) => p.barcode === code);
-              if (found) {
-                form.setValue("productId", found.id);
-                form.setValue("manufacturer", found.manufacturers[0].manufacturer);
-                form.setValue("price", found.manufacturers[0].price);
-                controls.stop();
-                scannerControlsRef.current = null;
-                setScannerOpen(false);
-              } else {
-                setScannedCode(code);
-                setScannerError(`Código "${code}" não encontrado no cadastro.`);
-              }
-            } else if (err && (err as any)?.name !== "NotFoundException") {
-              console.warn("Scanner error:", err);
-            }
+        const scanner = new Html5Qrcode("html5qr-live-reader", { verbose: false });
+        html5ScannerRef.current = scanner;
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 20, qrbox: { width: 260, height: 100 } },
+          (code) => {
+            if (cancelled) return;
+            handleBarcodeScan(code);
           },
+          () => { /* frame sem leitura — ignorar */ },
         );
-        if (active) {
-          scannerControlsRef.current = controls;
-        } else {
-          controls.stop();
-        }
-      } catch (err) {
-        if (!active) return;
+      } catch (err: any) {
+        if (cancelled) return;
         const name = (err as Error)?.name ?? "";
-        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-          setScannerError("Permissão de câmera negada. Habilite-a nas configurações do navegador.");
+        if (name === "NotAllowedError" || name === "PermissionDeniedError" || err?.message?.includes("permission")) {
+          setScannerError("Permissão de câmera negada. Habilite nas configurações do navegador.");
         } else if (name === "NotFoundError") {
           setScannerError("Nenhuma câmera encontrada neste dispositivo.");
         } else {
-          setScannerError(`Não foi possível iniciar a câmera: ${(err as Error)?.message ?? "erro desconhecido"}`);
+          setScannerError("Não foi possível iniciar a câmera.");
         }
       }
     }
@@ -385,14 +339,12 @@ export function ExitPage() {
     start();
 
     return () => {
-      active = false;
-      if (scannerControlsRef.current) {
-        scannerControlsRef.current.stop();
-        scannerControlsRef.current = null;
-      }
-      if (videoRef.current?.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-        videoRef.current.srcObject = null;
+      cancelled = true;
+      if (html5ScannerRef.current) {
+        html5ScannerRef.current.stop().catch(() => {}).finally(() => {
+          html5ScannerRef.current?.clear();
+          html5ScannerRef.current = null;
+        });
       }
     };
   }, [scannerOpen]);
@@ -471,7 +423,7 @@ export function ExitPage() {
             )}
             <button
               type="button"
-              onClick={() => { setScannerOpen(true); startHtml5Scanner(); }}
+              onClick={() => setScannerOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
             >
               <Camera className="size-4" />
