@@ -293,13 +293,20 @@ export function ExitPage() {
     }
   }
 
-  function stopScanner() {
-    if (html5ScannerRef.current) {
-      html5ScannerRef.current.stop()
-        .then(() => html5ScannerRef.current?.clear())
-        .catch(() => {})
-        .finally(() => { html5ScannerRef.current = null; });
+  function safeStopScanner(scanner: Html5Qrcode) {
+    try {
+      scanner.stop()
+        .then(() => { try { scanner.clear(); } catch {} })
+        .catch(() => { try { scanner.clear(); } catch {} });
+    } catch {
+      try { scanner.clear(); } catch {}
     }
+  }
+
+  function stopScanner() {
+    const scanner = html5ScannerRef.current;
+    html5ScannerRef.current = null; // zera antes para evitar duplo stop
+    if (scanner) safeStopScanner(scanner);
     setScannerOpen(false);
     setScannerError(null);
     setScannedCode(null);
@@ -314,7 +321,6 @@ export function ExitPage() {
     async function start() {
       setScannerError(null);
       setScannedCode(null);
-      // Aguarda o dialog renderizar completamente
       await new Promise((r) => setTimeout(r, 400));
       if (cancelled) return;
       try {
@@ -337,11 +343,8 @@ export function ExitPage() {
               height: Math.floor(Math.min(w, h) * 0.35),
             }),
           },
-          (code) => {
-            if (cancelled) return;
-            handleBarcodeScan(code);
-          },
-          () => { /* frame sem leitura — ignorar */ },
+          (code) => { if (!cancelled) handleBarcodeScan(code); },
+          () => {},
         );
       } catch (err: any) {
         if (cancelled) return;
@@ -360,12 +363,9 @@ export function ExitPage() {
 
     return () => {
       cancelled = true;
-      if (html5ScannerRef.current) {
-        html5ScannerRef.current.stop().catch(() => {}).finally(() => {
-          html5ScannerRef.current?.clear();
-          html5ScannerRef.current = null;
-        });
-      }
+      const scanner = html5ScannerRef.current;
+      html5ScannerRef.current = null; // zera antes para evitar conflito com stopScanner
+      if (scanner) safeStopScanner(scanner);
     };
   }, [scannerOpen]);
 
