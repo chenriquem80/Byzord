@@ -3,7 +3,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, X } from "lucide-react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -274,8 +274,13 @@ export function ExitPage() {
     }
   }
 
-  function handleBarcodeScan(code: string) {
-    const found = allProducts.find((p) => p.barcode === code);
+  function handleBarcodeScan(rawCode: string) {
+    // Remove caracteres não imprimíveis (ex: FNC1 do EAN-13 lido como □)
+    const code = rawCode.replace(/[^\x20-\x7E]/g, "").trim();
+    const found = allProducts.find((p) => {
+      const bc = (p.barcode ?? "").replace(/[^\x20-\x7E]/g, "").trim();
+      return bc && (bc === code || code.endsWith(bc) || bc.endsWith(code));
+    });
     if (found) {
       form.setValue("productId", found.id);
       form.setValue("manufacturer", found.manufacturers[0].manufacturer);
@@ -312,11 +317,25 @@ export function ExitPage() {
       await new Promise((r) => setTimeout(r, 400));
       if (cancelled) return;
       try {
-        const scanner = new Html5Qrcode("html5qr-live-reader", { verbose: false });
+        const scanner = new Html5Qrcode("html5qr-live-reader", {
+          verbose: false,
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+          ],
+        });
         html5ScannerRef.current = scanner;
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 20, qrbox: { width: 260, height: 100 } },
+          {
+            fps: 15,
+            qrbox: (w: number, h: number) => ({
+              width: Math.floor(Math.min(w, h) * 0.9),
+              height: Math.floor(Math.min(w, h) * 0.35),
+            }),
+          },
           (code) => {
             if (cancelled) return;
             handleBarcodeScan(code);
