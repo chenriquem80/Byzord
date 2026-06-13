@@ -1,9 +1,9 @@
 create table if not exists pending_attendances (
   id uuid primary key default gen_random_uuid(),
   plate text not null,
-  store_id uuid references stores(id),
+  store_id text,
   store_name text,
-  service_id uuid references services(id),
+  service_id text,
   service_title text,
   billing_type text,
   executing_employee text,
