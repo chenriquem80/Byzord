@@ -190,6 +190,7 @@ export function ExitPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [scannedCode, setScannedCode] = useState<string | null>(null);
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const html5ScannerRef = useRef<Html5Qrcode | null>(null);
 
   const selectedProduct = useMemo(
@@ -275,7 +276,6 @@ export function ExitPage() {
   }
 
   function handleBarcodeScan(rawCode: string) {
-    // Remove caracteres não imprimíveis (ex: FNC1 do EAN-13 lido como □)
     const code = rawCode.replace(/[^\x20-\x7E]/g, "").trim();
     const found = allProducts.find((p) => {
       const bc = (p.barcode ?? "").replace(/[^\x20-\x7E]/g, "").trim();
@@ -287,8 +287,9 @@ export function ExitPage() {
       form.setValue("price", found.manufacturers[0].price);
       stopScanner();
     } else {
-      setScannedCode(code);
-      setScannerError(`Código "${code}" não encontrado no cadastro.`);
+      // Código lido mas produto não cadastrado: fecha scanner e aguarda seleção manual
+      stopScanner();
+      setPendingBarcode(code);
     }
   }
 
@@ -374,6 +375,17 @@ export function ExitPage() {
         title="Busca de Produto"
         description="Filtre por nome, código ou ano para consultar o estoque em todas as lojas."
       >
+        {pendingBarcode && (
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <div className="flex-1">
+              <p className="font-semibold text-amber-800">Código lido: <span className="font-mono">{pendingBarcode}</span></p>
+              <p className="mt-0.5 text-sm text-amber-700">Produto não cadastrado com este código. Busque e selecione o produto abaixo — o código será vinculado automaticamente.</p>
+            </div>
+            <button type="button" onClick={() => setPendingBarcode(null)} className="shrink-0 text-amber-500 hover:text-amber-700">
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
         <div className="grid gap-4 md:grid-cols-[1fr_auto]">
           <Input
             value={codeQuery}
@@ -399,12 +411,17 @@ export function ExitPage() {
                     key={`${row.product.id}-${i}`}
                     type="button"
                     className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
-                    onClick={() => {
+                    onClick={async () => {
                       form.setValue("productId", row.product.id);
                       form.setValue("manufacturer", row.mf.manufacturer);
                       form.setValue("price", row.mf.price);
                       setCodeQuery("");
                       setGlassTypeFilter("");
+                      // Salva o código de barras no produto para futuras leituras
+                      if (pendingBarcode && supabase && !row.product.barcode) {
+                        await supabase.from("products").update({ barcode: pendingBarcode }).eq("id", row.product.id);
+                      }
+                      setPendingBarcode(null);
                     }}
                   >
                     <div className="min-w-0 flex-1">
