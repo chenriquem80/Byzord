@@ -236,50 +236,49 @@ export function AttendanceQueryPage() {
         ) : (
           <div className="space-y-3">
             {todayRecords.map((record) => (
-              <div key={record.id} className="rounded-2xl border border-border bg-white p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-lg font-bold tracking-wider text-slate-900">{record.plate}</span>
-                      <Badge className={statusColor[record.status] ?? "bg-slate-100 text-slate-600"}>
-                        {statusLabel[record.status] ?? record.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-slate-500">
-                      {formatDateTime(record.created_at)}
-                      {record.store_name ? ` · ${record.store_name}` : ""}
-                    </p>
+              <div key={record.id} className="flex items-center gap-4 rounded-2xl border border-border bg-white p-4">
+                {/* Info */}
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-lg font-bold tracking-wider text-slate-900">{record.plate}</span>
+                    <Badge className={statusColor[record.status] ?? "bg-slate-100 text-slate-600"}>
+                      {statusLabel[record.status] ?? record.status}
+                    </Badge>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {record.vehicle_photo_url && (
-                      <img
-                        src={record.vehicle_photo_url}
-                        alt="Foto do atendimento"
-                        className="h-20 w-32 rounded-xl border border-border object-cover shadow-sm cursor-pointer"
-                        onClick={() => setViewRecord(record)}
-                      />
-                    )}
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}>
-                        <Eye className="size-3.5" />
-                        Visualizar
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => openEdit(record)}>
-                        <Pencil className="size-3.5" />
-                        Alterar
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
-                        <Trash2 className="size-3.5" />
-                        Excluir
-                      </Button>
-                    </div>
+                  <p className="text-sm text-slate-500">
+                    {formatDateTime(record.created_at)}
+                    {record.store_name ? ` · ${record.store_name}` : ""}
+                  </p>
+                  <div className="grid gap-0.5 text-sm text-slate-700 pt-1">
+                    {record.service_title && <p><span className="font-medium">Serviço:</span> {record.service_title}</p>}
+                    {record.billing_type && <p><span className="font-medium">Cobrança:</span> {record.billing_type}</p>}
+                    {record.executing_employee && <p><span className="font-medium">Executado por:</span> {record.executing_employee}</p>}
+                    {record.observations && <p><span className="font-medium">Obs:</span> {record.observations}</p>}
                   </div>
                 </div>
-                <div className="mt-3 grid gap-1 text-sm text-slate-700">
-                  {record.service_title && <p><span className="font-medium">Serviço:</span> {record.service_title}</p>}
-                  {record.billing_type && <p><span className="font-medium">Cobrança:</span> {record.billing_type}</p>}
-                  {record.executing_employee && <p><span className="font-medium">Executado por:</span> {record.executing_employee}</p>}
-                  {record.observations && <p><span className="font-medium">Obs:</span> {record.observations}</p>}
+                {/* Foto */}
+                {record.vehicle_photo_url && (
+                  <img
+                    src={record.vehicle_photo_url}
+                    alt="Foto do atendimento"
+                    className="h-24 w-36 shrink-0 rounded-xl border border-border object-cover shadow-sm cursor-pointer"
+                    onClick={() => setViewRecord(record)}
+                  />
+                )}
+                {/* Ações */}
+                <div className="shrink-0 flex flex-col gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}>
+                    <Eye className="size-3.5" />
+                    Visualizar
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => openEdit(record)}>
+                    <Pencil className="size-3.5" />
+                    Alterar
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
+                    <Trash2 className="size-3.5" />
+                    Excluir
+                  </Button>
                 </div>
               </div>
             ))}
