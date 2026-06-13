@@ -308,12 +308,12 @@ export function AttendanceQueryPage() {
 
       {/* Dialog editar */}
       <Dialog open={!!editRecord} onOpenChange={(open) => { if (!open) setEditRecord(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90vh] max-w-md flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Alterar atendimento — {editRecord?.plate}</DialogTitle>
           </DialogHeader>
           {editRecord && (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto pr-1">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-slate-700">Status</p>
                 <Select value={editFields.status} onChange={(e) => setEditFields((f) => ({ ...f, status: e.target.value }))}>
@@ -358,10 +358,12 @@ export function AttendanceQueryPage() {
               </div>
 
               {saveError && <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700 border border-rose-200">{saveError}</p>}
-              <div className="flex justify-end gap-2 pt-1">
-                <Button variant="outline" onClick={() => setEditRecord(null)}>Cancelar</Button>
-                <Button onClick={handleSaveEdit} disabled={saving}>{saving ? "Salvando..." : "Salvar alterações"}</Button>
-              </div>
+            </div>
+          )}
+          {editRecord && (
+            <div className="shrink-0 flex justify-end gap-2 border-t border-slate-100 pt-4 mt-2">
+              <Button variant="outline" onClick={() => setEditRecord(null)}>Cancelar</Button>
+              <Button onClick={handleSaveEdit} disabled={saving || uploadingPhoto}>{saving ? "Salvando..." : "Salvar alterações"}</Button>
             </div>
           )}
         </DialogContent>
