@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Eye, Pencil, Trash2, Search } from "lucide-react";
+import { useRef, useState } from "react";
+import { Camera, Eye, Pencil, Trash2, Search } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ type AttendanceRecord = {
   billing_type: string | null;
   executing_employee: string | null;
   observations: string | null;
+  vehicle_photo_url: string | null;
   status: string;
   created_at: string;
 };
@@ -69,6 +70,12 @@ export function AttendanceQueryPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Foto no dialog de edição
+  const photoRef = useRef<HTMLInputElement>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [newPhotoUrl, setNewPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
   async function handleSearch() {
     if (!plate.trim()) return;
     setLoading(true);
@@ -107,13 +114,35 @@ export function AttendanceQueryPage() {
       observations: record.observations ?? "",
       status: record.status,
     });
+    setPhotoPreview(record.vehicle_photo_url ?? null);
+    setNewPhotoUrl(null);
     setSaveError(null);
+  }
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !editRecord || !supabase) return;
+    setUploadingPhoto(true);
+    setPhotoPreview(URL.createObjectURL(file));
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${editRecord.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("attendance-photos").upload(path, file, { upsert: true });
+    if (error) {
+      setSaveError("Erro ao enviar foto: " + error.message);
+      setUploadingPhoto(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("attendance-photos").getPublicUrl(path);
+    setNewPhotoUrl(urlData.publicUrl);
+    setUploadingPhoto(false);
+    e.target.value = "";
   }
 
   async function handleSaveEdit() {
     if (!editRecord || !supabase) return;
     setSaving(true);
     setSaveError(null);
+    const photoUrl = newPhotoUrl ?? editRecord.vehicle_photo_url;
     const { error } = await supabase
       .from("pending_attendances")
       .update({
@@ -122,6 +151,7 @@ export function AttendanceQueryPage() {
         executing_employee: editFields.executing_employee || null,
         observations: editFields.observations || null,
         status: editFields.status,
+        vehicle_photo_url: photoUrl ?? null,
       })
       .eq("id", editRecord.id);
     setSaving(false);
@@ -130,7 +160,7 @@ export function AttendanceQueryPage() {
       return;
     }
     setRecords((prev) =>
-      prev.map((r) => r.id === editRecord.id ? { ...r, ...editFields } : r)
+      prev.map((r) => r.id === editRecord.id ? { ...r, ...editFields, vehicle_photo_url: photoUrl ?? null } : r)
     );
     setEditRecord(null);
   }
@@ -256,6 +286,12 @@ export function AttendanceQueryPage() {
                 {viewRecord.executing_employee && <p><span className="font-medium text-slate-600">Executado por:</span> {viewRecord.executing_employee}</p>}
                 {viewRecord.observations && <p><span className="font-medium text-slate-600">Observações:</span> {viewRecord.observations}</p>}
               </div>
+              {viewRecord.vehicle_photo_url && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Foto do atendimento</p>
+                  <img src={viewRecord.vehicle_photo_url} alt="Foto do atendimento" className="h-48 w-full rounded-2xl border border-border object-cover shadow-sm" />
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -298,6 +334,20 @@ export function AttendanceQueryPage() {
                 <p className="text-sm font-medium text-slate-700">Observações</p>
                 <Textarea value={editFields.observations} onChange={(e) => setEditFields((f) => ({ ...f, observations: e.target.value }))} placeholder="Observações adicionais..." />
               </div>
+
+              {/* Foto */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">Foto do atendimento</p>
+                <input ref={photoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
+                <Button type="button" variant="outline" size="sm" onClick={() => photoRef.current?.click()} disabled={uploadingPhoto}>
+                  <Camera className="size-3.5" />
+                  {uploadingPhoto ? "Enviando..." : photoPreview ? "Trocar foto" : "Adicionar foto"}
+                </Button>
+                {photoPreview && (
+                  <img src={photoPreview} alt="Foto do atendimento" className="h-36 w-full rounded-2xl border border-border object-cover shadow-sm" />
+                )}
+              </div>
+
               {saveError && <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700 border border-rose-200">{saveError}</p>}
               <div className="flex justify-end gap-2 pt-1">
                 <Button variant="outline" onClick={() => setEditRecord(null)}>Cancelar</Button>
