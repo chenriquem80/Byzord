@@ -11,11 +11,11 @@ import { supabase } from "@/lib/database";
 
 const mobileNavItems = [
   { title: "Novo Atendimento", route: "/app/atendimento", icon: "ClipboardList", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
-  { title: "Consulta de Atendimento", route: "/app/atendimento-consulta", icon: "Search", bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-100" },
+  { title: "Consulta Atendimento", route: "/app/atendimento-consulta", icon: "Search", bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-100" },
   { title: "Orçamento", route: "/app/orcamento", icon: "Calculator", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
-  { title: "Consulta de Estoque", route: "/app/estoque", icon: "Package", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100" },
-  { title: "Entrada de Estoque", route: "/app/entrada", icon: "PackagePlus", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-100" },
-  { title: "Saída de Estoque", route: "/app/saida", icon: "ShoppingCart", bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-100" },
+  { title: "Consulta Estoque", route: "/app/estoque", icon: "Package", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100" },
+  { title: "Entrada", route: "/app/entrada", icon: "PackagePlus", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-100" },
+  { title: "Saída", route: "/app/saida", icon: "ShoppingCart", bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-100" },
 ];
 
 type AttendanceRecord = {
@@ -104,19 +104,19 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Atalhos de navegação — apenas mobile */}
-      <div className="grid grid-cols-2 gap-3 lg:hidden">
+      <div className="grid w-full grid-cols-2 gap-2 lg:hidden">
         {mobileNavItems.map((item) => {
           const Icon = getIcon(item.icon);
           return (
             <Link
               key={item.route}
               to={item.route}
-              className={`flex items-center gap-3 rounded-2xl border p-4 ${item.bg} ${item.border} transition active:opacity-75`}
+              className={`flex min-w-0 flex-col items-start gap-2 rounded-2xl border p-3 ${item.bg} ${item.border} transition active:opacity-75`}
             >
-              <div className={`shrink-0 rounded-xl p-2 bg-white/60`}>
+              <div className="shrink-0 rounded-xl bg-white/60 p-2">
                 <Icon className={`size-5 ${item.text}`} />
               </div>
-              <span className={`text-sm font-semibold leading-tight ${item.text}`}>{item.title}</span>
+              <span className={`w-full text-sm font-semibold leading-tight ${item.text}`}>{item.title}</span>
             </Link>
           );
         })}
