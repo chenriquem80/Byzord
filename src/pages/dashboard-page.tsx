@@ -1,11 +1,22 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getIcon } from "@/components/shared/icon-map";
 import { stores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
+
+const mobileNavItems = [
+  { title: "Novo Atendimento", route: "/app/atendimento", icon: "ClipboardList", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
+  { title: "Consulta de Atendimento", route: "/app/atendimento-consulta", icon: "Search", bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-100" },
+  { title: "Orçamento", route: "/app/orcamento", icon: "Calculator", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
+  { title: "Consulta de Estoque", route: "/app/estoque", icon: "Package", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100" },
+  { title: "Entrada de Estoque", route: "/app/entrada", icon: "PackagePlus", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-100" },
+  { title: "Saída de Estoque", route: "/app/saida", icon: "ShoppingCart", bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-100" },
+];
 
 type AttendanceRecord = {
   id: string;
@@ -92,33 +103,54 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <SectionCard
-        title="Resumo por loja"
-        description="Visual rápido para comparar o saldo operacional entre as unidades."
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          {stores.map((store) => {
-            const attendCount = todayAttendances.filter((a) => a.store_name === store.name).length;
-            const lowCount = lowStock.filter((item) => item.store_name === store.name).length;
-            return (
-              <div key={store.id} className="rounded-2xl border border-border bg-white p-5">
-                <p className="text-lg font-semibold text-slate-900">{store.name}</p>
-                <p className="mt-1 text-sm text-slate-500">{store.city}</p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Atendimentos hoje</p>
-                    <p className="mt-2 text-2xl font-bold text-slate-900">{attendCount}</p>
-                  </div>
-                  <div className={`rounded-2xl p-4 ${lowCount > 0 ? "bg-rose-50" : "bg-slate-50"}`}>
-                    <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Abaixo do mínimo</p>
-                    <p className={`mt-2 text-2xl font-bold ${lowCount > 0 ? "text-rose-600" : "text-slate-900"}`}>{lowCount}</p>
+      {/* Atalhos de navegação — apenas mobile */}
+      <div className="grid grid-cols-2 gap-3 lg:hidden">
+        {mobileNavItems.map((item) => {
+          const Icon = getIcon(item.icon);
+          return (
+            <Link
+              key={item.route}
+              to={item.route}
+              className={`flex items-center gap-3 rounded-2xl border p-4 ${item.bg} ${item.border} transition active:opacity-75`}
+            >
+              <div className={`shrink-0 rounded-xl p-2 bg-white/60`}>
+                <Icon className={`size-5 ${item.text}`} />
+              </div>
+              <span className={`text-sm font-semibold leading-tight ${item.text}`}>{item.title}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="hidden lg:block">
+        <SectionCard
+          title="Resumo por loja"
+          description="Visual rápido para comparar o saldo operacional entre as unidades."
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            {stores.map((store) => {
+              const attendCount = todayAttendances.filter((a) => a.store_name === store.name).length;
+              const lowCount = lowStock.filter((item) => item.store_name === store.name).length;
+              return (
+                <div key={store.id} className="rounded-2xl border border-border bg-white p-5">
+                  <p className="text-lg font-semibold text-slate-900">{store.name}</p>
+                  <p className="mt-1 text-sm text-slate-500">{store.city}</p>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Atendimentos hoje</p>
+                      <p className="mt-2 text-2xl font-bold text-slate-900">{attendCount}</p>
+                    </div>
+                    <div className={`rounded-2xl p-4 ${lowCount > 0 ? "bg-rose-50" : "bg-slate-50"}`}>
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Abaixo do mínimo</p>
+                      <p className={`mt-2 text-2xl font-bold ${lowCount > 0 ? "text-rose-600" : "text-slate-900"}`}>{lowCount}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </SectionCard>
+              );
+            })}
+          </div>
+        </SectionCard>
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
         <SectionCard

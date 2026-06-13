@@ -1322,7 +1322,7 @@ export function ProductsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 {photoUrls.map((url) => (
                   <div key={url} className="group relative overflow-hidden rounded-2xl border border-border">
-                    <img src={url} alt="Foto do produto" className="h-40 w-full object-cover" />
+                    <img src={url} alt="Foto do produto" className="h-40 w-full object-contain bg-slate-100" />
                     <button
                       type="button"
                       onClick={() => handleDeletePhoto(url)}

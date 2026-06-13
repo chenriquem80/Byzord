@@ -602,7 +602,7 @@ export function StockPage() {
                     <img
                       src={url}
                       alt={`Foto ${i + 1}`}
-                      className="aspect-square w-full rounded-xl border border-border object-cover shadow-sm transition hover:opacity-90"
+                      className="aspect-square w-full rounded-xl border border-border object-contain bg-slate-100 shadow-sm transition hover:opacity-90"
                     />
                   </a>
                 ))}
