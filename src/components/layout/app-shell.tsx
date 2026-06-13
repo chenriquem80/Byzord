@@ -24,7 +24,6 @@ const menuItems: MenuItem[] = [
     children: [
       { title: "Novo atendimento", route: "/app/atendimento", icon: "PlusCircle" },
       { title: "Consulta", route: "/app/atendimento-consulta", icon: "Search" },
-      { title: "Alteração de atendimentos abertos", route: "/app/pedido", icon: "Pencil" },
     ],
   },
   { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },

@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Eye, Pencil, Search } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/database";
 
 type AttendanceRecord = {
@@ -42,11 +45,25 @@ const statusColor: Record<string, string> = {
   cancelado: "bg-slate-100 text-slate-500",
 };
 
+function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString("pt-BR")} · ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 export function AttendanceQueryPage() {
   const [plate, setPlate] = useState("");
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Dialog de visualização
+  const [viewRecord, setViewRecord] = useState<AttendanceRecord | null>(null);
+
+  // Dialog de edição
+  const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
+  const [editFields, setEditFields] = useState({ service_title: "", billing_type: "", executing_employee: "", observations: "", status: "" });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function handleSearch() {
     if (!plate.trim()) return;
@@ -64,6 +81,43 @@ export function AttendanceQueryPage() {
     }
     setSearched(true);
     setLoading(false);
+  }
+
+  function openEdit(record: AttendanceRecord) {
+    setEditRecord(record);
+    setEditFields({
+      service_title: record.service_title ?? "",
+      billing_type: record.billing_type ?? "",
+      executing_employee: record.executing_employee ?? "",
+      observations: record.observations ?? "",
+      status: record.status,
+    });
+    setSaveError(null);
+  }
+
+  async function handleSaveEdit() {
+    if (!editRecord || !supabase) return;
+    setSaving(true);
+    setSaveError(null);
+    const { error } = await supabase
+      .from("pending_attendances")
+      .update({
+        service_title: editFields.service_title || null,
+        billing_type: editFields.billing_type || null,
+        executing_employee: editFields.executing_employee || null,
+        observations: editFields.observations || null,
+        status: editFields.status,
+      })
+      .eq("id", editRecord.id);
+    setSaving(false);
+    if (error) {
+      setSaveError(error.message);
+      return;
+    }
+    setRecords((prev) =>
+      prev.map((r) => r.id === editRecord.id ? { ...r, ...editFields } : r)
+    );
+    setEditRecord(null);
   }
 
   return (
@@ -113,31 +167,28 @@ export function AttendanceQueryPage() {
                         </Badge>
                       </div>
                       <p className="text-sm text-slate-500">
-                        {new Date(record.created_at).toLocaleDateString("pt-BR", {
-                          day: "2-digit", month: "2-digit", year: "numeric",
-                        })}
-                        {" · "}
-                        {new Date(record.created_at).toLocaleTimeString("pt-BR", {
-                          hour: "2-digit", minute: "2-digit",
-                        })}
+                        {formatDateTime(record.created_at)}
                         {record.store_name ? ` · ${record.store_name}` : ""}
                       </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}>
+                        <Eye className="size-3.5" />
+                        Visualizar
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => openEdit(record)}>
+                        <Pencil className="size-3.5" />
+                        Alterar
+                      </Button>
                     </div>
                   </div>
 
                   <div className="mt-3 grid gap-1 text-sm text-slate-700">
-                    {record.service_title && (
-                      <p><span className="font-medium">Serviço:</span> {record.service_title}</p>
-                    )}
-                    {record.billing_type && (
-                      <p><span className="font-medium">Cobrança:</span> {record.billing_type}</p>
-                    )}
-                    {record.executing_employee && (
-                      <p><span className="font-medium">Executado por:</span> {record.executing_employee}</p>
-                    )}
-                    {record.observations && (
-                      <p><span className="font-medium">Obs:</span> {record.observations}</p>
-                    )}
+                    {record.service_title && <p><span className="font-medium">Serviço:</span> {record.service_title}</p>}
+                    {record.billing_type && <p><span className="font-medium">Cobrança:</span> {record.billing_type}</p>}
+                    {record.executing_employee && <p><span className="font-medium">Executado por:</span> {record.executing_employee}</p>}
+                    {record.observations && <p><span className="font-medium">Obs:</span> {record.observations}</p>}
                   </div>
                 </div>
               ))}
@@ -145,6 +196,79 @@ export function AttendanceQueryPage() {
           )}
         </SectionCard>
       )}
+
+      {/* Dialog visualizar */}
+      <Dialog open={!!viewRecord} onOpenChange={(open) => { if (!open) setViewRecord(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Atendimento — {viewRecord?.plate}</DialogTitle>
+          </DialogHeader>
+          {viewRecord && (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Badge className={statusColor[viewRecord.status] ?? "bg-slate-100 text-slate-600"}>
+                  {statusLabel[viewRecord.status] ?? viewRecord.status}
+                </Badge>
+                <span className="text-slate-500">{formatDateTime(viewRecord.created_at)}</span>
+              </div>
+              <div className="grid gap-2 rounded-2xl bg-slate-50 p-4">
+                {viewRecord.store_name && <p><span className="font-medium text-slate-600">Loja:</span> {viewRecord.store_name}</p>}
+                {viewRecord.service_title && <p><span className="font-medium text-slate-600">Serviço:</span> {viewRecord.service_title}</p>}
+                {viewRecord.billing_type && <p><span className="font-medium text-slate-600">Cobrança:</span> {viewRecord.billing_type}</p>}
+                {viewRecord.executing_employee && <p><span className="font-medium text-slate-600">Executado por:</span> {viewRecord.executing_employee}</p>}
+                {viewRecord.observations && <p><span className="font-medium text-slate-600">Observações:</span> {viewRecord.observations}</p>}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog editar */}
+      <Dialog open={!!editRecord} onOpenChange={(open) => { if (!open) setEditRecord(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar atendimento — {editRecord?.plate}</DialogTitle>
+          </DialogHeader>
+          {editRecord && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-slate-700">Status</p>
+                <Select value={editFields.status} onChange={(e) => setEditFields((f) => ({ ...f, status: e.target.value }))}>
+                  <option value="pendente">Pendente</option>
+                  <option value="em_andamento">Em andamento</option>
+                  <option value="concluido">Concluído</option>
+                  <option value="cancelado">Cancelado</option>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-slate-700">Serviço</p>
+                <Input value={editFields.service_title} onChange={(e) => setEditFields((f) => ({ ...f, service_title: e.target.value }))} placeholder="Nome do serviço" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-slate-700">Tipo de cobrança</p>
+                <Select value={editFields.billing_type} onChange={(e) => setEditFields((f) => ({ ...f, billing_type: e.target.value }))}>
+                  <option value="">Selecione...</option>
+                  <option value="Seguro">Seguro</option>
+                  <option value="Particular">Particular</option>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-slate-700">Executado por</p>
+                <Input value={editFields.executing_employee} onChange={(e) => setEditFields((f) => ({ ...f, executing_employee: e.target.value }))} placeholder="Nome do funcionário" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-slate-700">Observações</p>
+                <Textarea value={editFields.observations} onChange={(e) => setEditFields((f) => ({ ...f, observations: e.target.value }))} placeholder="Observações adicionais..." />
+              </div>
+              {saveError && <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700 border border-rose-200">{saveError}</p>}
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" onClick={() => setEditRecord(null)}>Cancelar</Button>
+                <Button onClick={handleSaveEdit} disabled={saving}>{saving ? "Salvando..." : "Salvar alterações"}</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
