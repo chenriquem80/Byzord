@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Camera, X } from "lucide-react";
+import { Camera, ImagePlus, X } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -190,7 +191,9 @@ export function ExitPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [scannedCode, setScannedCode] = useState<string | null>(null);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
   const html5ScannerRef = useRef<Html5Qrcode | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedProduct = useMemo(
     () => allProducts.find((item) => item.id === form.watch("productId")) ?? allProducts[0],
@@ -289,6 +292,25 @@ export function ExitPage() {
     } else {
       setScannedCode(code);
       setScannerError(`Código "${code}" não encontrado no cadastro.`);
+    }
+  }
+
+  async function handlePhotoScan(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoProcessing(true);
+    setScannerError(null);
+    const url = URL.createObjectURL(file);
+    try {
+      const codeReader = new BrowserMultiFormatReader();
+      const result = await codeReader.decodeFromImageUrl(url);
+      handleBarcodeScan(result.getText());
+    } catch {
+      setScannerError("Código não reconhecido na foto. Enquadre apenas o código de barras e tente novamente.");
+    } finally {
+      URL.revokeObjectURL(url);
+      setPhotoProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -555,6 +577,16 @@ export function ExitPage() {
         </form>
       </SectionCard>
 
+      {/* Input de foto oculto */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handlePhotoScan}
+      />
+
       {/* Scanner de câmera */}
       <Dialog open={scannerOpen} onOpenChange={(open) => { if (!open) stopScanner(); }}>
         <DialogContent className="max-w-sm">
@@ -566,7 +598,25 @@ export function ExitPage() {
           </DialogHeader>
 
           <div className="space-y-3">
-            {/* html5-qrcode renderiza o vídeo aqui */}
+            {/* Opção 1: Foto com câmera nativa (mais confiável no mobile) */}
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={photoProcessing}
+            >
+              <ImagePlus className="size-4" />
+              {photoProcessing ? "Processando foto..." : "Tirar foto do código de barras"}
+            </Button>
+
+            {/* Divisor */}
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs text-slate-400">ou escaneie ao vivo</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            {/* Opção 2: Scan ao vivo (html5-qrcode) */}
             <div id="html5qr-live-reader" className="overflow-hidden rounded-2xl" />
 
             {scannerError && (
