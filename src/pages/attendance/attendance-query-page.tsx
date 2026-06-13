@@ -56,7 +56,7 @@ export function AttendanceQueryPage() {
       const { data } = await supabase
         .from("pending_attendances")
         .select("*")
-        .ilike("plate", plate.replace("-", "").trim())
+        .ilike("plate", plate.trim())
         .order("created_at", { ascending: false });
       setRecords(data ?? []);
     } else {
