@@ -127,12 +127,18 @@ export function QuotesPage() {
   );
 
   const manufacturerData = useMemo(() => {
-    if (!selectedProduct) return { cost: 0, price: 0, manufacturer: "" } as any;
+    if (!selectedProduct) return { cost: 0, price: 0, manufacturer: "", lastPurchaseDate: "" } as any;
     return (
       selectedProduct.manufacturers.find((m) => m.manufacturer === selectedManufacturer) ??
-      selectedProduct.manufacturers[0] ?? { cost: 0, price: 0, manufacturer: "" }
+      selectedProduct.manufacturers[0] ?? { cost: 0, price: 0, manufacturer: "", lastPurchaseDate: "" }
     );
   }, [selectedProduct, selectedManufacturer]);
+
+  const priceAgeDays = useMemo(() => {
+    const date = manufacturerData.lastPurchaseDate;
+    if (!date) return null;
+    return Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+  }, [manufacturerData]);
 
   // Combina tipo do produto + nome para melhorar a busca nos marketplaces
   const mlSearchQuery = useMemo(() => {
@@ -261,9 +267,16 @@ export function QuotesPage() {
                 step="0.01"
                 value={customPrice}
                 onChange={(e) => setCustomPrice(parseFloat(e.target.value))}
-                className="pl-10 font-bold text-primary"
+                className={`pl-10 font-bold ${priceAgeDays === null ? "text-primary" : priceAgeDays <= 90 ? "text-blue-600" : "text-red-600"}`}
               />
             </div>
+            {priceAgeDays !== null && (
+              <p className={`mt-1 text-xs font-medium ${priceAgeDays <= 90 ? "text-blue-500" : "text-red-500"}`}>
+                {priceAgeDays <= 90
+                  ? `Atualizado há ${priceAgeDays} dia${priceAgeDays !== 1 ? "s" : ""}`
+                  : `Sem atualização há ${priceAgeDays} dias — verifique o preço`}
+              </p>
+            )}
           </FormField>
         </div>
 
@@ -276,27 +289,11 @@ export function QuotesPage() {
           >
             {showValues ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Custo Interno</p>
-              <p className="text-xl font-black text-slate-900">
-                {showValues ? formatCurrency(manufacturerData.cost) : "••••••"}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Margem Atual</p>
-              <p className="text-xl font-black text-emerald-600">
-                {showValues && customPrice > 0
-                  ? `${(((customPrice - manufacturerData.cost) / customPrice) * 100).toFixed(1)}%`
-                  : "••••••"}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Lucro Bruto</p>
-              <p className="text-xl font-black text-slate-900">
-                {showValues ? formatCurrency(customPrice - manufacturerData.cost) : "••••••"}
-              </p>
-            </div>
+          <div className="space-y-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Custo Interno</p>
+            <p className="text-xl font-black text-slate-900">
+              {showValues ? formatCurrency(manufacturerData.cost) : "••••••"}
+            </p>
           </div>
         </div>
       </SectionCard>
