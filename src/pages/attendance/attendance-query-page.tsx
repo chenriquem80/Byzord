@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Pencil, Search } from "lucide-react";
+import { Eye, Pencil, Trash2, Search } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,10 @@ export function AttendanceQueryPage() {
   // Dialog de visualização
   const [viewRecord, setViewRecord] = useState<AttendanceRecord | null>(null);
 
+  // Dialog de exclusão
+  const [deleteRecord, setDeleteRecord] = useState<AttendanceRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Dialog de edição
   const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
   const [editFields, setEditFields] = useState({ service_title: "", billing_type: "", executing_employee: "", observations: "", status: "" });
@@ -81,6 +85,17 @@ export function AttendanceQueryPage() {
     }
     setSearched(true);
     setLoading(false);
+  }
+
+  async function handleDelete() {
+    if (!deleteRecord || !supabase) return;
+    setDeleting(true);
+    const { error } = await supabase.from("pending_attendances").delete().eq("id", deleteRecord.id);
+    setDeleting(false);
+    if (!error) {
+      setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
+      setDeleteRecord(null);
+    }
   }
 
   function openEdit(record: AttendanceRecord) {
@@ -181,6 +196,10 @@ export function AttendanceQueryPage() {
                         <Pencil className="size-3.5" />
                         Alterar
                       </Button>
+                      <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
+                        <Trash2 className="size-3.5" />
+                        Excluir
+                      </Button>
                     </div>
                   </div>
 
@@ -196,6 +215,25 @@ export function AttendanceQueryPage() {
           )}
         </SectionCard>
       )}
+
+      {/* Dialog excluir */}
+      <Dialog open={!!deleteRecord} onOpenChange={(open) => { if (!open) setDeleteRecord(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir atendimento</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600">
+            Tem certeza que deseja excluir o atendimento da placa <strong>{deleteRecord?.plate}</strong> de{" "}
+            {deleteRecord ? formatDateTime(deleteRecord.created_at) : ""}? Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeleteRecord(null)}>Cancelar</Button>
+            <Button className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Excluindo..." : "Excluir"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog visualizar */}
       <Dialog open={!!viewRecord} onOpenChange={(open) => { if (!open) setViewRecord(null); }}>
