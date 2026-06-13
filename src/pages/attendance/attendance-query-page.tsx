@@ -97,12 +97,21 @@ export function AttendanceQueryPage() {
   async function handleDelete() {
     if (!deleteRecord || !supabase) return;
     setDeleting(true);
-    const { error } = await supabase.from("pending_attendances").delete().eq("id", deleteRecord.id);
+    const { error, count } = await supabase
+      .from("pending_attendances")
+      .delete({ count: "exact" })
+      .eq("id", deleteRecord.id);
     setDeleting(false);
-    if (!error) {
-      setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
-      setDeleteRecord(null);
+    if (error) {
+      alert("Erro ao excluir: " + error.message);
+      return;
     }
+    if (count === 0) {
+      alert("Exclusão bloqueada pelo banco. Verifique as permissões da tabela (política RLS de DELETE).");
+      return;
+    }
+    setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
+    setDeleteRecord(null);
   }
 
   function openEdit(record: AttendanceRecord) {
