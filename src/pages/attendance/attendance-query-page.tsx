@@ -250,19 +250,29 @@ export function AttendanceQueryPage() {
                       {record.store_name ? ` · ${record.store_name}` : ""}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}>
-                      <Eye className="size-3.5" />
-                      Visualizar
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => openEdit(record)}>
-                      <Pencil className="size-3.5" />
-                      Alterar
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
-                      <Trash2 className="size-3.5" />
-                      Excluir
-                    </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    {record.vehicle_photo_url && (
+                      <img
+                        src={record.vehicle_photo_url}
+                        alt="Foto do atendimento"
+                        className="h-20 w-32 rounded-xl border border-border object-cover shadow-sm cursor-pointer"
+                        onClick={() => setViewRecord(record)}
+                      />
+                    )}
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}>
+                        <Eye className="size-3.5" />
+                        Visualizar
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => openEdit(record)}>
+                        <Pencil className="size-3.5" />
+                        Alterar
+                      </Button>
+                      <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
+                        <Trash2 className="size-3.5" />
+                        Excluir
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 <div className="mt-3 grid gap-1 text-sm text-slate-700">
