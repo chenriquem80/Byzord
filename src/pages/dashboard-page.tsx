@@ -1,23 +1,20 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { stores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
 
-type Movement = {
+type AttendanceRecord = {
   id: string;
-  type: string;
-  product_name: string;
-  store_name: string;
-  manufacturer: string | null;
-  user_name: string | null;
-  quantity: number;
-  note: string | null;
-  special_condition: string | null;
+  plate: string;
+  store_name: string | null;
+  service_title: string | null;
+  billing_type: string | null;
+  executing_employee: string | null;
+  status: string;
   created_at: string;
 };
 
@@ -30,23 +27,41 @@ type LowStockItem = {
   min_quantity: number;
 };
 
+const statusLabel: Record<string, string> = {
+  pendente: "Pendente",
+  em_andamento: "Em andamento",
+  concluido: "Concluído",
+  cancelado: "Cancelado",
+};
+
+const statusColor: Record<string, string> = {
+  pendente: "bg-amber-100 text-amber-700",
+  em_andamento: "bg-blue-100 text-blue-700",
+  concluido: "bg-emerald-100 text-emerald-700",
+  cancelado: "bg-slate-100 text-slate-500",
+};
+
 export function DashboardPage() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
-  const [movements, setMovements] = useState<Movement[]>([]);
-  const [loadingMovements, setLoadingMovements] = useState(true);
+  const [todayAttendances, setTodayAttendances] = useState<AttendanceRecord[]>([]);
+  const [loadingAttendances, setLoadingAttendances] = useState(true);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [loadingLowStock, setLoadingLowStock] = useState(true);
 
-  async function fetchMovements() {
-    setLoadingMovements(true);
-    if (!supabase) { setLoadingMovements(false); return; }
+  async function fetchTodayAttendances() {
+    setLoadingAttendances(true);
+    if (!supabase) { setLoadingAttendances(false); return; }
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
     const { data } = await supabase
-      .from("stock_movements")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
-    setMovements(data ?? []);
-    setLoadingMovements(false);
+      .from("pending_attendances")
+      .select("id, plate, store_name, service_title, billing_type, executing_employee, status, created_at")
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString())
+      .order("created_at", { ascending: false });
+    setTodayAttendances(data ?? []);
+    setLoadingAttendances(false);
   }
 
   async function fetchLowStock() {
@@ -56,7 +71,6 @@ export function DashboardPage() {
       .from("product_store_inventory")
       .select("id, stock, min_quantity, store_id, product_manufacturers(manufacturer, products(name)), stores(name)")
       .gt("min_quantity", 0);
-
     const mapped: LowStockItem[] = (data ?? [])
       .filter((row: any) => (row.stock ?? 0) < (row.min_quantity ?? 0))
       .map((row: any) => ({
@@ -72,37 +86,19 @@ export function DashboardPage() {
   }
 
   useEffect(() => {
-    fetchMovements();
+    fetchTodayAttendances();
     fetchLowStock();
   }, []);
-
-  const filteredMovements = useMemo(() => {
-    if (!selectedDate) return movements;
-    return movements.filter((item) => {
-      const localDate = new Date(item.created_at).toLocaleDateString("pt-BR", { year: "numeric", month: "2-digit", day: "2-digit" });
-      const [d, m, y] = localDate.split("/");
-      return `${y}-${m}-${d}` === selectedDate;
-    });
-  }, [selectedDate, movements]);
 
   return (
     <div className="space-y-6">
       <SectionCard
         title="Resumo por loja"
         description="Visual rápido para comparar o saldo operacional entre as unidades."
-        action={
-          <div className="w-full md:w-52">
-            <Input
-              type="date"
-              value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
-            />
-          </div>
-        }
       >
         <div className="grid gap-4 md:grid-cols-2">
           {stores.map((store) => {
-            const movementsCount = filteredMovements.filter((item) => item.store_name === store.name).length;
+            const attendCount = todayAttendances.filter((a) => a.store_name === store.name).length;
             const lowCount = lowStock.filter((item) => item.store_name === store.name).length;
             return (
               <div key={store.id} className="rounded-2xl border border-border bg-white p-5">
@@ -110,8 +106,8 @@ export function DashboardPage() {
                 <p className="mt-1 text-sm text-slate-500">{store.city}</p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="rounded-2xl bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Movimentações</p>
-                    <p className="mt-2 text-2xl font-bold text-slate-900">{movementsCount}</p>
+                    <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Atendimentos hoje</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">{attendCount}</p>
                   </div>
                   <div className={`rounded-2xl p-4 ${lowCount > 0 ? "bg-rose-50" : "bg-slate-50"}`}>
                     <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Abaixo do mínimo</p>
@@ -126,59 +122,41 @@ export function DashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
         <SectionCard
-          title="Movimentações recentes"
-          description="Últimos registros de entrada, saída e ajustes com responsável."
+          title="Atendimentos do dia"
+          description={`${todayAttendances.length} atendimento${todayAttendances.length !== 1 ? "s" : ""} registrado${todayAttendances.length !== 1 ? "s" : ""} hoje.`}
           action={
-            <Button size="sm" variant="outline" onClick={fetchMovements} disabled={loadingMovements}>
-              <RefreshCw className={`size-3.5 ${loadingMovements ? "animate-spin" : ""}`} />
+            <Button size="sm" variant="outline" onClick={fetchTodayAttendances} disabled={loadingAttendances}>
+              <RefreshCw className={`size-3.5 ${loadingAttendances ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
           }
         >
           <div className="space-y-3">
-            {loadingMovements ? (
+            {loadingAttendances ? (
               <p className="py-6 text-center text-sm text-slate-400">Carregando...</p>
-            ) : filteredMovements.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400">
-                Nenhuma movimentação nesta data.{" "}
-                <span className="block mt-1 text-xs text-slate-300">
-                  Certifique-se que a tabela stock_movements foi criada no Supabase.
-                </span>
-              </p>
+            ) : todayAttendances.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">Nenhum atendimento registrado hoje.</p>
             ) : (
-              filteredMovements.map((item) => {
-                const typeColor =
-                  item.type === "Entrada" ? "bg-emerald-100 text-emerald-700" :
-                  item.type === "Saída" ? "bg-rose-100 text-rose-700" :
-                  "bg-blue-100 text-blue-700";
-                return (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-2 rounded-2xl border border-border bg-white p-4 md:flex-row md:items-center md:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${typeColor}`}>{item.type}</span>
-                        {item.special_condition && (
-                          <span className="shrink-0 rounded-md bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
-                            {item.special_condition}
-                          </span>
-                        )}
-                        <p className="truncate font-semibold text-slate-900">{item.product_name}</p>
-                      </div>
-                      <p className="mt-0.5 text-sm text-slate-500">
-                        {item.store_name}{item.manufacturer ? ` • ${item.manufacturer}` : ""}{item.user_name ? ` • ${item.user_name}` : ""} • {new Date(item.created_at).toLocaleString("pt-BR")}
-                      </p>
+              todayAttendances.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-white p-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-bold tracking-wider text-slate-900">{item.plate}</span>
+                      <Badge className={statusColor[item.status] ?? "bg-slate-100 text-slate-600"}>
+                        {statusLabel[item.status] ?? item.status}
+                      </Badge>
                     </div>
-                    <div className="text-left md:text-right shrink-0">
-                      <p className={`font-semibold ${item.quantity < 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                        {item.quantity > 0 ? "+" : ""}{item.quantity} un.
-                      </p>
-                      {item.note && <p className="text-sm text-slate-400">{item.note}</p>}
-                    </div>
+                    <p className="mt-0.5 text-sm text-slate-500">
+                      {new Date(item.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      {item.store_name ? ` · ${item.store_name}` : ""}
+                      {item.executing_employee ? ` · ${item.executing_employee}` : ""}
+                    </p>
+                    {item.service_title && (
+                      <p className="mt-0.5 text-sm text-slate-700">{item.service_title}{item.billing_type ? ` · ${item.billing_type}` : ""}</p>
+                    )}
                   </div>
-                );
-              })
+                </div>
+              ))
             )}
           </div>
         </SectionCard>
@@ -217,8 +195,6 @@ export function DashboardPage() {
           </div>
         </SectionCard>
       </div>
-
-
     </div>
   );
 }
