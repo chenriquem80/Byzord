@@ -57,6 +57,14 @@ export function AttendanceQueryPage() {
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Busca por data
+  const today = new Date().toISOString().slice(0, 10);
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
+  const [dateRecords, setDateRecords] = useState<AttendanceRecord[]>([]);
+  const [dateSearched, setDateSearched] = useState(false);
+  const [loadingDate, setLoadingDate] = useState(false);
+
   // Atendimentos abertos hoje
   const [todayRecords, setTodayRecords] = useState<AttendanceRecord[]>([]);
   const [loadingToday, setLoadingToday] = useState(true);
@@ -117,6 +125,29 @@ export function AttendanceQueryPage() {
     setLoading(false);
   }
 
+  async function handleSearchByDate() {
+    if (!dateFrom) return;
+    setLoadingDate(true);
+    setDateSearched(false);
+    if (supabase) {
+      const start = new Date(dateFrom);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(dateTo || dateFrom);
+      end.setHours(23, 59, 59, 999);
+      const { data } = await supabase
+        .from("pending_attendances")
+        .select("*")
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString())
+        .order("created_at", { ascending: false });
+      setDateRecords(data ?? []);
+    } else {
+      setDateRecords([]);
+    }
+    setDateSearched(true);
+    setLoadingDate(false);
+  }
+
   async function handleDelete() {
     if (!deleteRecord || !supabase) return;
     setDeleting(true);
@@ -135,6 +166,7 @@ export function AttendanceQueryPage() {
     }
     setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
     setTodayRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
+    setDateRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
     setDeleteRecord(null);
   }
 
@@ -195,6 +227,7 @@ export function AttendanceQueryPage() {
     const updated = { ...editFields, vehicle_photo_url: photoUrl ?? null };
     setRecords((prev) => prev.map((r) => r.id === editRecord.id ? { ...r, ...updated } : r));
     setTodayRecords((prev) => prev.map((r) => r.id === editRecord.id ? { ...r, ...updated } : r));
+    setDateRecords((prev) => prev.map((r) => r.id === editRecord.id ? { ...r, ...updated } : r));
     setEditRecord(null);
   }
 
@@ -202,9 +235,10 @@ export function AttendanceQueryPage() {
     <div className="space-y-6">
       <SectionCard
         title="Consulta de atendimentos"
-        description="Informe a placa do veículo para ver o histórico de atendimentos."
+        description="Busque por placa ou por período de data."
       >
-        <div className="flex gap-3">
+        {/* Busca por placa */}
+        <div className="flex flex-wrap gap-3">
           <Input
             value={plate}
             onChange={(e) => setPlate(formatPlate(e.target.value))}
@@ -214,7 +248,40 @@ export function AttendanceQueryPage() {
           />
           <Button size="lg" onClick={handleSearch} disabled={loading || !plate.trim()}>
             <Search className="size-4" />
-            {loading ? "Buscando..." : "Buscar"}
+            {loading ? "Buscando..." : "Buscar por placa"}
+          </Button>
+        </div>
+
+        {/* Divisor */}
+        <div className="my-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-medium text-slate-400">ou buscar por data</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        {/* Busca por data */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-500">Data início</label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-auto"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-500">Data fim</label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              min={dateFrom}
+            />
+          </div>
+          <Button onClick={handleSearchByDate} disabled={loadingDate || !dateFrom}>
+            <Search className="size-4" />
+            {loadingDate ? "Buscando..." : "Buscar por data"}
           </Button>
         </div>
       </SectionCard>
@@ -285,6 +352,49 @@ export function AttendanceQueryPage() {
           </div>
         )}
       </SectionCard>
+
+      {dateSearched && (
+        <SectionCard
+          title={`Atendimentos de ${new Date(dateFrom + "T12:00:00").toLocaleDateString("pt-BR")}${dateTo && dateTo !== dateFrom ? ` até ${new Date(dateTo + "T12:00:00").toLocaleDateString("pt-BR")}` : ""}`}
+          description={dateRecords.length === 0 ? "Nenhum atendimento encontrado no período." : `${dateRecords.length} atendimento${dateRecords.length !== 1 ? "s" : ""} encontrado${dateRecords.length !== 1 ? "s" : ""}.`}
+        >
+          {dateRecords.length === 0 ? (
+            <p className="py-4 text-center text-sm text-slate-400">Nenhum registro encontrado no período selecionado.</p>
+          ) : (
+            <div className="space-y-3">
+              {dateRecords.map((record) => (
+                <div key={record.id} className="flex items-center gap-4 rounded-2xl border border-border bg-white p-4">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-lg font-bold tracking-wider text-slate-900">{record.plate}</span>
+                      <Badge className={statusColor[record.status] ?? "bg-slate-100 text-slate-600"}>
+                        {statusLabel[record.status] ?? record.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {formatDateTime(record.created_at)}
+                      {record.store_name ? ` · ${record.store_name}` : ""}
+                    </p>
+                    <div className="grid gap-0.5 text-sm text-slate-700 pt-1">
+                      {record.service_title && <p><span className="font-medium">Serviço:</span> {record.service_title}</p>}
+                      {record.billing_type && <p><span className="font-medium">Cobrança:</span> {record.billing_type}</p>}
+                      {record.executing_employee && <p><span className="font-medium">Executado por:</span> {record.executing_employee}</p>}
+                    </div>
+                  </div>
+                  {record.vehicle_photo_url && (
+                    <img src={record.vehicle_photo_url} alt="Foto" className="h-24 w-36 shrink-0 rounded-xl border border-border object-cover shadow-sm cursor-pointer" onClick={() => setViewRecord(record)} />
+                  )}
+                  <div className="shrink-0 flex flex-col gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}><Eye className="size-3.5" />Visualizar</Button>
+                    <Button size="sm" variant="outline" onClick={() => openEdit(record)}><Pencil className="size-3.5" />Alterar</Button>
+                    <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}><Trash2 className="size-3.5" />Excluir</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
 
       {searched && (
         <SectionCard
