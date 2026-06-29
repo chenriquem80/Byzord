@@ -36,6 +36,8 @@ export function LoginPage() {
         setError("E-mail ou senha incorretos.");
       } else if (err.message === "Email not confirmed") {
         setError("Por favor, confirme seu e-mail antes de entrar (verifique sua caixa de entrada).");
+      } else if (err.message === "Failed to fetch" || err.name === "TypeError") {
+        setError("Não foi possível conectar ao servidor. O banco de dados pode estar pausado — acesse supabase.com/dashboard e reative o projeto.");
       } else {
         setError(err.message || "Erro ao entrar no sistema. Tente novamente.");
       }
