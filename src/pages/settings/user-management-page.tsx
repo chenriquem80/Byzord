@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, UserMinus, UserCheck, Shield, ShieldCheck, KeyRound } from "lucide-react";
+import { Plus, Search, UserMinus, UserCheck, Shield, ShieldCheck, KeyRound, UserCog } from "lucide-react";
 import { supabase, supabaseAdmin } from "@/lib/database";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { User, UserRole } from "@/types/domain";
+import { useAuth } from "@/contexts/auth-context";
 import { stores as mockStores } from "@/data/mock-data";
 import {
   ALL_PAGES,
@@ -28,6 +29,9 @@ import {
 } from "@/lib/permissions";
 
 export function UserManagementPage() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "ADMIN";
+
   const [users, setUsers] = useState<User[]>([]);
   const [_loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,6 +41,11 @@ export function UserManagementPage() {
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Estado para edição de perfil (role) do usuário
+  const [editRoleUser, setEditRoleUser] = useState<User | null>(null);
+  const [editRoleValue, setEditRoleValue] = useState<UserRole>("ATENDENTE");
+  const [isRoleSaving, setIsRoleSaving] = useState(false);
 
   // Permissões
   const [permissionsRole, setPermissionsRole] = useState<UserRole | null>(null);
@@ -239,6 +248,32 @@ export function UserManagementPage() {
     setPermissionsMap(null);
   }
 
+  function openEditRole(user: User) {
+    setEditRoleUser(user);
+    setEditRoleValue(user.role);
+  }
+
+  async function handleSaveRole() {
+    if (!editRoleUser || !supabase) return;
+    setIsRoleSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          role: editRoleValue,
+          allow_cost_view: editRoleValue === "ADMIN" || editRoleValue === "GERENTE",
+        })
+        .eq("id", editRoleUser.id);
+      if (error) throw error;
+      setEditRoleUser(null);
+      fetchUsers();
+    } catch (err) {
+      console.error("Erro ao alterar perfil:", err);
+    } finally {
+      setIsRoleSaving(false);
+    }
+  }
+
   const PERMISSION_OPTIONS: { value: PagePermission; label: string; color: string }[] = [
     { value: "write", label: "✏️ Edição",      color: "text-emerald-700 bg-emerald-50" },
     { value: "read",  label: "👁️ Consulta",    color: "text-blue-700 bg-blue-50" },
@@ -257,9 +292,22 @@ export function UserManagementPage() {
     },
     {
       header: "Perfil",
-      cell: ({ row }: any) => (
-        <Badge className="bg-slate-100 font-medium">{row.original.role}</Badge>
-      ),
+      cell: ({ row }: any) =>
+        isAdmin ? (
+          <button
+            type="button"
+            onClick={() => openEditRole(row.original)}
+            title="Clique para alterar o perfil"
+            className="group"
+          >
+            <Badge className="bg-slate-100 font-medium transition-colors group-hover:bg-blue-100 group-hover:text-blue-700 group-hover:ring-2 group-hover:ring-blue-200 cursor-pointer">
+              <UserCog className="mr-1 size-3 opacity-0 transition-opacity group-hover:opacity-100" />
+              {row.original.role}
+            </Badge>
+          </button>
+        ) : (
+          <Badge className="bg-slate-100 font-medium">{row.original.role}</Badge>
+        ),
     },
     { header: "Loja", accessorKey: "storeName" },
     {
@@ -391,6 +439,66 @@ export function UserManagementPage() {
             <Button onClick={savePermissions}>
               Salvar permissões
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Alterar Perfil do Usuário */}
+      <Dialog open={!!editRoleUser} onOpenChange={() => setEditRoleUser(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCog className="size-5 text-blue-500" />
+              Alterar Perfil
+            </DialogTitle>
+            <DialogDescription>
+              Altere o perfil de acesso de <strong>{editRoleUser?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4">
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Usuário</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{editRoleUser?.name}</p>
+              <p className="text-xs text-slate-500">{editRoleUser?.email}</p>
+            </div>
+
+            <FormField label="Novo perfil">
+              <div className="grid grid-cols-2 gap-2">
+                {(["ADMIN", "GERENTE", "ATENDENTE", "ESTOQUISTA"] as UserRole[]).map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setEditRoleValue(role)}
+                    className={`rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all ${
+                      editRoleValue === role
+                        ? "border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
+            </FormField>
+
+            {editRoleValue !== editRoleUser?.role && (
+              <div className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                ⚠️ O perfil será alterado de <strong>{editRoleUser?.role}</strong> para <strong>{editRoleValue}</strong>. As permissões do novo perfil serão aplicadas imediatamente.
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setEditRoleUser(null)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveRole}
+                disabled={isRoleSaving || editRoleValue === editRoleUser?.role}
+              >
+                {isRoleSaving ? "Salvando..." : "Salvar Perfil"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
