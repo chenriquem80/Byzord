@@ -142,7 +142,7 @@ export const router = createBrowserRouter([
       { index: true, element: withSuspense(<DashboardPage />) },
       { path: "home", element: <Navigate to="/app" replace /> },
       { path: "atendimento", element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/atendimento")}><AttendancePage /></AuthGuard>) },
-      { path: "atendimento-consulta", element: withSuspense(<AuthGuard><AttendanceQueryPage /></AuthGuard>) },
+      { path: "atendimento-consulta", element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/atendimento-consulta")}><AttendanceQueryPage /></AuthGuard>) },
       { path: "estoque",     element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/estoque")}><StockPage /></AuthGuard>) },
       { path: "saida",       element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/saida")}><ExitPage /></AuthGuard>) },
       { path: "orcamento",   element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/orcamento")}><QuotesPage /></AuthGuard>) },

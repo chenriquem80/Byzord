@@ -21,21 +21,26 @@ const menuItems: MenuItem[] = [
     title: "Atendimento",
     route: "/app/atendimento",
     icon: "ClipboardList",
+    allowedRoles: ["ADMIN", "GERENTE", "ATENDENTE"],
     children: [
       { title: "Novo atendimento", route: "/app/atendimento", icon: "PlusCircle" },
       { title: "Consulta", route: "/app/atendimento-consulta", icon: "Search" },
     ],
   },
-  { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
+  { title: "Orçamento", route: "/app/orcamento", icon: "Calculator", allowedRoles: ["ADMIN", "GERENTE", "ATENDENTE"] },
   {
     title: "Estoque",
     route: "/app/estoque",
     icon: "Package",
+    allowedRoles: ["ADMIN", "GERENTE", "ESTOQUISTA"],
     children: [
       { title: "Consulta", route: "/app/estoque", icon: "Search" },
-      { title: "Entrada", route: "/app/entrada", icon: "PackagePlus", allowedRoles: ["ADMIN", "GERENTE", "ESTOQUISTA"] },
+      { title: "Entrada", route: "/app/entrada", icon: "PackagePlus" },
       { title: "Saída", route: "/app/saida", icon: "ShoppingCart" },
-      { title: "Transferir", route: "/app/transferencia", icon: "ArrowLeftRight", allowedRoles: ["ADMIN", "GERENTE", "ESTOQUISTA"] },
+      { title: "Transferir", route: "/app/transferencia", icon: "ArrowLeftRight" },
+      { title: "Produtos", route: "/app/produtos", icon: "Boxes" },
+      { title: "Etiquetagem", route: "/app/etiquetagem", icon: "QrCode" },
+      { title: "Reposição", route: "/app/reposicao", icon: "RefreshCcw" },
     ],
   },
   { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3", allowedRoles: ["ADMIN", "GERENTE"] },
@@ -46,7 +51,7 @@ const menuItems: MenuItem[] = [
 // Routes that belong to each group (for auto-expand on navigation)
 const groupChildRoutes: Record<string, string[]> = {
   "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/pedido"],
-  "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia"],
+  "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia", "/app/produtos", "/app/etiquetagem", "/app/reposicao"],
 };
 
 export function AppShell() {
