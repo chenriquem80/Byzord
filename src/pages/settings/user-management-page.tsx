@@ -19,7 +19,7 @@ import { User, UserRole } from "@/types/domain";
 import { useAuth } from "@/contexts/auth-context";
 import { stores as mockStores } from "@/data/mock-data";
 import {
-  ALL_PAGES,
+  SIDEBAR_PAGES,
   PAGE_LABELS,
   type AppPage,
   type PagePermission,
@@ -410,7 +410,7 @@ export function UserManagementPage() {
           </DialogHeader>
 
           <div className="mt-2 space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-            {ALL_PAGES.map((page) => (
+            {SIDEBAR_PAGES.map((page) => (
               <div key={page} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-2">
                 <span className="text-sm font-medium text-slate-700">{PAGE_LABELS[page]}</span>
                 <div className="flex gap-1">

@@ -47,6 +47,24 @@ export const PAGE_LABELS: Record<AppPage, string> = {
 
 export const ALL_PAGES = Object.keys(PAGE_LABELS) as AppPage[];
 
+// Páginas exibidas na dialog de permissões — correspondem ao menu lateral
+export const SIDEBAR_PAGES: AppPage[] = [
+  "/app",
+  "/app/atendimento",
+  "/app/atendimento-consulta",
+  "/app/orcamento",
+  "/app/estoque",
+  "/app/entrada",
+  "/app/saida",
+  "/app/pedido",
+  "/app/etiquetagem",
+  "/app/reposicao",
+  "/app/produtos",
+  "/app/transferencia",
+  "/app/relatorios",
+  "/app/usuarios",
+];
+
 export type RolePermissionMap = Record<AppPage, PagePermission>;
 
 const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
