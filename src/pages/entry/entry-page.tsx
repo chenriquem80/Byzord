@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Camera, Check, Plus, Printer, X } from "lucide-react";
 import Barcode from "react-barcode";
+import { QRCodeSVG } from "qrcode.react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -65,58 +66,21 @@ export function EntryPage() {
     style.id = "print-label-style";
     style.innerHTML = `
       @media print {
-        @page { size: 10cm 15cm; margin: 0; }
+        @page { size: 10cm 16cm; margin: 0; }
         body * { visibility: hidden !important; }
         #print-label-area, #print-label-area * { visibility: visible !important; }
         #print-label-area {
           position: fixed !important;
           top: 0 !important; left: 0 !important;
           width: 10cm !important;
-          padding: 0.6cm !important;
+          padding: 0.5cm !important;
           background: white !important;
           display: block !important;
           font-family: sans-serif !important;
           color: #0f172a !important;
         }
-        /* Logo */
-        #print-label-area .mb-4 {
-          display: flex !important;
-          justify-content: center !important;
-          margin-bottom: 0.4cm !important;
-        }
-        #print-label-area img {
-          height: 1.3cm !important;
-          width: auto !important;
-          display: block !important;
-        }
-        /* Linhas de texto */
-        #print-label-area .space-y-1 {
-          display: block !important;
-          margin-bottom: 0.3cm !important;
-        }
-        #print-label-area .space-y-1 p {
-          display: block !important;
-          font-size: 12pt !important;
-          line-height: 1.5 !important;
-          margin: 0 !important;
-        }
-        /* Caixa do código de barras */
-        #print-label-area .mt-6 {
-          display: block !important;
-          margin-top: 0.4cm !important;
-          border: 2px solid #0f172a !important;
-          border-radius: 10px !important;
-          padding: 0.25cm !important;
-          text-align: center !important;
-        }
-        #print-label-area .mt-6 .flex {
-          display: flex !important;
-          justify-content: center !important;
-        }
-        #print-label-area svg {
-          max-width: 100% !important;
-          height: auto !important;
-        }
+        #print-label-area img { height: 1.2cm !important; width: auto !important; display: block !important; }
+        #print-label-area svg { max-width: 100% !important; height: auto !important; }
       }
     `;
     document.head.appendChild(style);
@@ -762,30 +726,50 @@ export function EntryPage() {
 
               {lastItem && currentLabel && (
                 <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
-                  <div id="print-label-area" ref={labelRef} className="mx-auto w-full max-w-[280px] rounded-[22px] bg-white p-5 text-slate-950 shadow-sm">
-                    <div className="mb-4 flex justify-center">
-                      <img src="/logo.png" alt="Byzord Auto Vitrais" className="h-12 object-contain" />
+                  <div id="print-label-area" ref={labelRef} className="mx-auto w-full max-w-[260px] rounded-[18px] bg-white px-4 pb-4 pt-3 text-slate-950 shadow-sm">
+                    {/* Código compacto */}
+                    <div className="flex items-baseline gap-2">
+                      <span className="shrink-0 text-[11px] font-medium text-slate-500">Codigo:</span>
+                      <span className="break-all text-[14px] font-bold leading-tight tracking-tight">
+                        {lastItem.product.internalCode || lastItem.product.name}
+                      </span>
                     </div>
-                    <div className="mt-2 space-y-1 text-[18px] leading-tight">
+
+                    {/* Logo */}
+                    <div className="mt-2 flex justify-center">
+                      <img src="/logo.png" alt="Byzord Auto Vitrais" className="h-11 w-auto object-contain" />
+                    </div>
+
+                    {/* Informações */}
+                    <div className="mt-3 space-y-0.5 text-[13px] leading-snug text-slate-800">
                       <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
                       <p>{currentLabel.yearRange}</p>
                       <p>{currentLabel.feature} • {currentLabel.manufacturer}</p>
                       <p>{currentLabel.purchaseSummary}</p>
                     </div>
 
-                    {lastItem.product.barcode && (
-                      <div className="mt-6 rounded-[14px] border-2 border-slate-950 p-3 text-center">
-                        <div className="flex justify-center overflow-hidden">
-                          <Barcode
-                            value={lastItem.product.barcode}
-                            format="CODE128"
-                            width={1.6}
-                            height={60}
-                            fontSize={11}
-                            margin={0}
-                            background="transparent"
-                          />
-                        </div>
+                    {/* QR Code */}
+                    <div className="mt-4 flex justify-center rounded-[12px] border border-slate-300 p-2">
+                      <QRCodeSVG
+                        value={lastItem.product.barcode || lastItem.product.internalCode || lastItem.product.name}
+                        size={120}
+                        level="M"
+                        includeMargin={false}
+                      />
+                    </div>
+
+                    {/* Código de Barras */}
+                    {(lastItem.product.barcode || lastItem.product.internalCode) && (
+                      <div className="mt-2 flex justify-center">
+                        <Barcode
+                          value={lastItem.product.barcode || lastItem.product.internalCode}
+                          format="CODE128"
+                          width={1.1}
+                          height={36}
+                          fontSize={10}
+                          margin={0}
+                          background="transparent"
+                        />
                       </div>
                     )}
                   </div>
