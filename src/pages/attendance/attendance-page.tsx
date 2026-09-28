@@ -27,6 +27,7 @@ export function AttendancePage() {
   const [billingType, setBillingType] = useState<"Seguro" | "Particular" | "">("");
   const [videoDone, setVideoDone] = useState(false);
   const [vehiclePhoto, setVehiclePhoto] = useState<string | null>(null);
+  const [vehiclePhotoFile, setVehiclePhotoFile] = useState<File | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const [serviceDescription, setServiceDescription] = useState("");
   const [observations, setObservations] = useState("");
@@ -84,6 +85,24 @@ export function AttendancePage() {
       if (supabase) {
         const service = services.find((s) => s.id === selectedServiceId);
         const store = dbStores.find((s) => s.id === selectedAttendanceStoreId);
+
+        // Upload da foto para o Supabase Storage
+        let photoUrl: string | null = null;
+        if (vehiclePhotoFile) {
+          const ext = vehiclePhotoFile.name.split(".").pop() ?? "jpg";
+          const path = `${plate.replace(/[^A-Z0-9]/gi, "")}/${Date.now()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("attendance-photos")
+            .upload(path, vehiclePhotoFile, { upsert: true });
+          if (uploadError) {
+            throw new Error("Erro ao enviar foto: " + uploadError.message);
+          }
+          const { data: urlData } = supabase.storage
+            .from("attendance-photos")
+            .getPublicUrl(path);
+          photoUrl = urlData.publicUrl;
+        }
+
         const { error } = await supabase.from("pending_attendances").insert({
           plate,
           store_id: selectedAttendanceStoreId || null,
@@ -93,6 +112,7 @@ export function AttendancePage() {
           billing_type: billingType || null,
           executing_employee: executingEmployee || null,
           observations: observations || null,
+          vehicle_photo_url: photoUrl,
         });
         if (error) throw error;
       }
@@ -112,6 +132,7 @@ export function AttendancePage() {
     setServiceDescription("");
     setObservations("");
     setVehiclePhoto(null);
+    setVehiclePhotoFile(null);
     setVideoDone(false);
     setSaved(false);
     setSaveError(null);
@@ -123,6 +144,7 @@ export function AttendancePage() {
     if (!file) return;
     const url = URL.createObjectURL(file);
     setVehiclePhoto(url);
+    setVehiclePhotoFile(file);
     setVideoDone(true);
     e.target.value = "";
   }

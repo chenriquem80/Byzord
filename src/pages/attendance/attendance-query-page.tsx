@@ -303,7 +303,7 @@ export function AttendanceQueryPage() {
         ) : (
           <div className="space-y-3">
             {todayRecords.map((record) => (
-              <div key={record.id} className="flex items-center gap-4 rounded-2xl border border-border bg-white p-4">
+              <div key={record.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 md:flex-row md:items-center md:gap-4">
                 {/* Info */}
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -328,12 +328,12 @@ export function AttendanceQueryPage() {
                   <img
                     src={record.vehicle_photo_url}
                     alt="Foto do atendimento"
-                    className="h-24 w-36 shrink-0 rounded-xl border border-border object-cover shadow-sm cursor-pointer"
+                    className="h-40 w-full rounded-xl border border-border object-cover shadow-sm cursor-pointer md:h-24 md:w-36 md:shrink-0"
                     onClick={() => setViewRecord(record)}
                   />
                 )}
                 {/* Ações */}
-                <div className="shrink-0 flex flex-col gap-2">
+                <div className="flex flex-row flex-wrap gap-2 md:shrink-0 md:flex-col">
                   <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}>
                     <Eye className="size-3.5" />
                     Visualizar
@@ -363,7 +363,7 @@ export function AttendanceQueryPage() {
           ) : (
             <div className="space-y-3">
               {dateRecords.map((record) => (
-                <div key={record.id} className="flex items-center gap-4 rounded-2xl border border-border bg-white p-4">
+                <div key={record.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 md:flex-row md:items-center md:gap-4">
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-lg font-bold tracking-wider text-slate-900">{record.plate}</span>
@@ -382,9 +382,9 @@ export function AttendanceQueryPage() {
                     </div>
                   </div>
                   {record.vehicle_photo_url && (
-                    <img src={record.vehicle_photo_url} alt="Foto" className="h-24 w-36 shrink-0 rounded-xl border border-border object-cover shadow-sm cursor-pointer" onClick={() => setViewRecord(record)} />
+                    <img src={record.vehicle_photo_url} alt="Foto" className="h-40 w-full rounded-xl border border-border object-cover shadow-sm cursor-pointer md:h-24 md:w-36 md:shrink-0" onClick={() => setViewRecord(record)} />
                   )}
-                  <div className="shrink-0 flex flex-col gap-2">
+                  <div className="flex flex-row flex-wrap gap-2 md:shrink-0 md:flex-col">
                     <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}><Eye className="size-3.5" />Visualizar</Button>
                     <Button size="sm" variant="outline" onClick={() => openEdit(record)}><Pencil className="size-3.5" />Alterar</Button>
                     <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}><Trash2 className="size-3.5" />Excluir</Button>
