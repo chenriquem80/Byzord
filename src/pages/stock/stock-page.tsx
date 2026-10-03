@@ -105,6 +105,29 @@ export function StockPage() {
     items: { condition: string; storeName: string; stock: number }[];
   }>({ open: false, productName: "", manufacturer: "", items: [] });
 
+  // Dialog de edição de lado do inventário
+  const [ladoDialog, setLadoDialog] = useState<{
+    open: boolean;
+    row: StockRow | null;
+    value: string;
+    saving: boolean;
+  }>({ open: false, row: null, value: "", saving: false });
+
+  async function handleSaveLado() {
+    if (!supabase || !ladoDialog.row) return;
+    setLadoDialog((d) => ({ ...d, saving: true }));
+    const mf = ladoDialog.row.product.manufacturers.find((m) => m.id === ladoDialog.row!.manufacturerId);
+    const invIds = (mf?.inventories ?? [])
+      .filter((i) => ((i as any).lado ?? null) === ladoDialog.row!.lado)
+      .map((i) => i.id);
+    const newLado = ladoDialog.value || null;
+    for (const id of invIds) {
+      await supabase.from("product_store_inventory").update({ lado: newLado }).eq("id", id);
+    }
+    setLadoDialog((d) => ({ ...d, open: false, saving: false }));
+    fetchData();
+  }
+
   async function openPhotoDialog(product: Product) {
     setPhotoDialog({ open: true, productName: product.name, urls: [], loading: true });
     if (supabase) {
@@ -348,8 +371,15 @@ export function StockPage() {
         header: () => <span className="block text-center">Lado</span>,
         size: 60,
         cell: ({ row }) => (
-          <div className="text-center font-semibold">
-            {row.original.lado ?? <span className="text-slate-300">—</span>}
+          <div className="text-center">
+            <button
+              type="button"
+              title="Clique para editar o lado"
+              onClick={() => setLadoDialog({ open: true, row: row.original, value: row.original.lado ?? "", saving: false })}
+              className="rounded px-1.5 py-0.5 font-semibold transition hover:bg-slate-100"
+            >
+              {row.original.lado ?? <span className="text-slate-300">—</span>}
+            </button>
           </div>
         ),
       },
@@ -633,6 +663,37 @@ export function StockPage() {
                 ))}
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de edição de lado */}
+      <Dialog open={ladoDialog.open} onOpenChange={(open) => !open && setLadoDialog((d) => ({ ...d, open: false }))}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Editar lado</DialogTitle>
+            <DialogDescription>
+              {ladoDialog.row?.productName} — {ladoDialog.row?.manufacturer}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <Select
+              value={ladoDialog.value}
+              onChange={(e) => setLadoDialog((d) => ({ ...d, value: e.target.value }))}
+            >
+              <option value="">Sem lado</option>
+              <option value="D">D — Direito</option>
+              <option value="E">E — Esquerdo</option>
+              <option value="D/E">D/E — Ambos</option>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setLadoDialog((d) => ({ ...d, open: false }))}>
+                <X className="size-3.5" /> Cancelar
+              </Button>
+              <Button size="sm" onClick={handleSaveLado} disabled={ladoDialog.saving}>
+                <Check className="size-3.5" /> {ladoDialog.saving ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
