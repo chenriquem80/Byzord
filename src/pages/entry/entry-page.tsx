@@ -30,6 +30,19 @@ type EntryItem = {
   quantities: Record<string, string>;
 };
 
+// Gera sequência pseudo-aleatória determinística a partir do código de barras
+function noiseDigits(seed: string, count: number, salt: number): string {
+  const s = seed.replace(/\D/g, "").padStart(10, "0") + salt;
+  let h = salt * 2654435761;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0;
+  let out = "";
+  for (let i = 0; i < count; i++) {
+    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
+    out += h % 10;
+  }
+  return out;
+}
+
 export function EntryPage() {
   const { readOnly } = usePermissions();
   const navigate = useNavigate();
@@ -78,13 +91,17 @@ export function EntryPage() {
           background: white !important;
           display: flex !important;
           flex-direction: column !important;
-          gap: 0.25cm !important;
+          justify-content: space-between !important;
           font-family: sans-serif !important;
           color: #0f172a !important;
           overflow: hidden !important;
         }
-        #print-label-area img { height: 1.8cm !important; width: auto !important; display: block !important; }
-        #print-label-area [data-print="qr"] svg  { width: 6.5cm !important; height: 6.5cm !important; }
+        #print-label-area img { height: 3.5cm !important; width: auto !important; display: block !important; }
+        #print-label-area [data-print="info"] { font-size: 15pt !important; line-height: 1.75 !important; }
+        #print-label-area [data-print="coded"] { display: flex !important; align-items: baseline !important; justify-content: space-between !important; }
+        #print-label-area [data-print="coded"] .noise { font-size: 7pt !important; color: #94a3b8 !important; font-family: monospace !important; flex-shrink: 0 !important; }
+        #print-label-area [data-print="coded"] .val { font-size: 11pt !important; font-weight: 700 !important; text-align: center !important; }
+        #print-label-area [data-print="qr"] svg  { width: 2cm !important; height: 2cm !important; }
         #print-label-area [data-print="bc"] svg  { width: 8.2cm !important; height: 1.4cm !important; }
       }
     `;
@@ -742,22 +759,35 @@ export function EntryPage() {
 
                     {/* Logo */}
                     <div className="mt-2 flex justify-center">
-                      <img src="/logo.png" alt="Byzord Auto Vitrais" className="h-11 w-auto object-contain" />
+                      <img src="/logo.png" alt="Byzord Auto Vitrais" className="h-24 w-auto object-contain" />
                     </div>
 
                     {/* Informações */}
-                    <div className="mt-3 space-y-0.5 text-[13px] leading-snug text-slate-800">
+                    <div data-print="info" className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
                       <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
                       <p>{currentLabel.yearRange}</p>
                       <p>{currentLabel.feature} • {currentLabel.manufacturer}</p>
-                      <p>{currentLabel.purchaseSummary}</p>
                     </div>
 
+                    {/* Código camuflado */}
+                    {currentLabel.purchaseSummary && (() => {
+                      const seed = lastItem.product.barcode || lastItem.product.internalCode || lastItem.product.name;
+                      const n1 = noiseDigits(seed, 7, 1);
+                      const n2 = noiseDigits(seed, 8, 2);
+                      return (
+                        <div data-print="coded" className="mt-2 flex items-baseline justify-between">
+                          <span className="noise shrink-0 font-mono text-[9px] text-slate-300">{n1}00</span>
+                          <span className="val px-1 text-[13px] font-bold">{currentLabel.purchaseSummary}</span>
+                          <span className="noise shrink-0 font-mono text-[9px] text-slate-300">00{n2}</span>
+                        </div>
+                      );
+                    })()}
+
                     {/* QR Code */}
-                    <div data-print="qr" className="mt-4 flex justify-center rounded-[12px] border border-slate-300 p-2">
+                    <div data-print="qr" className="mt-3 flex justify-center rounded-md border border-slate-300 p-1">
                       <QRCodeSVG
                         value={lastItem.product.barcode || lastItem.product.internalCode || lastItem.product.name}
-                        size={120}
+                        size={40}
                         level="M"
                         includeMargin={false}
                       />
