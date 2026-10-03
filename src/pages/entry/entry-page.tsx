@@ -392,11 +392,13 @@ export function EntryPage() {
         }
       }
       // Registra movimentação no log
+      const ladoValue = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
       for (const item of entryItems) {
         const mfName = selectedManufacturer || item.mf.manufacturer;
         for (const store of stores) {
           const qty = Number(item.quantities[store.id] ?? 0);
           if (qty <= 0) continue;
+          const noteWithLado = [ladoValue ? `Lado: ${ladoValue}` : null, note || null].filter(Boolean).join(" | ") || null;
           const { error: mvErr } = await supabase.from("stock_movements").insert({
             type: "Entrada",
             product_name: item.product.name,
@@ -404,17 +406,10 @@ export function EntryPage() {
             manufacturer: mfName,
             user_name: currentUser?.name ?? "",
             quantity: qty,
-            note: note || null,
+            note: noteWithLado,
             special_condition: specialCond,
           });
           if (mvErr) console.error("Erro ao registrar movimentação de entrada:", mvErr.message);
-        }
-      }
-      // Salva lado no produto se selecionado
-      const ladoValue = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
-      if (ladoValue) {
-        for (const item of entryItems) {
-          await supabase.from("products").update({ lado: ladoValue }).eq("id", item.product.id);
         }
       }
       setSaveSuccess(true);
