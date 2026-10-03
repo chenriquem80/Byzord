@@ -522,8 +522,11 @@ export function ExitPage() {
             </FormField>
           </div>
 
-          {/* Linha 3: Quantidade | Em estoque */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Linha 3: Tipo do item | Quantidade | Em estoque */}
+          <div className="grid grid-cols-3 gap-4">
+            <FormField label="Tipo do item">
+              <Input disabled value={selectedProduct.glassType} />
+            </FormField>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Quantidade</label>
               <Input type="number" {...form.register("quantity")} />
