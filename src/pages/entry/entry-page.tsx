@@ -66,20 +66,23 @@ export function EntryPage() {
     style.id = "print-label-style";
     style.innerHTML = `
       @media print {
-        @page { size: 10cm 16cm; margin: 0; }
+        @page { size: 10cm 15cm; margin: 0; }
         body * { visibility: hidden !important; }
         #print-label-area, #print-label-area * { visibility: visible !important; }
         #print-label-area {
           position: fixed !important;
           top: 0 !important; left: 0 !important;
           width: 10cm !important;
+          height: 15cm !important;
           padding: 0.5cm !important;
           background: white !important;
-          display: block !important;
+          display: flex !important;
+          flex-direction: column !important;
           font-family: sans-serif !important;
           color: #0f172a !important;
+          overflow: hidden !important;
         }
-        #print-label-area img { height: 1.2cm !important; width: auto !important; display: block !important; }
+        #print-label-area img { height: 1.1cm !important; width: auto !important; display: block !important; }
         #print-label-area svg { max-width: 100% !important; height: auto !important; }
       }
     `;
