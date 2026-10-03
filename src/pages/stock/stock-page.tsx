@@ -53,6 +53,7 @@ interface StockRow {
   product: Product;
   manufacturerId: string;
   characteristic: string;
+  lado: string | null;
   store1Quantity: number;
   store2Quantity: number;
   store1Special: number;
@@ -210,6 +211,7 @@ export function StockPage() {
         name: p.name ?? "",
         glassType: p.glass_type ?? "",
         feature: p.feature ?? "",
+        lado: p.lado ?? null,
         brand: p.brand ?? "",
         description: p.description ?? "",
         photos: [],
@@ -271,6 +273,7 @@ export function StockPage() {
             product,
             manufacturerId: manufacturer.id,
             characteristic: product.feature,
+            lado: product.lado ?? null,
             store1Quantity,
             store2Quantity,
             store1Special,
@@ -317,6 +320,7 @@ export function StockPage() {
       {
         accessorKey: "characteristic",
         header: () => <span className="block text-center">Característica</span>,
+        size: 120,
         cell: ({ row }) => (
           <div className="text-center">
             <button
@@ -325,6 +329,16 @@ export function StockPage() {
             >
               {row.original.characteristic}
             </button>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "lado",
+        header: () => <span className="block text-center">Lado</span>,
+        size: 60,
+        cell: ({ row }) => (
+          <div className="text-center font-semibold">
+            {row.original.lado ?? <span className="text-slate-300">—</span>}
           </div>
         ),
       },
