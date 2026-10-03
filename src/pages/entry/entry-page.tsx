@@ -59,6 +59,7 @@ export function EntryPage() {
   const [selectedStoreId, setSelectedStoreId] = useState<string>("all");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const entryListRef = useRef<HTMLDivElement>(null);
 
@@ -260,7 +261,6 @@ export function EntryPage() {
     const ladoValue: string | null = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
 
     async function upsertInventory(mfId: string, storeId: string, qty: number) {
-      // Monta query base filtrando por fabricante, loja, condição especial e lado
       let q = supabase!
         .from("product_store_inventory")
         .select("id, stock")
@@ -273,15 +273,21 @@ export function EntryPage() {
       if (ladoValue) q = q.eq("lado", ladoValue);
       else q = q.is("lado", null);
 
-      const { data: existing } = await (q as any).maybeSingle();
+      const { data: existing, error: selErr } = await (q as any).maybeSingle();
+      if (selErr) throw new Error(`Erro ao buscar inventário: ${selErr.message}`);
 
       if (existing) {
-        await supabase!.from("product_store_inventory").update({ stock: (existing.stock ?? 0) + qty }).eq("id", existing.id);
+        const { error: updErr } = await supabase!
+          .from("product_store_inventory")
+          .update({ stock: (existing.stock ?? 0) + qty })
+          .eq("id", existing.id);
+        if (updErr) throw new Error(`Erro ao atualizar estoque: ${updErr.message}`);
       } else {
         const row: Record<string, any> = { manufacturer_id: mfId, store_id: storeId, stock: qty, min_quantity: 0 };
         if (specialCond) row.special_condition = specialCond;
         if (ladoValue) row.lado = ladoValue;
-        await supabase!.from("product_store_inventory").insert(row);
+        const { error: insErr } = await supabase!.from("product_store_inventory").insert(row);
+        if (insErr) throw new Error(`Erro ao inserir estoque: ${insErr.message}`);
       }
     }
 
@@ -356,8 +362,9 @@ export function EntryPage() {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       handleCancel();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao salvar entrada:", err);
+      setSaveError(err?.message ?? "Erro ao salvar entrada. Verifique o console.");
     } finally {
       setSaving(false);
     }
@@ -391,6 +398,14 @@ export function EntryPage() {
             <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
               <Check className="size-4" />
               Entrada registrada com sucesso!
+            </div>
+          )}
+          {saveError && (
+            <div className="flex items-start justify-between gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              <span>{saveError}</span>
+              <button type="button" onClick={() => setSaveError(null)} className="shrink-0">
+                <X className="size-4" />
+              </button>
             </div>
           )}
 
