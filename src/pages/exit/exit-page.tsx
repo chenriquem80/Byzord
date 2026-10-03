@@ -472,14 +472,28 @@ export function ExitPage() {
           {/* Linha 1: Loja | Produto */}
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             <FormField label="Loja" error={form.formState.errors.storeId?.message}>
-              <Select {...form.register("storeId")}>
+              <Select
+                value={form.watch("storeId")}
+                onChange={(e) => form.setValue("storeId", e.target.value)}
+              >
                 {allStores.map((item) => (
                   <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
               </Select>
             </FormField>
             <FormField label="Produto" error={form.formState.errors.productId?.message} className="xl:col-span-3">
-              <Select {...form.register("productId")}>
+              <Select
+                value={form.watch("productId")}
+                onChange={(e) => {
+                  const productId = e.target.value;
+                  form.setValue("productId", productId);
+                  const product = allProducts.find((p) => p.id === productId);
+                  if (product && product.manufacturers.length > 0) {
+                    form.setValue("manufacturer", product.manufacturers[0].manufacturer);
+                    form.setValue("price", product.manufacturers[0].price);
+                  }
+                }}
+              >
                 {allProducts.map((item) => (
                   <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
@@ -493,7 +507,14 @@ export function ExitPage() {
               <Input disabled value={selectedProduct.feature} />
             </FormField>
             <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
-              <Select {...form.register("manufacturer")}>
+              <Select
+                value={form.watch("manufacturer")}
+                onChange={(e) => {
+                  form.setValue("manufacturer", e.target.value);
+                  const mf = selectedProduct.manufacturers.find((m) => m.manufacturer === e.target.value);
+                  if (mf) form.setValue("price", mf.price);
+                }}
+              >
                 {selectedProduct.manufacturers.map((item) => (
                   <option key={item.id} value={item.manufacturer}>{item.manufacturer}</option>
                 ))}
