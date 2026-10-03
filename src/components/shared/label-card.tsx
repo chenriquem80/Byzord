@@ -81,8 +81,8 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
   <div class="info">
     <p>${label.vehicleLabel.toLowerCase()}</p>
     ${label.yearRange ? `<p>${label.yearRange}</p>` : ""}
-    ${label.feature ? `<p>${label.feature}${label.lado ? ` - ${label.lado}` : ""}</p>` : ""}
-    ${label.glassType ? `<p>${label.glassType.toLowerCase()}</p>` : ""}
+    ${label.feature ? `<p>${label.feature}</p>` : ""}
+    ${label.glassType ? `<p>${label.glassType.toLowerCase()}${label.lado ? ` - ${label.lado}` : ""}</p>` : ""}
     ${label.manufacturer ? `<p>${label.manufacturer}</p>` : ""}
   </div>
   ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${label.purchaseSummary}\\00\\${n2}</div>` : ""}
@@ -110,8 +110,8 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
         <div className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
           <p>{label.vehicleLabel.toLowerCase()}</p>
           {label.yearRange && <p>{label.yearRange}</p>}
-          {label.feature && <p>{label.feature}{label.lado ? ` - ${label.lado}` : ""}</p>}
-          {label.glassType && <p>{label.glassType.toLowerCase()}</p>}
+          {label.feature && <p>{label.feature}</p>}
+          {label.glassType && <p>{label.glassType.toLowerCase()}{label.lado ? ` - ${label.lado}` : ""}</p>}
           {label.manufacturer && <p>{label.manufacturer}</p>}
         </div>
         {label.purchaseSummary && (
