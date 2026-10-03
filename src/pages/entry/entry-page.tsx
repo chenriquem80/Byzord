@@ -310,36 +310,31 @@ export function EntryPage() {
     if (!supabase || entryItems.length === 0) return;
     setSaving(true);
     const specialCond: string | null = isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null;
+    const ladoValue: string | null = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
 
     async function upsertInventory(mfId: string, storeId: string, qty: number) {
-      if (specialCond) {
-        // Condição especial: busca linha com mesma condição no banco
-        const { data: existing } = await supabase!
-          .from("product_store_inventory")
-          .select("id, stock")
-          .eq("manufacturer_id", mfId)
-          .eq("store_id", storeId)
-          .eq("special_condition", specialCond)
-          .maybeSingle();
-        if (existing) {
-          await supabase!.from("product_store_inventory").update({ stock: (existing.stock ?? 0) + qty }).eq("id", existing.id);
-        } else {
-          await supabase!.from("product_store_inventory").insert({ manufacturer_id: mfId, store_id: storeId, stock: qty, min_quantity: 0, special_condition: specialCond });
-        }
+      // Monta query base filtrando por fabricante, loja, condição especial e lado
+      let q = supabase!
+        .from("product_store_inventory")
+        .select("id, stock")
+        .eq("manufacturer_id", mfId)
+        .eq("store_id", storeId);
+
+      if (specialCond) q = q.eq("special_condition", specialCond);
+      else q = q.is("special_condition", null);
+
+      if (ladoValue) q = q.eq("lado", ladoValue);
+      else q = q.is("lado", null);
+
+      const { data: existing } = await (q as any).maybeSingle();
+
+      if (existing) {
+        await supabase!.from("product_store_inventory").update({ stock: (existing.stock ?? 0) + qty }).eq("id", existing.id);
       } else {
-        // Estoque regular: usa linha sem condição especial
-        const { data: existing } = await supabase!
-          .from("product_store_inventory")
-          .select("id, stock")
-          .eq("manufacturer_id", mfId)
-          .eq("store_id", storeId)
-          .is("special_condition", null)
-          .maybeSingle();
-        if (existing) {
-          await supabase!.from("product_store_inventory").update({ stock: (existing.stock ?? 0) + qty }).eq("id", existing.id);
-        } else {
-          await supabase!.from("product_store_inventory").insert({ manufacturer_id: mfId, store_id: storeId, stock: qty, min_quantity: 0 });
-        }
+        const row: Record<string, any> = { manufacturer_id: mfId, store_id: storeId, stock: qty, min_quantity: 0 };
+        if (specialCond) row.special_condition = specialCond;
+        if (ladoValue) row.lado = ladoValue;
+        await supabase!.from("product_store_inventory").insert(row);
       }
     }
 
@@ -392,7 +387,6 @@ export function EntryPage() {
         }
       }
       // Registra movimentação no log
-      const ladoValue = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
       for (const item of entryItems) {
         const mfName = selectedManufacturer || item.mf.manufacturer;
         for (const store of stores) {
