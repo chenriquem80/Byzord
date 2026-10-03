@@ -198,6 +198,7 @@ export function StockPage() {
               stock: inv.stock ?? inv.stock_quantity ?? 0,
               minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
               specialCondition: inv.special_condition ?? null,
+              lado: inv.lado ?? null,
             };
           }),
         };
@@ -259,36 +260,47 @@ export function StockPage() {
       })
       .flatMap((product) => {
         if (product.manufacturers.length === 0) return [];
-        return product.manufacturers.map((manufacturer) => {
-          const regularInvs = manufacturer.inventories.filter((i) => !(i as any).specialCondition);
-          const specialInvs  = manufacturer.inventories.filter((i) =>  (i as any).specialCondition);
+        return product.manufacturers.flatMap((manufacturer) => {
+          // Agrupa inventários por lado (null = sem lado definido)
+          const ladoGroups = new Map<string | null, typeof manufacturer.inventories>();
+          for (const inv of manufacturer.inventories) {
+            const ladoKey = (inv as any).lado ?? null;
+            if (!ladoGroups.has(ladoKey)) ladoGroups.set(ladoKey, []);
+            ladoGroups.get(ladoKey)!.push(inv);
+          }
+          if (ladoGroups.size === 0) ladoGroups.set(product.lado ?? null, []);
 
-          const store1Quantity = regularInvs.filter((i) => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
-          const store2Quantity = regularInvs.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
-          const store1Special  = specialInvs.filter((i)  => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
-          const store2Special  = specialInvs.filter((i)  => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
+          return [...ladoGroups.entries()].map(([lado, invs]) => {
+            const regularInvs = invs.filter((i) => !(i as any).specialCondition);
+            const specialInvs  = invs.filter((i) =>  (i as any).specialCondition);
 
-          return {
-            product,
-            manufacturerId: manufacturer.id,
-            characteristic: product.feature,
-            lado: product.lado ?? null,
-            store1Quantity,
-            store2Quantity,
-            store1Special,
-            store2Special,
-            totalQuantity: store1Quantity + store2Quantity,
-            productName: product.name,
-            code: product.barcode,
-            manufacturer: manufacturer.manufacturer,
-            cost: manufacturer.cost,
-            price: manufacturer.price,
-            lastPurchaseDate: manufacturer.lastPurchaseDate,
-          };
+            const store1Quantity = regularInvs.filter((i) => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
+            const store2Quantity = regularInvs.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
+            const store1Special  = specialInvs.filter((i)  => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
+            const store2Special  = specialInvs.filter((i)  => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
+
+            return {
+              product,
+              manufacturerId: manufacturer.id,
+              characteristic: product.feature,
+              lado,
+              store1Quantity,
+              store2Quantity,
+              store1Special,
+              store2Special,
+              totalQuantity: store1Quantity + store2Quantity,
+              productName: product.name,
+              code: product.barcode,
+              manufacturer: manufacturer.manufacturer,
+              cost: manufacturer.cost,
+              price: manufacturer.price,
+              lastPurchaseDate: manufacturer.lastPurchaseDate,
+            };
+          });
         });
       })
       .filter((row) => {
-        const key = `${row.product.id}-${row.manufacturer}-${row.cost}`;
+        const key = `${row.product.id}-${row.manufacturer}-${row.cost}-${row.lado ?? ""}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
