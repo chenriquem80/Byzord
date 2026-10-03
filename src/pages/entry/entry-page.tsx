@@ -98,9 +98,7 @@ export function EntryPage() {
         }
         #print-label-area img { height: 3.5cm !important; width: auto !important; display: block !important; }
         #print-label-area [data-print="info"] { font-size: 15pt !important; line-height: 1.75 !important; }
-        #print-label-area [data-print="coded"] { display: flex !important; align-items: baseline !important; justify-content: space-between !important; }
-        #print-label-area [data-print="coded"] .noise { font-size: 7pt !important; color: #94a3b8 !important; font-family: monospace !important; flex-shrink: 0 !important; }
-        #print-label-area [data-print="coded"] .val { font-size: 11pt !important; font-weight: 700 !important; text-align: center !important; }
+        #print-label-area [data-print="coded"] { font-size: 10pt !important; font-family: monospace !important; }
         #print-label-area [data-print="qr"] svg  { width: 2cm !important; height: 2cm !important; }
         #print-label-area [data-print="bc"] svg  { width: 8.2cm !important; height: 1.4cm !important; }
       }
@@ -775,10 +773,8 @@ export function EntryPage() {
                       const n1 = noiseDigits(seed, 7, 1);
                       const n2 = noiseDigits(seed, 8, 2);
                       return (
-                        <div data-print="coded" className="mt-2 flex items-baseline justify-between">
-                          <span className="noise shrink-0 font-mono text-[9px] text-slate-300">{n1}00</span>
-                          <span className="val px-1 text-[13px] font-bold">{currentLabel.purchaseSummary}</span>
-                          <span className="noise shrink-0 font-mono text-[9px] text-slate-300">00{n2}</span>
+                        <div data-print="coded" className="mt-2 font-mono text-[11px]">
+                          {n1}00{currentLabel.purchaseSummary}00{n2}
                         </div>
                       );
                     })()}

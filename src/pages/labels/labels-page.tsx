@@ -37,9 +37,7 @@ const PRINT_CSS = `
   .logo-wrap img { height: 3.5cm; width: auto; display: block; }
   .info { font-size: 15pt; line-height: 1.75; }
   .info p { margin: 0; }
-  .coded-row { display: flex; align-items: baseline; justify-content: space-between; }
-  .coded-row .noise { font-size: 7pt; color: #94a3b8; font-family: monospace; flex-shrink: 0; }
-  .coded-row .val { font-size: 11pt; font-weight: 700; text-align: center; }
+  .coded-row { font-size: 10pt; font-family: monospace; }
   .qr-box { display: flex; justify-content: center; align-items: center; border: 1px solid #94a3b8; border-radius: 6px; padding: 0.1cm; }
   .qr-box svg { width: 2cm !important; height: 2cm !important; }
   .bc-box { display: flex; justify-content: center; }
@@ -82,12 +80,7 @@ function PrintableLabelCard({ label }: { label: LabelRecord }) {
     ${label.feature   ? `<p>${label.feature}</p>`   : ""}
     ${label.manufacturer ? `<p>${label.manufacturer}</p>` : ""}
   </div>
-  ${label.purchaseSummary ? `
-  <div class="coded-row">
-    <span class="noise">${n1}00</span>
-    <span class="val">${label.purchaseSummary}</span>
-    <span class="noise">00${n2}</span>
-  </div>` : ""}
+  ${label.purchaseSummary ? `<div class="coded-row">${n1}00${label.purchaseSummary}00${n2}</div>` : ""}
   ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
   ${(codeValue && bcSvg) ? `<div class="bc-box">${bcSvg}</div>` : ""}
 </body>
@@ -122,10 +115,8 @@ function PrintableLabelCard({ label }: { label: LabelRecord }) {
             <p>{label.manufacturer}</p>
           </div>
           {label.purchaseSummary && (
-            <div className="mt-2 flex items-baseline justify-between">
-              <span className="shrink-0 font-mono text-[9px] text-slate-300">{n1}00</span>
-              <span className="px-1 text-[13px] font-bold">{label.purchaseSummary}</span>
-              <span className="shrink-0 font-mono text-[9px] text-slate-300">00{n2}</span>
+            <div className="mt-2 font-mono text-[11px]">
+              {n1}00{label.purchaseSummary}00{n2}
             </div>
           )}
           {/* QR — ref para capturar SVG no print */}
