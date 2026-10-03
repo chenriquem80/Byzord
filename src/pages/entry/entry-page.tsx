@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
-import { Camera, Check, Plus, Printer, X } from "lucide-react";
-import Barcode from "react-barcode";
-import { QRCodeSVG } from "qrcode.react";
+import { Camera, Check, Plus, X } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
+import { LabelCard } from "@/components/shared/label-card";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -30,19 +29,6 @@ type EntryItem = {
   quantities: Record<string, string>;
 };
 
-// Gera sequência pseudo-aleatória determinística a partir do código de barras
-function noiseDigits(seed: string, count: number, salt: number): string {
-  const s = seed.replace(/\D/g, "").padStart(10, "0") + salt;
-  let h = salt * 2654435761;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0;
-  let out = "";
-  for (let i = 0; i < count; i++) {
-    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
-    out += h % 10;
-  }
-  return out;
-}
-
 export function EntryPage() {
   const { readOnly } = usePermissions();
   const navigate = useNavigate();
@@ -66,7 +52,6 @@ export function EntryPage() {
   const [note, setNote] = useState("");
   const [entryPhoto, setEntryPhoto] = useState<string | null>(null);
   const entryPhotoRef = useRef<HTMLInputElement>(null);
-  const labelRef = useRef<HTMLDivElement>(null);
   const [isTypeB, setIsTypeB] = useState(false);
   const [isTypeR, setIsTypeR] = useState(false);
   const [isLadoD, setIsLadoD] = useState(false);
@@ -76,43 +61,6 @@ export function EntryPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const entryListRef = useRef<HTMLDivElement>(null);
-
-  function printLabel() {
-    const style = document.createElement("style");
-    style.id = "print-label-style";
-    style.innerHTML = `
-      @media print {
-        @page { size: 10cm 15cm; margin: 0; }
-        body * { visibility: hidden !important; }
-        #print-label-area, #print-label-area * { visibility: visible !important; }
-        #print-label-area {
-          position: fixed !important;
-          top: 0 !important; left: 0 !important;
-          width: 10cm !important;
-          height: 15cm !important;
-          padding: 0.4cm !important;
-          background: white !important;
-          display: flex !important;
-          flex-direction: column !important;
-          justify-content: space-between !important;
-          font-family: sans-serif !important;
-          color: #0f172a !important;
-          overflow: hidden !important;
-        }
-        #print-label-area img { height: 2.2cm !important; width: auto !important; display: block !important; }
-        #print-label-area [data-print="info"] { font-size: 15pt !important; line-height: 1.75 !important; }
-        #print-label-area [data-print="coded"] { font-size: 10pt !important; font-family: monospace !important; }
-        #print-label-area [data-print="qr"] svg  { width: 2cm !important; height: 2cm !important; }
-        #print-label-area [data-print="bc"] svg  { width: 8.2cm !important; height: 1.4cm !important; }
-      }
-    `;
-    document.head.appendChild(style);
-    window.print();
-    setTimeout(() => {
-      const el = document.getElementById("print-label-style");
-      if (el) el.remove();
-    }, 1500);
-  }
 
   useEffect(() => {
     async function fetchData() {
@@ -757,95 +705,33 @@ export function EntryPage() {
 
             {/* Right column */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-slate-50 p-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Resumo da entrada
-                  </p>
-                  <p className="mt-1 text-2xl font-bold text-slate-950">{totalQuantity} un.</p>
-                  <p className="text-xs text-slate-400">
-                    {selectedStoreId === "all"
-                      ? stores.map((s: any) => s.name).join(" + ")
-                      : (stores.find((s: any) => s.id === selectedStoreId) as any)?.name ?? ""}
-                  </p>
-                </div>
-                {lastItem && (
-                  <Button size="sm" variant="outline" onClick={printLabel}>
-                    <Printer className="size-4" />
-                    Imprimir etiqueta
-                  </Button>
-                )}
+              <div className="rounded-2xl border border-border bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Resumo da entrada
+                </p>
+                <p className="mt-1 text-2xl font-bold text-slate-950">{totalQuantity} un.</p>
+                <p className="text-xs text-slate-400">
+                  {selectedStoreId === "all"
+                    ? stores.map((s: any) => s.name).join(" + ")
+                    : (stores.find((s: any) => s.id === selectedStoreId) as any)?.name ?? ""}
+                </p>
               </div>
 
               {lastItem && currentLabel && (
                 <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
-                  <div id="print-label-area" ref={labelRef} className="mx-auto w-full max-w-[260px] rounded-[18px] bg-white px-4 pb-4 pt-3 text-slate-950 shadow-sm">
-                    {/* Código compacto */}
-                    <div className="flex items-baseline gap-2">
-                      <span className="shrink-0 text-[11px] font-medium text-slate-500">Codigo:</span>
-                      <span className="break-all text-[14px] font-bold leading-tight tracking-tight">
-                        {lastItem.product.barcode || lastItem.product.name}
-                      </span>
-                    </div>
-
-                    {/* Logo */}
-                    <div className="mt-2 flex justify-center">
-                      <img src="/logo.png" alt="Byzord Auto Vitrais" className="h-14 w-auto object-contain" />
-                    </div>
-
-                    {/* Informações */}
-                    <div data-print="info" className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
-                      <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
-                      <p>{currentLabel.yearRange}</p>
-                      <p>{currentLabel.feature}{currentLabel.lado ? ` - ${currentLabel.lado}` : ""}</p>
-                      <p>{currentLabel.glassType.toLowerCase()}</p>
-                      <p>{currentLabel.manufacturer}</p>
-                    </div>
-
-                    {/* Código camuflado */}
-                    {currentLabel.purchaseSummary && (() => {
-                      const seed = lastItem.product.barcode || lastItem.product.name;
-                      const n1 = noiseDigits(seed, 7, 1);
-                      const n2 = noiseDigits(seed, 8, 2);
-                      return (
-                        <div data-print="coded" className="mt-2 font-mono text-[11px]">
-                          {n1}\00\{currentLabel.purchaseSummary}\00\{n2}
-                        </div>
-                      );
-                    })()}
-
-                    {/* QR Code */}
-                    <div data-print="qr" className="mt-3 flex justify-center rounded-md border border-slate-300 p-1">
-                      <QRCodeSVG
-                        value={lastItem.product.barcode || lastItem.product.name}
-                        size={40}
-                        level="M"
-                        includeMargin={false}
-                      />
-                    </div>
-
-                    {/* Código de Barras */}
-                    {lastItem.product.barcode && (
-                      <div data-print="bc" className="mt-2 flex justify-center">
-                        <Barcode
-                          value={lastItem.product.barcode}
-                          format="CODE128"
-                          width={1.1}
-                          height={36}
-                          fontSize={10}
-                          margin={0}
-                          background="transparent"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4">
-                    <Button className="w-full" onClick={printLabel}>
-                      <Printer className="size-4" />
-                      Imprimir
-                    </Button>
-                  </div>
+                  <LabelCard
+                    label={{
+                      productCode: lastItem.product.barcode || lastItem.product.name,
+                      vehicleLabel: currentLabel.vehicleLabel,
+                      yearRange: currentLabel.yearRange,
+                      feature: currentLabel.feature,
+                      lado: currentLabel.lado,
+                      glassType: currentLabel.glassType,
+                      manufacturer: currentLabel.manufacturer,
+                      purchaseSummary: currentLabel.purchaseSummary,
+                    }}
+                    wrapperClassName="flex flex-col items-center gap-3"
+                  />
                 </div>
               )}
             </div>
