@@ -219,6 +219,7 @@ export function EntryPage() {
       yearRange,
       feature: lastItem.product.feature,
       glassType: lastItem.product.glassType,
+      lado: lastItem.product.lado ?? null,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
       purchaseSummary: `${lastItem.mf.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
@@ -765,7 +766,7 @@ export function EntryPage() {
                     <div data-print="info" className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
                       <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
                       <p>{currentLabel.yearRange}</p>
-                      <p>{currentLabel.feature}</p>
+                      <p>{currentLabel.feature}{currentLabel.lado ? ` - ${currentLabel.lado}` : ""}</p>
                       <p>{currentLabel.glassType.toLowerCase()}</p>
                       <p>{currentLabel.manufacturer}</p>
                     </div>

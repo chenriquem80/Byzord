@@ -425,6 +425,7 @@ export const labels: LabelRecord[] = products.flatMap((product) =>
           ? `${firstCompatibility.startYear}/${firstCompatibility.endYear}`
           : "-",
         feature: product.feature.toLowerCase(),
+        lado: product.lado ?? null,
         manufacturer: manufacturer.manufacturer.toLowerCase(),
         purchaseSummary: `${Math.round(manufacturer.price)} - ${new Date(manufacturer.lastPurchaseDate).getMonth() + 1}/${new Date(manufacturer.lastPurchaseDate).getFullYear()}`,
         location: inventory?.location ?? "Sem localização",

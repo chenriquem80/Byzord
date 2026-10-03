@@ -77,7 +77,7 @@ function PrintableLabelCard({ label }: { label: LabelRecord }) {
   <div class="info">
     <p>${label.vehicleLabel.toLowerCase()}</p>
     ${label.yearRange ? `<p>${label.yearRange}</p>` : ""}
-    ${label.feature    ? `<p>${label.feature}</p>`    : ""}
+    ${label.feature    ? `<p>${label.feature}${label.lado ? ` - ${label.lado}` : ""}</p>` : ""}
     ${label.glassType  ? `<p>${label.glassType.toLowerCase()}</p>` : ""}
     ${label.manufacturer ? `<p>${label.manufacturer}</p>` : ""}
   </div>
@@ -112,7 +112,7 @@ function PrintableLabelCard({ label }: { label: LabelRecord }) {
           <div className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
             <p>{label.vehicleLabel.toLowerCase()}</p>
             <p>{label.yearRange}</p>
-            <p>{label.feature}</p>
+            <p>{label.feature}{label.lado ? ` - ${label.lado}` : ""}</p>
             <p>{label.glassType.toLowerCase()}</p>
             <p>{label.manufacturer}</p>
           </div>

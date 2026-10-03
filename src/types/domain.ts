@@ -81,6 +81,7 @@ export interface Product {
   notes: string;
   isTypeB?: boolean;
   isTypeR?: boolean;
+  lado?: string | null;
   manufacturers: ManufacturerStock[];
   compatibilities: VehicleCompatibility[];
 }
@@ -148,6 +149,7 @@ export interface LabelRecord {
   vehicleLabel: string;
   yearRange: string;
   feature: string;
+  lado?: string | null;
   manufacturer: string;
   purchaseSummary: string;
   location: string;

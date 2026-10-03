@@ -24,6 +24,8 @@ type ProductFormValues = {
   name: string;
   isTypeB: boolean;
   isTypeR: boolean;
+  ladoD: boolean;
+  ladoE: boolean;
   glassType: string;
   feature: string;
   manufacturer: string;
@@ -57,6 +59,8 @@ function getEmptyFormValues(): ProductFormValues {
     name: "",
     isTypeB: false,
     isTypeR: false,
+    ladoD: false,
+    ladoE: false,
     glassType: "",
     feature: "",
     manufacturer: "",
@@ -86,6 +90,8 @@ function buildFormValues(p: Product, mfId?: string | null, storeId?: string | nu
     name: p.name,
     isTypeB: (p as any).isTypeB ?? false,
     isTypeR: (p as any).isTypeR ?? false,
+    ladoD: p.lado === "D" || p.lado === "D/E",
+    ladoE: p.lado === "E" || p.lado === "D/E",
     glassType: p.glassType,
     feature: p.feature,
     manufacturer: mf?.manufacturer ?? "",
@@ -263,6 +269,7 @@ export function ProductsPage() {
           name: pData.name ?? "",
           glassType: pData.glass_type as Product["glassType"],
           feature: pData.feature as Product["feature"],
+          lado: pData.lado ?? null,
           brand: pData.brand ?? "",
           description: pData.description ?? "",
           photos: [],
@@ -353,6 +360,8 @@ export function ProductsPage() {
     brand: "Marca",
     glassType: "Tipo do item",
     feature: "Característica",
+    ladoD: "Lado D",
+    ladoE: "Lado E",
     manufacturer: "Fabricante",
     cost: "Preço de custo",
     price: "Preço de venda",
@@ -566,6 +575,7 @@ export function ProductsPage() {
     try {
       if (supabase) {
         if (isEditing) {
+          const ladoValue = [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
           const { error } = await supabase
             .from("products")
             .update({
@@ -574,6 +584,7 @@ export function ProductsPage() {
               name: values.name,
               glass_type: values.glassType,
               feature: values.feature,
+              lado: ladoValue,
               brand: values.brand,
               description: values.description ?? "",
               status: values.status,
@@ -626,6 +637,7 @@ export function ProductsPage() {
             }
           }
         } else {
+          const ladoValue = [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
           const { data: inserted, error: insertError } = await supabase
             .from("products")
             .insert({
@@ -634,6 +646,7 @@ export function ProductsPage() {
               name: values.name,
               glass_type: values.glassType,
               feature: values.feature,
+              lado: ladoValue,
               brand: values.brand,
               description: values.description ?? "",
               status: values.status,
@@ -692,6 +705,7 @@ export function ProductsPage() {
               name: values.name,
               glassType: values.glassType as Product["glassType"],
               feature: values.feature as Product["feature"],
+              lado: [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null,
               brand: values.brand,
               description: values.description,
               status: values.status,
@@ -708,6 +722,7 @@ export function ProductsPage() {
             name: values.name,
             glassType: values.glassType as Product["glassType"],
             feature: values.feature as Product["feature"],
+            lado: [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null,
             brand: values.brand,
             description: values.description,
             photos: [],
@@ -954,6 +969,18 @@ export function ProductsPage() {
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="checkbox" {...form.register("isTypeR")} className="size-4 accent-primary" />
                 <span className="text-sm font-semibold text-slate-700">R</span>
+              </label>
+            </div>
+          </FormField>
+          <FormField label="Lado">
+            <div className="flex flex-row items-center justify-center gap-4 rounded-xl border border-border bg-white px-4 py-2 shadow-sm">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" {...form.register("ladoD")} className="size-4 accent-primary" />
+                <span className="text-sm font-semibold text-slate-700">D</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" {...form.register("ladoE")} className="size-4 accent-primary" />
+                <span className="text-sm font-semibold text-slate-700">E</span>
               </label>
             </div>
           </FormField>
