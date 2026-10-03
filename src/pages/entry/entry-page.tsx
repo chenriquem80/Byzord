@@ -96,7 +96,7 @@ export function EntryPage() {
           color: #0f172a !important;
           overflow: hidden !important;
         }
-        #print-label-area img { height: 3.5cm !important; width: auto !important; display: block !important; }
+        #print-label-area img { height: 2.2cm !important; width: auto !important; display: block !important; }
         #print-label-area [data-print="info"] { font-size: 15pt !important; line-height: 1.75 !important; }
         #print-label-area [data-print="coded"] { font-size: 10pt !important; font-family: monospace !important; }
         #print-label-area [data-print="qr"] svg  { width: 2cm !important; height: 2cm !important; }
@@ -218,6 +218,7 @@ export function EntryPage() {
       vehicleLabel,
       yearRange,
       feature: lastItem.product.feature,
+      glassType: lastItem.product.glassType,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
       purchaseSummary: `${lastItem.mf.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
@@ -757,14 +758,16 @@ export function EntryPage() {
 
                     {/* Logo */}
                     <div className="mt-2 flex justify-center">
-                      <img src="/logo.png" alt="Byzord Auto Vitrais" className="h-24 w-auto object-contain" />
+                      <img src="/logo.png" alt="Byzord Auto Vitrais" className="h-14 w-auto object-contain" />
                     </div>
 
                     {/* Informações */}
                     <div data-print="info" className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
                       <p>{currentLabel.vehicleLabel.toLowerCase()}</p>
                       <p>{currentLabel.yearRange}</p>
-                      <p>{currentLabel.feature} • {currentLabel.manufacturer}</p>
+                      <p>{currentLabel.feature}</p>
+                      <p>{currentLabel.glassType.toLowerCase()}</p>
+                      <p>{currentLabel.manufacturer}</p>
                     </div>
 
                     {/* Código camuflado */}

@@ -34,7 +34,7 @@ const PRINT_CSS = `
   .code-label { font-size: 9pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
   .code-value { font-size: 13pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
   .logo-wrap { display: flex; justify-content: center; }
-  .logo-wrap img { height: 3.5cm; width: auto; display: block; }
+  .logo-wrap img { height: 2.2cm; width: auto; display: block; }
   .info { font-size: 15pt; line-height: 1.75; }
   .info p { margin: 0; }
   .coded-row { font-size: 10pt; font-family: monospace; }
@@ -77,7 +77,8 @@ function PrintableLabelCard({ label }: { label: LabelRecord }) {
   <div class="info">
     <p>${label.vehicleLabel.toLowerCase()}</p>
     ${label.yearRange ? `<p>${label.yearRange}</p>` : ""}
-    ${label.feature   ? `<p>${label.feature}</p>`   : ""}
+    ${label.feature    ? `<p>${label.feature}</p>`    : ""}
+    ${label.glassType  ? `<p>${label.glassType.toLowerCase()}</p>` : ""}
     ${label.manufacturer ? `<p>${label.manufacturer}</p>` : ""}
   </div>
   ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${label.purchaseSummary}\\00\\${n2}</div>` : ""}
@@ -106,12 +107,13 @@ function PrintableLabelCard({ label }: { label: LabelRecord }) {
             <span className="break-all text-[15px] font-bold leading-tight tracking-tight">{label.productCode}</span>
           </div>
           <div className="mt-2 flex justify-center">
-            <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-24 w-auto object-contain" />
+            <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-14 w-auto object-contain" />
           </div>
           <div className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
             <p>{label.vehicleLabel.toLowerCase()}</p>
             <p>{label.yearRange}</p>
             <p>{label.feature}</p>
+            <p>{label.glassType.toLowerCase()}</p>
             <p>{label.manufacturer}</p>
           </div>
           {label.purchaseSummary && (
