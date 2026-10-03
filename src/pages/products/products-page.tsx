@@ -316,8 +316,8 @@ export function ProductsPage() {
           ?? product.manufacturers[0]?.inventories[0];
         if (firstInv?.storeId) setSelectedStoreId(firstInv.storeId);
         setInvLocation(firstInv?.location ?? "");
-        setInvQuantity(firstInv?.stock ?? 0);
-        setInvMinimum(firstInv?.minQuantity ?? 0);
+        setInvQuantity(Math.max(0, firstInv?.stock ?? 0));
+        setInvMinimum(Math.max(0, firstInv?.minQuantity ?? 0));
 
         setCurrentProduct(product);
         form.reset(buildFormValues(product, manufacturerId, firstInv?.storeId ?? null));
@@ -334,8 +334,8 @@ export function ProductsPage() {
         if (found) {
           const inv = found.manufacturers[0]?.inventories[0];
           setInvLocation(inv?.location ?? "");
-          setInvQuantity(inv?.stock ?? 0);
-          setInvMinimum(inv?.minQuantity ?? 0);
+          setInvQuantity(Math.max(0, inv?.stock ?? 0));
+          setInvMinimum(Math.max(0, inv?.minQuantity ?? 0));
           form.reset(buildFormValues(found, manufacturerId));
         } else {
           form.reset(getEmptyFormValues());
@@ -609,7 +609,7 @@ export function ProductsPage() {
             // Tenta UPDATE; se não afetar nenhuma linha, faz INSERT
             const { data: updated, error: upErr } = await supabase
               .from("product_store_inventory")
-              .update({ stock: invQuantity, min_quantity: invMinimum, location: invLocation })
+              .update({ stock: Math.max(0, invQuantity), min_quantity: Math.max(0, invMinimum), location: invLocation })
               .eq("manufacturer_id", activeMfId)
               .eq("store_id", storeId)
               .is("special_condition", null)
@@ -623,8 +623,8 @@ export function ProductsPage() {
                 .insert({
                   manufacturer_id: activeMfId,
                   store_id: storeId,
-                  stock: invQuantity,
-                  min_quantity: invMinimum,
+                  stock: Math.max(0, invQuantity),
+                  min_quantity: Math.max(0, invMinimum),
                   location: invLocation,
                 });
               if (insErr) throw new Error(`Erro ao criar estoque: ${insErr.message}`);
@@ -672,8 +672,8 @@ export function ProductsPage() {
               manufacturer_id: mf.id,
               store_id: store.id,
               location: invLocation,
-              stock: store.id === targetStoreId ? invQuantity : 0,
-              min_quantity: invMinimum,
+              stock: store.id === targetStoreId ? Math.max(0, invQuantity) : 0,
+              min_quantity: Math.max(0, invMinimum),
             }));
             const { error: invError } = await supabase
               .from("product_store_inventory")
@@ -995,8 +995,8 @@ export function ProductsPage() {
                   onClick={() => {
                     setSelectedStoreId(store.id);
                     setInvLocation(inv?.location ?? "");
-                    setInvQuantity(inv?.stock ?? 0);
-                    setInvMinimum(inv?.minQuantity ?? 0);
+                    setInvQuantity(Math.max(0, inv?.stock ?? 0));
+                    setInvMinimum(Math.max(0, inv?.minQuantity ?? 0));
                   }}
                   className={`rounded-2xl border p-4 text-left transition-all ${
                     isSelected
@@ -1045,10 +1045,10 @@ export function ProductsPage() {
             <Input value={invLocation} onChange={(e) => setInvLocation(e.target.value)} />
           </FormField>
           <FormField label="Quantidade atual">
-            <Input type="number" value={invQuantity} onChange={(e) => setInvQuantity(Number(e.target.value))} />
+            <Input type="number" min={0} value={invQuantity} onChange={(e) => setInvQuantity(Math.max(0, Number(e.target.value)))} />
           </FormField>
           <FormField label="Quantidade mínima">
-            <Input type="number" value={invMinimum} onChange={(e) => setInvMinimum(Number(e.target.value))} />
+            <Input type="number" min={0} value={invMinimum} onChange={(e) => setInvMinimum(Math.max(0, Number(e.target.value)))} />
           </FormField>
           <FormField label="Status" error={form.formState.errors.status?.message}>
             <Select {...form.register("status")}>
