@@ -774,7 +774,7 @@ export function EntryPage() {
                       const n2 = noiseDigits(seed, 8, 2);
                       return (
                         <div data-print="coded" className="mt-2 font-mono text-[11px]">
-                          {n1}00{currentLabel.purchaseSummary}00{n2}
+                          {n1}\00\{currentLabel.purchaseSummary}\00\{n2}
                         </div>
                       );
                     })()}

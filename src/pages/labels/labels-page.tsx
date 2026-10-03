@@ -80,7 +80,7 @@ function PrintableLabelCard({ label }: { label: LabelRecord }) {
     ${label.feature   ? `<p>${label.feature}</p>`   : ""}
     ${label.manufacturer ? `<p>${label.manufacturer}</p>` : ""}
   </div>
-  ${label.purchaseSummary ? `<div class="coded-row">${n1}00${label.purchaseSummary}00${n2}</div>` : ""}
+  ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${label.purchaseSummary}\\00\\${n2}</div>` : ""}
   ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
   ${(codeValue && bcSvg) ? `<div class="bc-box">${bcSvg}</div>` : ""}
 </body>
@@ -116,7 +116,7 @@ function PrintableLabelCard({ label }: { label: LabelRecord }) {
           </div>
           {label.purchaseSummary && (
             <div className="mt-2 font-mono text-[11px]">
-              {n1}00{label.purchaseSummary}00{n2}
+              {n1}\00\{label.purchaseSummary}\00\{n2}
             </div>
           )}
           {/* QR — ref para capturar SVG no print */}
