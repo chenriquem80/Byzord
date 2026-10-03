@@ -16,17 +16,18 @@ const PRINT_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   @page { size: 10cm 15cm; margin: 0; }
   html, body { width: 10cm; height: 15cm; background: #fff; font-family: sans-serif; color: #0f172a; overflow: hidden; }
-  body { padding: 0.5cm; display: flex; flex-direction: column; gap: 0; }
-  .code-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 0.25cm; }
-  .code-label { font-size: 8pt; color: #64748b; white-space: nowrap; }
-  .code-value { font-size: 11pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
-  .logo-wrap { display: flex; justify-content: center; margin-bottom: 0.25cm; }
-  .logo-wrap img { height: 1.1cm; width: auto; display: block; }
-  .info { font-size: 9.5pt; line-height: 1.5; margin-bottom: 0.3cm; }
+  body { padding: 0.4cm; display: flex; flex-direction: column; gap: 0.25cm; }
+  .code-row { display: flex; align-items: baseline; gap: 6px; }
+  .code-label { font-size: 9pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+  .code-value { font-size: 13pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
+  .logo-wrap { display: flex; justify-content: center; }
+  .logo-wrap img { height: 1.8cm; width: auto; display: block; }
+  .info { font-size: 11pt; line-height: 1.6; }
   .info p { margin: 0; }
-  .qr-box { display: flex; justify-content: center; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.2cm; margin-bottom: 0.2cm; }
+  .qr-box { display: flex; justify-content: center; align-items: center; border: 1px solid #94a3b8; border-radius: 10px; padding: 0.2cm; }
+  .qr-box svg { width: 6.5cm !important; height: 6.5cm !important; }
   .bc-box { display: flex; justify-content: center; }
-  svg { max-width: 100%; height: auto; }
+  .bc-box svg { width: 8.2cm !important; height: 1.4cm !important; }
 `;
 
 

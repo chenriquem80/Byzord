@@ -74,16 +74,18 @@ export function EntryPage() {
           top: 0 !important; left: 0 !important;
           width: 10cm !important;
           height: 15cm !important;
-          padding: 0.5cm !important;
+          padding: 0.4cm !important;
           background: white !important;
           display: flex !important;
           flex-direction: column !important;
+          gap: 0.25cm !important;
           font-family: sans-serif !important;
           color: #0f172a !important;
           overflow: hidden !important;
         }
-        #print-label-area img { height: 1.1cm !important; width: auto !important; display: block !important; }
-        #print-label-area svg { max-width: 100% !important; height: auto !important; }
+        #print-label-area img { height: 1.8cm !important; width: auto !important; display: block !important; }
+        #print-label-area [data-print="qr"] svg  { width: 6.5cm !important; height: 6.5cm !important; }
+        #print-label-area [data-print="bc"] svg  { width: 8.2cm !important; height: 1.4cm !important; }
       }
     `;
     document.head.appendChild(style);
@@ -752,7 +754,7 @@ export function EntryPage() {
                     </div>
 
                     {/* QR Code */}
-                    <div className="mt-4 flex justify-center rounded-[12px] border border-slate-300 p-2">
+                    <div data-print="qr" className="mt-4 flex justify-center rounded-[12px] border border-slate-300 p-2">
                       <QRCodeSVG
                         value={lastItem.product.barcode || lastItem.product.internalCode || lastItem.product.name}
                         size={120}
@@ -763,7 +765,7 @@ export function EntryPage() {
 
                     {/* Código de Barras */}
                     {(lastItem.product.barcode || lastItem.product.internalCode) && (
-                      <div className="mt-2 flex justify-center">
+                      <div data-print="bc" className="mt-2 flex justify-center">
                         <Barcode
                           value={lastItem.product.barcode || lastItem.product.internalCode}
                           format="CODE128"
