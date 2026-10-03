@@ -286,8 +286,17 @@ export function EntryPage() {
         const row: Record<string, any> = { manufacturer_id: mfId, store_id: storeId, stock: qty, min_quantity: 0 };
         if (specialCond) row.special_condition = specialCond;
         if (ladoValue) row.lado = ladoValue;
-        const { error: insErr } = await supabase!.from("product_store_inventory").insert(row);
+        const { data: inserted, error: insErr } = await supabase!
+          .from("product_store_inventory")
+          .insert(row)
+          .select("id, lado")
+          .single();
         if (insErr) throw new Error(`Erro ao inserir estoque: ${insErr.message}`);
+        if (ladoValue && (inserted as any)?.lado !== ladoValue) {
+          throw new Error(
+            `O lado "${ladoValue}" não foi salvo. A coluna "lado" existe no banco mas o schema cache do Supabase precisa ser recarregado: acesse Supabase → API → Reload Schema e tente novamente.`
+          );
+        }
       }
     }
 
