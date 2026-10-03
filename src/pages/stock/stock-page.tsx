@@ -205,7 +205,6 @@ export function StockPage() {
 
       return {
         id: p.id,
-        internalCode: p.internal_code ?? "",
         supplierCode: "",
         barcode: p.barcode ?? "",
         name: p.name ?? "",
@@ -249,7 +248,7 @@ export function StockPage() {
     const seen = new Set<string>();
     return products
       .filter((product) => {
-        const text = `${product.internalCode} ${product.name} ${product.brand} ${product.glassType} ${product.feature} ${product.compatibilities
+        const text = `${product.name} ${product.brand} ${product.glassType} ${product.feature} ${product.compatibilities
           .map((item) => `${item.automaker} ${item.model} ${item.generation} ${item.version}`)
           .join(" ")}`.toLowerCase();
         const matchesQuery = query
@@ -280,7 +279,7 @@ export function StockPage() {
             store2Special,
             totalQuantity: store1Quantity + store2Quantity,
             productName: product.name,
-            code: product.internalCode,
+            code: product.barcode,
             manufacturer: manufacturer.manufacturer,
             cost: manufacturer.cost,
             price: manufacturer.price,

@@ -170,7 +170,6 @@ export function EntryPage() {
           });
           return {
             id: p.id,
-            internalCode: p.internal_code ?? "",
             supplierCode: "",
             barcode: p.barcode ?? "",
             name: p.name ?? "",
@@ -248,7 +247,7 @@ export function EntryPage() {
         if (!matchesType) return false;
         if (terms.length === 0) return true;
         const compat = item.compatibilities.map((c) => `${c.automaker} ${c.model} ${c.generation} ${c.version}`).join(" ");
-        const text = `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand} ${compat}`.toLowerCase();
+        const text = `${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand} ${compat}`.toLowerCase();
         return terms.every((term) => text.includes(term));
       })
       .flatMap((product) =>
@@ -682,7 +681,7 @@ export function EntryPage() {
                         <div className="flex items-start justify-between border-b border-border bg-slate-50 px-4 py-3">
                           <div>
                             <p className="font-semibold text-slate-900">
-                              {item.product.internalCode} • {item.product.name}
+                              {item.product.name}
                             </p>
                             <p className="text-sm text-slate-500">
                               {item.product.glassType} • {item.product.feature} • Fabricante: {item.mf.manufacturer} • Custo: {formatCurrency(item.mf.cost)}
@@ -785,7 +784,7 @@ export function EntryPage() {
                     <div className="flex items-baseline gap-2">
                       <span className="shrink-0 text-[11px] font-medium text-slate-500">Codigo:</span>
                       <span className="break-all text-[14px] font-bold leading-tight tracking-tight">
-                        {lastItem.product.internalCode || lastItem.product.name}
+                        {lastItem.product.barcode || lastItem.product.name}
                       </span>
                     </div>
 
@@ -805,7 +804,7 @@ export function EntryPage() {
 
                     {/* Código camuflado */}
                     {currentLabel.purchaseSummary && (() => {
-                      const seed = lastItem.product.barcode || lastItem.product.internalCode || lastItem.product.name;
+                      const seed = lastItem.product.barcode || lastItem.product.name;
                       const n1 = noiseDigits(seed, 7, 1);
                       const n2 = noiseDigits(seed, 8, 2);
                       return (
@@ -818,7 +817,7 @@ export function EntryPage() {
                     {/* QR Code */}
                     <div data-print="qr" className="mt-3 flex justify-center rounded-md border border-slate-300 p-1">
                       <QRCodeSVG
-                        value={lastItem.product.barcode || lastItem.product.internalCode || lastItem.product.name}
+                        value={lastItem.product.barcode || lastItem.product.name}
                         size={40}
                         level="M"
                         includeMargin={false}
@@ -826,10 +825,10 @@ export function EntryPage() {
                     </div>
 
                     {/* Código de Barras */}
-                    {(lastItem.product.barcode || lastItem.product.internalCode) && (
+                    {lastItem.product.barcode && (
                       <div data-print="bc" className="mt-2 flex justify-center">
                         <Barcode
-                          value={lastItem.product.barcode || lastItem.product.internalCode}
+                          value={lastItem.product.barcode}
                           format="CODE128"
                           width={1.1}
                           height={36}

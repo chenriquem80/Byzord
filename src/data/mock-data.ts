@@ -30,7 +30,6 @@ export const currentUser: User = {
 export const products: Product[] = [
   {
     id: "prd-001",
-    internalCode: "VK.PB.103.101",
     supplierCode: "AGC-4561",
     barcode: "7891000000014",
     name: "Parabrisa Gol G5 2008/2011",
@@ -128,7 +127,6 @@ export const products: Product[] = [
   },
   {
     id: "prd-002",
-    internalCode: "FT.VG.204.201",
     supplierCode: "FAN-8820",
     barcode: "7891000000021",
     name: "Vigia Fiat Uno Vivace 2011/2014",
@@ -207,7 +205,6 @@ export const products: Product[] = [
   },
   {
     id: "prd-003",
-    internalCode: "GM.PD.311.050",
     supplierCode: "SG-911",
     barcode: "7891000000038",
     name: "Porta Dianteira Onix 2013/2019",
@@ -417,7 +414,7 @@ export const labels: LabelRecord[] = products.flatMap((product) =>
         id: `lbl-${product.id}-${manufacturer.id}-${store.id}`,
         storeId: store.id,
         storeName: store.name,
-        productCode: product.internalCode,
+        productCode: product.barcode,
         productName: product.name,
         glassType: product.glassType,
         vehicleLabel: `${product.brand} ${firstCompatibility?.model ?? ""}`.trim(),

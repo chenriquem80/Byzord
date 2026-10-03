@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const productSchema = z.object({
-  internalCode: z.string().min(3, "Informe o código interno."),
   supplierCode: z.string().default(""),
   barcode: z.string().min(8, "Informe o código de barras."),
   name: z.string().min(3, "Informe o nome do produto."),

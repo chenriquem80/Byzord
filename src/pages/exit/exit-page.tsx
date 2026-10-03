@@ -120,7 +120,6 @@ export function ExitPage() {
           });
           return {
             id: p.id,
-            internalCode: p.internal_code ?? "",
             supplierCode: "",
             barcode: p.barcode ?? "",
             name: p.name ?? "",
@@ -166,7 +165,7 @@ export function ExitPage() {
         if (!matchesType) return false;
         if (terms.length === 0) return true;
         const compat = item.compatibilities.map((c) => `${c.automaker} ${c.model} ${c.generation} ${c.version}`).join(" ");
-        const text = `${item.internalCode} ${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand} ${compat}`.toLowerCase();
+        const text = `${item.name} ${item.description} ${item.glassType} ${item.feature} ${item.brand} ${compat}`.toLowerCase();
         return terms.every((term) => text.includes(term));
       })
       .flatMap((product) =>

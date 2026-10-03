@@ -18,7 +18,6 @@ import { productSchema } from "@/lib/schemas";
 import type { Product, VehicleCompatibility } from "@/types/domain";
 
 type ProductFormValues = {
-  internalCode: string;
   supplierCode: string;
   barcode: string;
   name: string;
@@ -53,7 +52,6 @@ function generateUniqueBarcode(): string {
 
 function getEmptyFormValues(): ProductFormValues {
   return {
-    internalCode: "",
     supplierCode: "",
     barcode: generateUniqueBarcode(),
     name: "",
@@ -84,7 +82,6 @@ function buildFormValues(p: Product, mfId?: string | null, storeId?: string | nu
     ? (mf?.inventories.find((i) => i.storeId === storeId) ?? mf?.inventories[0])
     : mf?.inventories[0];
   return {
-    internalCode: p.internalCode,
     supplierCode: p.supplierCode,
     barcode: p.barcode,
     name: p.name,
@@ -263,7 +260,6 @@ export function ProductsPage() {
 
         const product: Product = {
           id: pData.id,
-          internalCode: pData.internal_code ?? "",
           supplierCode: pData.supplier_code ?? "",
           barcode: pData.barcode ?? "",
           name: pData.name ?? "",
@@ -356,7 +352,6 @@ export function ProductsPage() {
 
   const fieldLabels: Partial<Record<keyof ProductFormValues, string>> = {
     name: "Nome do produto",
-    internalCode: "Código interno",
     brand: "Marca",
     glassType: "Tipo do item",
     feature: "Característica",
@@ -579,7 +574,6 @@ export function ProductsPage() {
           const { error } = await supabase
             .from("products")
             .update({
-              internal_code: values.internalCode,
               barcode: values.barcode,
               name: values.name,
               glass_type: values.glassType,
@@ -641,7 +635,6 @@ export function ProductsPage() {
           const { data: inserted, error: insertError } = await supabase
             .from("products")
             .insert({
-              internal_code: values.internalCode,
               barcode: values.barcode,
               name: values.name,
               glass_type: values.glassType,
@@ -700,7 +693,6 @@ export function ProductsPage() {
           if (index !== -1) {
             products[index] = {
               ...products[index],
-              internalCode: values.internalCode,
               barcode: values.barcode,
               name: values.name,
               glassType: values.glassType as Product["glassType"],
@@ -716,7 +708,6 @@ export function ProductsPage() {
           const newId = `prd-${Date.now()}`;
           products.push({
             id: newId,
-            internalCode: values.internalCode,
             supplierCode: "",
             barcode: values.barcode,
             name: values.name,
@@ -793,9 +784,6 @@ export function ProductsPage() {
           </FormField>
 
           {/* Linha de códigos */}
-          <FormField label="Código interno" error={form.formState.errors.internalCode?.message}>
-            <Input {...form.register("internalCode")} />
-          </FormField>
           <FormField label="Código de barras">
             <Input {...form.register("barcode")} readOnly className="bg-slate-50 text-slate-500" />
           </FormField>

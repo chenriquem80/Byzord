@@ -75,7 +75,6 @@ export function TransferPage() {
         });
         return {
           id: p.id,
-          internalCode: p.internal_code ?? "",
           supplierCode: "",
           barcode: p.barcode ?? "",
           name: p.name ?? "",
@@ -135,7 +134,7 @@ export function TransferPage() {
     if (terms.length === 0) return [];
     return pool.filter((p) => {
       const compat = p.compatibilities.map((c) => `${c.automaker} ${c.model} ${c.generation} ${c.version}`).join(" ");
-      const text = `${p.internalCode} ${p.name} ${p.description} ${p.glassType} ${p.feature} ${p.brand} ${compat}`.toLowerCase();
+      const text = `${p.name} ${p.description} ${p.glassType} ${p.feature} ${p.brand} ${compat}`.toLowerCase();
       return terms.every((t) => text.includes(t));
     });
   }, [query, glassTypeFilter, allProducts]);
@@ -300,7 +299,7 @@ export function TransferPage() {
                       className="w-full px-4 py-3 text-left transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-slate-50"
                       onClick={() => handleSelectProduct(product)}
                     >
-                      <p className="font-semibold text-slate-900">{product.internalCode} • {product.name}</p>
+                      <p className="font-semibold text-slate-900">{product.name}</p>
                       <p className="text-sm text-slate-500">
                         {product.glassType} • {product.feature} • {product.brand}
                       </p>
@@ -318,7 +317,7 @@ export function TransferPage() {
                   Produto selecionado
                 </p>
                 <p className="mt-2 text-lg font-semibold text-slate-900">
-                  {selectedProduct.internalCode} • {selectedProduct.name}
+                  {selectedProduct.name}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
                   {selectedProduct.glassType} • {selectedProduct.feature} • {selectedProduct.brand}

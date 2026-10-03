@@ -68,7 +68,6 @@ export interface StoreInventory {
 
 export interface Product {
   id: string;
-  internalCode: string;
   supplierCode: string;
   barcode: string;
   name: string;

@@ -36,7 +36,6 @@ export function QuotesPage() {
       const rawCompat = compatData ?? [];
       const mapped: Product[] = pData.map((p: any) => ({
         id: p.id,
-        internalCode: p.internal_code ?? "",
         supplierCode: p.supplier_code ?? "",
         barcode: p.barcode ?? "",
         name: p.name ?? "",
@@ -100,7 +99,7 @@ export function QuotesPage() {
     const term = normalize(searchTerm);
     return list.filter((p) => {
       const compat = p.compatibilities.map((c) => `${c.automaker} ${c.model} ${c.generation} ${c.version}`).join(" ");
-      return normalize(`${p.internalCode} ${p.name} ${p.brand} ${p.glassType} ${p.feature} ${p.description} ${compat}`).includes(term);
+      return normalize(`${p.name} ${p.brand} ${p.glassType} ${p.feature} ${p.description} ${compat}`).includes(term);
     });
   }, [searchTerm, glassTypeFilter, allProducts]);
 
@@ -158,7 +157,7 @@ export function QuotesPage() {
     let pool = allProducts;
     if (glassTypeFilter) pool = pool.filter((p) => p.glassType === glassTypeFilter);
     const match = pool.find((p) =>
-      normalize(`${p.internalCode} ${p.name} ${p.brand} ${p.glassType} ${p.feature} ${p.description}`).includes(t)
+      normalize(`${p.name} ${p.brand} ${p.glassType} ${p.feature} ${p.description}`).includes(t)
     );
     if (match) {
       setSelectedProductId(match.id);
