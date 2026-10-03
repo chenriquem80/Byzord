@@ -7,6 +7,8 @@ export const productSchema = z.object({
   name: z.string().min(3, "Informe o nome do produto."),
   isTypeB: z.boolean().optional().default(false),
   isTypeR: z.boolean().optional().default(false),
+  ladoD: z.boolean().optional().default(false),
+  ladoE: z.boolean().optional().default(false),
   glassType: z.string().min(1, "Selecione o tipo de vidro."),
   feature: z.string().min(1, "Selecione a característica."),
   manufacturer: z.string().min(1, "Selecione o fabricante."),
