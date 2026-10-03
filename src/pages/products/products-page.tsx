@@ -574,6 +574,7 @@ export function ProductsPage() {
           const { error } = await supabase
             .from("products")
             .update({
+              internal_code: "",
               barcode: values.barcode,
               name: values.name,
               glass_type: values.glassType,
@@ -635,6 +636,7 @@ export function ProductsPage() {
           const { data: inserted, error: insertError } = await supabase
             .from("products")
             .insert({
+              internal_code: "",
               barcode: values.barcode,
               name: values.name,
               glass_type: values.glassType,
