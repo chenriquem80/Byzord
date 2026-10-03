@@ -69,6 +69,9 @@ export function EntryPage() {
   const labelRef = useRef<HTMLDivElement>(null);
   const [isTypeB, setIsTypeB] = useState(false);
   const [isTypeR, setIsTypeR] = useState(false);
+  const [isLadoD, setIsLadoD] = useState(false);
+  const [isLadoE, setIsLadoE] = useState(false);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("all");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -214,17 +217,18 @@ export function EntryPage() {
     const dateLabel = purchaseDate
       ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
       : "";
+    const ladoValue = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
     return {
       vehicleLabel,
       yearRange,
       feature: lastItem.product.feature,
       glassType: lastItem.product.glassType,
-      lado: lastItem.product.lado ?? null,
+      lado: ladoValue ?? lastItem.product.lado ?? null,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
       purchaseSummary: `${lastItem.mf.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
     };
-  }, [lastItem, selectedManufacturer]);
+  }, [lastItem, selectedManufacturer, isLadoD, isLadoE]);
 
   const totalQuantity = useMemo(
     () =>
@@ -406,6 +410,13 @@ export function EntryPage() {
           if (mvErr) console.error("Erro ao registrar movimentação de entrada:", mvErr.message);
         }
       }
+      // Salva lado no produto se selecionado
+      const ladoValue = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
+      if (ladoValue) {
+        for (const item of entryItems) {
+          await supabase.from("products").update({ lado: ladoValue }).eq("id", item.product.id);
+        }
+      }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       handleCancel();
@@ -425,6 +436,9 @@ export function EntryPage() {
     setNewSupplier("");
     setShowAddManufacturer(false);
     setNewManufacturer("");
+    setIsLadoD(false);
+    setIsLadoE(false);
+    setSelectedStoreId("all");
   }
 
   const isAlreadyAdded = (row: SearchRow) =>
@@ -582,6 +596,14 @@ export function EntryPage() {
                     <FormField label="Data da compra">
                       <Input value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} type="date" />
                     </FormField>
+                    <FormField label="Loja">
+                      <Select value={selectedStoreId} onChange={(e) => setSelectedStoreId(e.target.value)}>
+                        <option value="all">Todas as lojas</option>
+                        {stores.map((s: any) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </Select>
+                    </FormField>
                     <div className="space-y-4">
                       <FormField label="Condição especial">
                         <div className="flex items-center gap-4 rounded-xl border border-border bg-white px-4 py-2.5 shadow-sm">
@@ -632,6 +654,18 @@ export function EntryPage() {
                           </Button>
                         )}
                       </FormField>
+                      <FormField label="Lado">
+                        <div className="flex items-center gap-4 rounded-xl border border-border bg-white px-4 py-2.5 shadow-sm">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                            <input type="checkbox" checked={isLadoD} onChange={(e) => setIsLadoD(e.target.checked)} className="size-4 accent-primary" />
+                            D
+                          </label>
+                          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                            <input type="checkbox" checked={isLadoE} onChange={(e) => setIsLadoE(e.target.checked)} className="size-4 accent-primary" />
+                            E
+                          </label>
+                        </div>
+                      </FormField>
                     </div>
                     <FormField label="Número da NF">
                       <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="000123" />
@@ -670,7 +704,7 @@ export function EntryPage() {
                         </div>
 
                         <div className="divide-y divide-border">
-                          {stores.map((store) => {
+                          {stores.filter((store: any) => selectedStoreId === "all" || store.id === selectedStoreId).map((store) => {
                             const inventory =
                               item.mf.inventories.find((inv) => inv.storeId === store.id) ??
                               item.mf.inventories[0];
@@ -736,7 +770,11 @@ export function EntryPage() {
                     Resumo da entrada
                   </p>
                   <p className="mt-1 text-2xl font-bold text-slate-950">{totalQuantity} un.</p>
-                  <p className="text-xs text-slate-400">Taubaté + Pinda</p>
+                  <p className="text-xs text-slate-400">
+                    {selectedStoreId === "all"
+                      ? stores.map((s: any) => s.name).join(" + ")
+                      : (stores.find((s: any) => s.id === selectedStoreId) as any)?.name ?? ""}
+                  </p>
                 </div>
                 {lastItem && (
                   <Button size="sm" variant="outline" onClick={printLabel}>
