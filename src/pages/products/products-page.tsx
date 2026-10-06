@@ -1095,32 +1095,16 @@ export function ProductsPage() {
             <Input type="date" {...form.register("lastPurchaseDate")} />
           </FormField>
           <FormField label="Fornecedor" error={form.formState.errors.lastSupplier?.message}>
-            {showAddSupplier ? (
-              <div className="flex gap-2">
-                <Input
-                  ref={newSupplierRef}
-                  value={newSupplier}
-                  onChange={(e) => setNewSupplier(e.target.value)}
-                  placeholder="Nome do fornecedor"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddSupplier(); } if (e.key === "Escape") setShowAddSupplier(false); }}
-                  autoFocus
-                />
-                <Button type="button" size="sm" onClick={handleAddSupplier}><Check className="size-4" /></Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => setShowAddSupplier(false)}><X className="size-4" /></Button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <Select {...form.register("lastSupplier")} className="flex-1">
-                  <option value="">Selecione</option>
-                  {suppliersList.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </Select>
-                <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddSupplier(true); setTimeout(() => newSupplierRef.current?.focus(), 50); }}>
-                  <Plus className="size-4" />
-                </Button>
-              </div>
-            )}
+            <Input
+              {...form.register("lastSupplier")}
+              list="suppliers-datalist"
+              placeholder="Digite ou selecione o fornecedor"
+            />
+            <datalist id="suppliers-datalist">
+              {suppliersList.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
           </FormField>
         </div>
       </SectionCard>
