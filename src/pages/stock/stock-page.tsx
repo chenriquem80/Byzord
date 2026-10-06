@@ -481,10 +481,11 @@ export function StockPage() {
             <Button
               size="sm"
               variant="outline"
-              className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-1.5"
               onClick={() => setDeleteDialog({ open: true, row: row.original, deleting: false })}
             >
               <Trash2 className="size-3" />
+              Excluir
             </Button>
           </div>
         ),
