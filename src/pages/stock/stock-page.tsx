@@ -350,8 +350,7 @@ export function StockPage() {
       });
   }, [glassType, query, products, stores]);
 
-  const columns = useMemo<ColumnDef<StockRow>[]>(
-    () => [
+  const columns: ColumnDef<StockRow>[] = [
       {
         accessorKey: "productName",
         header: "Produto",
@@ -490,9 +489,7 @@ export function StockPage() {
           </div>
         ),
       },
-    ],
-    [],
-  );
+  ];
 
   return (
     <div className="space-y-6">
