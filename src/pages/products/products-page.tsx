@@ -1018,9 +1018,23 @@ export function ProductsPage() {
                   </div>
                   <p className="mt-2 text-sm text-slate-600">Saldo atual: {inv?.stock ?? 0} un.</p>
                   <p className="text-sm text-slate-600">Mínimo sugerido: {inv?.minQuantity ?? 0} un.</p>
-                  <p className="text-sm text-slate-600">
-                    Localização: {inv?.location || "—"}
-                  </p>
+                  {isSelected ? (
+                    <div className="mt-1 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <span className="shrink-0 text-sm text-slate-600">Localização:</span>
+                      <input
+                        type="text"
+                        value={invLocation}
+                        onChange={(e) => setInvLocation(e.target.value)}
+                        placeholder="—"
+                        className="h-6 min-w-0 flex-1 rounded border border-primary/40 bg-white px-1.5 text-sm text-slate-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-600">
+                      Localização: {inv?.location || "—"}
+                    </p>
+                  )}
                 </button>
               );
             })}
