@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Car, Check, Images, Pencil, RefreshCw, X } from "lucide-react";
+import { Car, Check, Images, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -125,6 +125,26 @@ export function StockPage() {
       await supabase.from("product_store_inventory").update({ lado: newLado }).eq("id", id);
     }
     setLadoDialog((d) => ({ ...d, open: false, saving: false }));
+    fetchData();
+  }
+
+  // Dialog de exclusão de produto
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; row: StockRow | null; deleting: boolean }>({
+    open: false, row: null, deleting: false,
+  });
+
+  async function handleDeleteProduct() {
+    if (!supabase || !deleteDialog.row) return;
+    setDeleteDialog((d) => ({ ...d, deleting: true }));
+    const productId = deleteDialog.row.product.id;
+    const mfIds = deleteDialog.row.product.manufacturers.map((m) => m.id);
+    if (mfIds.length > 0) {
+      await supabase.from("product_store_inventory").delete().in("manufacturer_id", mfIds);
+      await supabase.from("product_manufacturers").delete().in("id", mfIds);
+    }
+    await supabase.from("product_vehicle_compatibility").delete().eq("product_id", productId);
+    await supabase.from("products").delete().eq("id", productId);
+    setDeleteDialog({ open: false, row: null, deleting: false });
     fetchData();
   }
 
@@ -449,14 +469,24 @@ export function StockPage() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}`)}
-          >
-            <Pencil className="size-3" />
-            Alterar
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}`)}
+            >
+              <Pencil className="size-3" />
+              Alterar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              onClick={() => setDeleteDialog({ open: true, row: row.original, deleting: false })}
+            >
+              <Trash2 className="size-3" />
+            </Button>
+          </div>
         ),
       },
     ],
@@ -694,6 +724,31 @@ export function StockPage() {
                 <Check className="size-3.5" /> {ladoDialog.saving ? "Salvando..." : "Salvar"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de exclusão de produto */}
+      <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog((d) => ({ ...d, open: false }))}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir produto</DialogTitle>
+            <DialogDescription>
+              <strong>{deleteDialog.row?.productName}</strong> será excluído permanentemente, incluindo todos os registros de estoque e fabricantes. Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setDeleteDialog((d) => ({ ...d, open: false }))}>
+              <X className="size-3.5" /> Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDeleteProduct}
+              disabled={deleteDialog.deleting}
+            >
+              <Trash2 className="size-3.5" /> {deleteDialog.deleting ? "Excluindo..." : "Excluir"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
