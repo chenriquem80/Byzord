@@ -552,6 +552,156 @@ function UserActionReport() {
   );
 }
 
+// ── Relatório 4: Alterações por item ────────────────────────────────────────
+
+type ItemChangeRow = {
+  created_at: string;
+  product_name: string;
+  manufacturer: string;
+  user_name: string;
+  note: string | null;
+  type: string;
+};
+
+function ItemChangeReport() {
+  const today = new Date().toISOString().split("T")[0];
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
+  const [rows, setRows] = useState<ItemChangeRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+
+  async function fetchReport() {
+    if (!supabase) return;
+    setLoading(true);
+    const start = new Date(dateFrom + "T00:00:00");
+    const end = new Date(dateTo + "T23:59:59.999");
+    const { data, error } = await supabase
+      .from("stock_movements")
+      .select("created_at, type, product_name, manufacturer, user_name, note")
+      .in("type", ["Edição", "Cadastro"])
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString())
+      .order("created_at", { ascending: false });
+    if (error) { console.error(error); setLoading(false); return; }
+    setRows(data ?? []);
+    setFetched(true);
+    setLoading(false);
+  }
+
+  const filtered = search.trim()
+    ? rows.filter((r) => r.product_name.toLowerCase().includes(search.toLowerCase()))
+    : rows;
+
+  function exportPdf() {
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(14);
+    doc.text("Alterações por Item", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(`Período: ${dateFrom} a ${dateTo}   •   Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 23);
+    doc.setTextColor(0);
+    autoTable(doc, {
+      startY: 28,
+      head: [["Data", "Hora", "Ação", "Produto", "Fabricante", "Usuário", "Campos Alterados"]],
+      body: filtered.map((r) => {
+        const d = new Date(r.created_at);
+        return [
+          d.toLocaleDateString("pt-BR"),
+          d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          r.type, r.product_name, r.manufacturer, r.user_name || "—", r.note || "—",
+        ];
+      }),
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 6: { cellWidth: 100 } },
+    });
+    doc.save("alteracoes_por_item.pdf");
+  }
+
+  return (
+    <SectionCard
+      title="Alterações por item"
+      description="Histórico detalhado de cadastros e edições de produtos, com os campos que foram modificados."
+      action={
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Filtrar por produto..."
+            className="w-48"
+          />
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-38" />
+          <span className="text-sm text-slate-400">até</span>
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-38" />
+          <Button size="sm" onClick={fetchReport} disabled={loading}>
+            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+            Consultar
+          </Button>
+          {filtered.length > 0 && (
+            <Button size="sm" variant="outline" onClick={exportPdf}>
+              <FileDown className="size-3.5" /> PDF
+            </Button>
+          )}
+        </div>
+      }
+    >
+      {!fetched ? (
+        <p className="py-8 text-center text-sm text-slate-400">Selecione o período e clique em Consultar.</p>
+      ) : filtered.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">Nenhuma alteração encontrada no período.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50">
+              <tr>
+                {["Data", "Hora", "Ação", "Produto", "Fabricante", "Usuário", "Campos Alterados"].map((h) => (
+                  <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map((r, i) => {
+                const d = new Date(r.created_at);
+                const isEdit = r.type === "Edição";
+                const changes = r.note ? r.note.split(" | ") : [];
+                return (
+                  <tr key={i} className="hover:bg-slate-50 align-top">
+                    <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">{d.toLocaleDateString("pt-BR")}</td>
+                    <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${isEdit ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {r.type}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 font-medium text-slate-900 whitespace-nowrap">{r.product_name}</td>
+                    <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">{r.manufacturer || "—"}</td>
+                    <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">{r.user_name || "—"}</td>
+                    <td className="px-3 py-2.5 max-w-md">
+                      {changes.length > 0 ? (
+                        <ul className="space-y-0.5">
+                          {changes.map((c, ci) => (
+                            <li key={ci} className="text-xs text-slate-600">{c}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="border-t border-border px-3 py-2 text-xs text-slate-400">{filtered.length} registro{filtered.length !== 1 ? "s" : ""}</p>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 // ── Página principal ─────────────────────────────────────────────────────────
 
 export function ReportsPage() {
@@ -560,6 +710,7 @@ export function ReportsPage() {
       <StockByStoreReport />
       <MovementByStoreReport />
       <UserActionReport />
+      <ItemChangeReport />
     </div>
   );
 }

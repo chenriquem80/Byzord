@@ -689,8 +689,28 @@ export function ProductsPage() {
         }
       }
 
-      // Log de auditoria — edição de produto (apenas para produtos existentes com Supabase)
+      // Log de auditoria — edição de produto com diff dos campos alterados
       if (isEditing && supabase) {
+        const diff: string[] = [];
+        const chk = (label: string, oldVal: any, newVal: any) => {
+          const o = String(oldVal ?? "").trim();
+          const n = String(newVal ?? "").trim();
+          if (o !== n) diff.push(`${label}: "${o}" → "${n}"`);
+        };
+        chk("Nome", currentProduct.name, values.name);
+        chk("Tipo", currentProduct.glassType, values.glassType);
+        chk("Característica", currentProduct.feature, values.feature);
+        chk("Marca", currentProduct.brand, values.brand);
+        chk("Status", currentProduct.status, values.status);
+        chk("Descrição", currentProduct.description, values.description);
+        chk("Fabricante", activeMf?.manufacturer, values.manufacturer);
+        chk("Custo", activeMf?.cost, values.cost);
+        chk("Preço", activeMf?.price, values.price);
+        chk("Fornecedor", activeMf?.supplier, values.lastSupplier);
+        const prevInv = activeMf?.inventories.find((i) => i.storeId === (selectedStoreId || dbStores[0]?.id));
+        chk("Localização", prevInv?.location, invLocation);
+        chk("Estoque", prevInv?.stock, invQuantity);
+        chk("Mínimo", prevInv?.minQuantity, invMinimum);
         await supabase.from("stock_movements").insert({
           type: "Edição",
           product_name: values.name,
@@ -698,7 +718,7 @@ export function ProductsPage() {
           manufacturer: values.manufacturer,
           user_name: currentUser?.name ?? "",
           quantity: 0,
-          note: `Produto editado`,
+          note: diff.length > 0 ? diff.join(" | ") : "Sem alterações detectadas",
         }).then(({ error }) => { if (error) console.warn("audit log:", error.message); });
       }
 
