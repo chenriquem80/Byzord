@@ -292,19 +292,27 @@ export function TransferPage() {
               </FormField>
 
               {searchResults.length > 0 && !selectedProduct && (
-                <div className="absolute z-10 mt-1 w-full rounded-2xl border border-border bg-white shadow-lg">
-                  {searchResults.map((product) => (
-                    <button
-                      key={product.id}
-                      className="w-full px-4 py-3 text-left transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-slate-50"
-                      onClick={() => handleSelectProduct(product)}
-                    >
-                      <p className="font-semibold text-slate-900">{product.name}</p>
-                      <p className="text-sm text-slate-500">
-                        {product.glassType} • {product.feature} • {product.brand}
-                      </p>
-                    </button>
-                  ))}
+                <div className="absolute z-10 mt-1 w-full rounded-2xl border border-border bg-white shadow-lg max-h-72 overflow-y-auto">
+                  {searchResults.map((product) => {
+                    const mfNames = product.manufacturers.map((m) => m.manufacturer).filter(Boolean);
+                    return (
+                      <button
+                        key={product.id}
+                        className="w-full px-4 py-3 text-left transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-slate-50"
+                        onClick={() => handleSelectProduct(product)}
+                      >
+                        <p className="font-semibold text-slate-900">{product.name}</p>
+                        <p className="text-sm text-slate-500">
+                          {product.glassType} • {product.feature} • {product.brand}
+                        </p>
+                        {mfNames.length > 0 && (
+                          <p className="mt-0.5 text-xs text-primary font-medium">
+                            Fabricante{mfNames.length > 1 ? "s" : ""}: {mfNames.join(", ")}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -322,6 +330,11 @@ export function TransferPage() {
                 <p className="mt-1 text-sm text-slate-500">
                   {selectedProduct.glassType} • {selectedProduct.feature} • {selectedProduct.brand}
                 </p>
+                {selectedManufacturer && (
+                  <p className="mt-1 text-sm font-medium text-primary">
+                    Fabricante: {selectedManufacturer.manufacturer}
+                  </p>
+                )}
               </div>
 
               {selectedProduct.manufacturers.length > 1 && (
