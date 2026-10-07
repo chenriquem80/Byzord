@@ -336,6 +336,207 @@ function MovementByStoreReport() {
   );
 }
 
+// ── Relatório 3: Ações por usuário ──────────────────────────────────────────
+
+type UserActionRow = {
+  created_at: string;
+  type: string;
+  product_name: string;
+  store_name: string;
+  manufacturer: string;
+  quantity: number;
+  user_name: string;
+  note: string | null;
+};
+
+function UserActionReport() {
+  const today = new Date().toISOString().split("T")[0];
+  const [users, setUsers] = useState<string[]>([]);
+  const [selectedUser, setSelectedUser] = useState("all");
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [rows, setRows] = useState<UserActionRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from("stock_movements")
+      .select("user_name")
+      .neq("user_name", "")
+      .then(({ data }) => {
+        if (data) {
+          const unique = [...new Set((data as any[]).map((r) => r.user_name).filter(Boolean))] as string[];
+          setUsers(unique);
+        }
+      });
+  }, []);
+
+  async function fetchReport() {
+    if (!supabase) return;
+    setLoading(true);
+    const start = new Date(dateFrom + "T00:00:00");
+    const end = new Date(dateTo + "T23:59:59.999");
+    let q = supabase
+      .from("stock_movements")
+      .select("created_at, type, product_name, store_name, manufacturer, quantity, user_name, note")
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString())
+      .order("user_name", { ascending: true })
+      .order("created_at", { ascending: false });
+    if (selectedUser !== "all") q = q.eq("user_name", selectedUser);
+    if (typeFilter !== "all") q = q.eq("type", typeFilter);
+    const { data, error } = await q;
+    if (error) { console.error(error); setLoading(false); return; }
+    setRows(data ?? []);
+    setFetched(true);
+    setLoading(false);
+  }
+
+  function exportPdf() {
+    const doc = new jsPDF({ orientation: "landscape" });
+    const userLabel = selectedUser === "all" ? "Todos os usuários" : selectedUser;
+    const typeLabel = typeFilter === "all" ? "Entrada + Saída" : typeFilter;
+    doc.setFontSize(14);
+    doc.text("Ações por Usuário", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(
+      `Usuário: ${userLabel}   •   Tipo: ${typeLabel}   •   Período: ${dateFrom} a ${dateTo}   •   Gerado em: ${new Date().toLocaleString("pt-BR")}`,
+      14, 23
+    );
+    const totalEnt = rows.filter((r) => r.type === "Entrada").reduce((s, r) => s + r.quantity, 0);
+    const totalSai = rows.filter((r) => r.type === "Saída").reduce((s, r) => s + r.quantity, 0);
+    doc.text(`Total entradas: ${totalEnt} un.   |   Total saídas: ${totalSai} un.   |   Registros: ${rows.length}`, 14, 29);
+    doc.setTextColor(0);
+    autoTable(doc, {
+      startY: 34,
+      head: [["Usuário", "Data", "Hora", "Tipo", "Loja", "Produto", "Fabricante", "Qtd", "Observação"]],
+      body: rows.map((r) => {
+        const d = new Date(r.created_at);
+        return [
+          r.user_name || "—",
+          d.toLocaleDateString("pt-BR"),
+          d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          r.type, r.store_name, r.product_name, r.manufacturer,
+          (r.type === "Entrada" ? "+" : "-") + r.quantity,
+          r.note || "—",
+        ];
+      }),
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.column.index === 3) {
+          const type = String(data.cell.raw);
+          data.cell.styles.textColor = type === "Entrada" ? [109, 40, 217] : [180, 83, 9];
+        }
+      },
+    });
+    doc.save("acoes_por_usuario.pdf");
+  }
+
+  // Agrupa por usuário para exibição
+  const byUser = rows.reduce<Record<string, UserActionRow[]>>((acc, r) => {
+    const key = r.user_name || "Sem usuário";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(r);
+    return acc;
+  }, {});
+
+  return (
+    <SectionCard
+      title="Ações por usuário"
+      description="Entradas e saídas registradas por cada operador no período selecionado."
+      action={
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} className="w-44">
+            <option value="all">Todos os usuários</option>
+            {users.map((u) => <option key={u} value={u}>{u}</option>)}
+          </Select>
+          <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-36">
+            <option value="all">Entrada + Saída</option>
+            <option value="Entrada">Somente entradas</option>
+            <option value="Saída">Somente saídas</option>
+          </Select>
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-38" />
+          <span className="text-sm text-slate-400">até</span>
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-38" />
+          <Button size="sm" onClick={fetchReport} disabled={loading}>
+            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+            Consultar
+          </Button>
+          {rows.length > 0 && (
+            <Button size="sm" variant="outline" onClick={exportPdf}>
+              <FileDown className="size-3.5" /> PDF
+            </Button>
+          )}
+        </div>
+      }
+    >
+      {!fetched ? (
+        <p className="py-8 text-center text-sm text-slate-400">Selecione os filtros e clique em Consultar.</p>
+      ) : rows.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">Nenhuma ação encontrada no período selecionado.</p>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(byUser).map(([userName, userRows]) => {
+            const entradas = userRows.filter((r) => r.type === "Entrada").reduce((s, r) => s + r.quantity, 0);
+            const saidas = userRows.filter((r) => r.type === "Saída").reduce((s, r) => s + r.quantity, 0);
+            return (
+              <div key={userName}>
+                <div className="mb-2 flex items-center gap-3">
+                  <p className="font-semibold text-slate-800">{userName}</p>
+                  <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">+{entradas} un.</span>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">-{saidas} un.</span>
+                  <span className="text-xs text-slate-400">{userRows.length} registro{userRows.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        {["Data", "Hora", "Tipo", "Loja", "Produto", "Fabricante", "Qtd", "Observação"].map((h) => (
+                          <th key={h} className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {userRows.map((r, i) => {
+                        const d = new Date(r.created_at);
+                        const isEntry = r.type === "Entrada";
+                        return (
+                          <tr key={i} className="hover:bg-slate-50">
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{d.toLocaleDateString("pt-BR")}</td>
+                            <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${isEntry ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700"}`}>
+                                {r.type}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.store_name}</td>
+                            <td className="px-3 py-2 font-medium text-slate-900">{r.product_name}</td>
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.manufacturer}</td>
+                            <td className={`px-3 py-2 font-semibold whitespace-nowrap ${isEntry ? "text-violet-700" : "text-amber-700"}`}>
+                              {isEntry ? "+" : "-"}{r.quantity}
+                            </td>
+                            <td className="px-3 py-2 text-slate-400">{r.note || "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 // ── Página principal ─────────────────────────────────────────────────────────
 
 export function ReportsPage() {
@@ -343,6 +544,7 @@ export function ReportsPage() {
     <div className="space-y-6">
       <StockByStoreReport />
       <MovementByStoreReport />
+      <UserActionReport />
     </div>
   );
 }
