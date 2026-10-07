@@ -10,7 +10,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { products, stores } from "@/data/mock-data";
+import { currentUser, products, stores } from "@/data/mock-data";
 import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
 import { ImagePlus, Pencil, Trash2, X } from "lucide-react";
 import { ContextMenuDropdown } from "@/components/shared/context-menu-dropdown";
@@ -621,6 +621,17 @@ export function ProductsPage() {
             throw innerErr;
           }
 
+          // Log de auditoria — cadastro de produto
+          await supabase.from("stock_movements").insert({
+            type: "Cadastro",
+            product_name: values.name,
+            store_name: "",
+            manufacturer: values.manufacturer,
+            user_name: currentUser?.name ?? "",
+            quantity: 0,
+            note: `Novo produto cadastrado`,
+          }).then(({ error }) => { if (error) console.warn("audit log:", error.message); });
+
           navigate(`/app/produtos?id=${productDbId}`);
         }
       } else {
@@ -676,6 +687,19 @@ export function ProductsPage() {
           });
           navigate(`/app/produtos?id=${newId}`);
         }
+      }
+
+      // Log de auditoria — edição de produto (apenas para produtos existentes com Supabase)
+      if (isEditing && supabase) {
+        await supabase.from("stock_movements").insert({
+          type: "Edição",
+          product_name: values.name,
+          store_name: "",
+          manufacturer: values.manufacturer,
+          user_name: currentUser?.name ?? "",
+          quantity: 0,
+          note: `Produto editado`,
+        }).then(({ error }) => { if (error) console.warn("audit log:", error.message); });
       }
 
       setSavedMessage(true);

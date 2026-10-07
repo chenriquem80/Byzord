@@ -362,15 +362,23 @@ function UserActionReport() {
 
   useEffect(() => {
     if (!supabase) return;
+    // Busca usuários da tabela de perfis
     supabase
-      .from("stock_movements")
-      .select("user_name")
-      .neq("user_name", "")
-      .then(({ data }) => {
-        if (data) {
-          const unique = [...new Set((data as any[]).map((r) => r.user_name).filter(Boolean))] as string[];
-          setUsers(unique);
+      .from("profiles")
+      .select("name")
+      .neq("name", "")
+      .then(({ data, error }) => {
+        if (!error && data) {
+          const unique = [...new Set((data as any[]).map((r) => r.name).filter(Boolean))] as string[];
+          if (unique.length > 0) { setUsers(unique); return; }
         }
+        // Fallback: nomes únicos dos movimentos existentes
+        supabase!.from("stock_movements").select("user_name").then(({ data: d2 }) => {
+          if (d2) {
+            const unique2 = [...new Set((d2 as any[]).map((r) => r.user_name).filter(Boolean))] as string[];
+            setUsers(unique2);
+          }
+        });
       });
   }, []);
 
@@ -456,10 +464,12 @@ function UserActionReport() {
             <option value="all">Todos os usuários</option>
             {users.map((u) => <option key={u} value={u}>{u}</option>)}
           </Select>
-          <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-36">
-            <option value="all">Entrada + Saída</option>
-            <option value="Entrada">Somente entradas</option>
-            <option value="Saída">Somente saídas</option>
+          <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-44">
+            <option value="all">Todas as ações</option>
+            <option value="Entrada">Entrada de estoque</option>
+            <option value="Saída">Saída de estoque</option>
+            <option value="Cadastro">Cadastro de produto</option>
+            <option value="Edição">Edição de produto</option>
           </Select>
           <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-38" />
           <span className="text-sm text-slate-400">até</span>
@@ -511,7 +521,12 @@ function UserActionReport() {
                             <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{d.toLocaleDateString("pt-BR")}</td>
                             <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</td>
                             <td className="px-3 py-2 whitespace-nowrap">
-                              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${isEntry ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700"}`}>
+                              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                r.type === "Entrada" ? "bg-violet-100 text-violet-700" :
+                                r.type === "Saída" ? "bg-amber-100 text-amber-700" :
+                                r.type === "Cadastro" ? "bg-emerald-100 text-emerald-700" :
+                                "bg-blue-100 text-blue-700"
+                              }`}>
                                 {r.type}
                               </span>
                             </td>
