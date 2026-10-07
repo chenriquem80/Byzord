@@ -1,20 +1,20 @@
 export type UserRole = "ADMIN" | "GERENTE" | "ATENDENTE" | "ESTOQUISTA";
 export type ProductStatus = "ativo" | "inativo";
 export type GlassType =
-  | "Parabrisa"
-  | "Vigia"
-  | "Porta dianteira"
-  | "Porta traseira"
-  | "Lateral fixa"
-  | "Quebra-vento"
-  | "Teto solar";
+  | "PARABRISA"
+  | "VIGIA"
+  | "PORTA DIANTEIRA"
+  | "PORTA TRASEIRA"
+  | "LATERAL FIXA"
+  | "QUEBRA-VENTO"
+  | "TETO SOLAR";
 export type ProductFeature =
-  | "Verde"
-  | "Verde sensor"
-  | "Degradê"
-  | "Degradê sensor"
-  | "Incolor"
-  | "Térmico";
+  | "VERDE"
+  | "VERDE SENSOR"
+  | "DEGRADÊ"
+  | "DEGRADÊ SENSOR"
+  | "INCOLOR"
+  | "TÉRMICO";
 export type MovementType = "Entrada" | "Saída" | "Ajuste" | "Perda" | "Devolução";
 export type OrderStatus = "aberto" | "enviado" | "recebido" | "cancelado";
 

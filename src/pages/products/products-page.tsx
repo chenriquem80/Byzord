@@ -117,9 +117,9 @@ export function ProductsPage() {
   const [savedMessage, setSavedMessage] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
-  const DEFAULT_GLASS_TYPES = ["Parabrisa", "Vigia", "Porta dianteira", "Porta traseira", "Lateral fixa", "Quebra-vento", "Teto solar"];
-  const DEFAULT_FEATURES = ["Verde", "Verde sensor", "Degradê", "Degradê sensor", "Incolor", "Térmico"];
-  const DEFAULT_MANUFACTURERS = ["AGC", "Pilkington", "Saint-Gobain", "Fanavid", "XYG", "Outro"];
+  const DEFAULT_GLASS_TYPES = ["PARABRISA", "VIGIA", "PORTA DIANTEIRA", "PORTA TRASEIRA", "LATERAL FIXA", "QUEBRA-VENTO", "TETO SOLAR"];
+  const DEFAULT_FEATURES = ["VERDE", "VERDE SENSOR", "DEGRADÊ", "DEGRADÊ SENSOR", "INCOLOR", "TÉRMICO"];
+  const DEFAULT_MANUFACTURERS = ["AGC", "PILKINGTON", "SAINT-GOBAIN", "FANAVID", "XYG", "OUTRO"];
 
   const [glassTypes, setGlassTypes] = useState(DEFAULT_GLASS_TYPES);
   const [showAddGlassType, setShowAddGlassType] = useState(false);
