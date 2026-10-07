@@ -28,7 +28,7 @@ export function ContextMenuDropdown({
   const addRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
+    function onClickOutside(_e: MouseEvent) {
       setOpen(false);
       setCtxMenu((m) => ({ ...m, visible: false }));
     }
