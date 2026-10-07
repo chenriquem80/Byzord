@@ -1,4 +1,4 @@
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, PackageMinus, PackagePlus, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -18,14 +18,15 @@ const mobileNavItems = [
   { title: "Saída de Estoque", route: "/app/saida", icon: "ShoppingCart", bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-100" },
 ];
 
-type AttendanceRecord = {
+type StockMovement = {
   id: string;
-  plate: string;
-  store_name: string | null;
-  service_title: string | null;
-  billing_type: string | null;
-  executing_employee: string | null;
-  status: string;
+  type: string;
+  product_name: string;
+  store_name: string;
+  manufacturer: string;
+  user_name: string;
+  quantity: number;
+  note: string | null;
   created_at: string;
 };
 
@@ -38,41 +39,27 @@ type LowStockItem = {
   min_quantity: number;
 };
 
-const statusLabel: Record<string, string> = {
-  pendente: "Pendente",
-  em_andamento: "Em andamento",
-  concluido: "Concluído",
-  cancelado: "Cancelado",
-};
-
-const statusColor: Record<string, string> = {
-  pendente: "bg-amber-100 text-amber-700",
-  em_andamento: "bg-blue-100 text-blue-700",
-  concluido: "bg-emerald-100 text-emerald-700",
-  cancelado: "bg-slate-100 text-slate-500",
-};
-
 export function DashboardPage() {
-  const [todayAttendances, setTodayAttendances] = useState<AttendanceRecord[]>([]);
-  const [loadingAttendances, setLoadingAttendances] = useState(true);
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [loadingMovements, setLoadingMovements] = useState(true);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [loadingLowStock, setLoadingLowStock] = useState(true);
 
-  async function fetchTodayAttendances() {
-    setLoadingAttendances(true);
-    if (!supabase) { setLoadingAttendances(false); return; }
+  async function fetchMovements() {
+    setLoadingMovements(true);
+    if (!supabase) { setLoadingMovements(false); return; }
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date();
     end.setHours(23, 59, 59, 999);
     const { data } = await supabase
-      .from("pending_attendances")
-      .select("id, plate, store_name, service_title, billing_type, executing_employee, status, created_at")
+      .from("stock_movements")
+      .select("id, type, product_name, store_name, manufacturer, user_name, quantity, note, created_at")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("created_at", { ascending: false });
-    setTodayAttendances(data ?? []);
-    setLoadingAttendances(false);
+    setMovements(data ?? []);
+    setLoadingMovements(false);
   }
 
   async function fetchLowStock() {
@@ -96,10 +83,12 @@ export function DashboardPage() {
     setLoadingLowStock(false);
   }
 
-  useEffect(() => {
-    fetchTodayAttendances();
-    fetchLowStock();
-  }, []);
+  function refresh() { fetchMovements(); fetchLowStock(); }
+
+  useEffect(() => { fetchMovements(); fetchLowStock(); }, []);
+
+  const entries = movements.filter((m) => m.type === "Entrada");
+  const exits   = movements.filter((m) => m.type === "Saída");
 
   return (
     <div className="space-y-6">
@@ -122,26 +111,38 @@ export function DashboardPage() {
         })}
       </div>
 
+      {/* Resumo por loja */}
       <div className="hidden lg:block">
         <SectionCard
           title="Resumo por loja"
           description="Visual rápido para comparar o saldo operacional entre as unidades."
+          action={
+            <Button size="sm" variant="outline" onClick={refresh} disabled={loadingMovements || loadingLowStock}>
+              <RefreshCw className={`size-3.5 ${(loadingMovements || loadingLowStock) ? "animate-spin" : ""}`} />
+              Atualizar
+            </Button>
+          }
         >
           <div className="grid gap-4 md:grid-cols-2">
             {stores.map((store) => {
-              const attendCount = todayAttendances.filter((a) => a.store_name === store.name).length;
-              const lowCount = lowStock.filter((item) => item.store_name === store.name).length;
+              const entryCount = entries.filter((m) => m.store_name === store.name).length;
+              const exitCount  = exits.filter((m) => m.store_name === store.name).length;
+              const lowCount   = lowStock.filter((item) => item.store_name === store.name).length;
               return (
                 <div key={store.id} className="rounded-2xl border border-border bg-white p-5">
                   <p className="text-lg font-semibold text-slate-900">{store.name}</p>
                   <p className="mt-1 text-sm text-slate-500">{store.city}</p>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Atendimentos hoje</p>
-                      <p className="mt-2 text-2xl font-bold text-slate-900">{attendCount}</p>
+                  <div className="mt-4 grid grid-cols-3 gap-3">
+                    <div className="rounded-2xl bg-violet-50 p-4">
+                      <p className="text-xs uppercase tracking-[0.12em] text-violet-600">Entradas hoje</p>
+                      <p className="mt-2 text-2xl font-bold text-violet-700">{entryCount}</p>
+                    </div>
+                    <div className="rounded-2xl bg-amber-50 p-4">
+                      <p className="text-xs uppercase tracking-[0.12em] text-amber-600">Saídas hoje</p>
+                      <p className="mt-2 text-2xl font-bold text-amber-700">{exitCount}</p>
                     </div>
                     <div className={`rounded-2xl p-4 ${lowCount > 0 ? "bg-rose-50" : "bg-slate-50"}`}>
-                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Abaixo do mínimo</p>
+                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Abaixo mínimo</p>
                       <p className={`mt-2 text-2xl font-bold ${lowCount > 0 ? "text-rose-600" : "text-slate-900"}`}>{lowCount}</p>
                     </div>
                   </div>
@@ -153,46 +154,59 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+        {/* Movimentações do dia */}
         <SectionCard
-          title="Atendimentos do dia"
-          description={`${todayAttendances.length} atendimento${todayAttendances.length !== 1 ? "s" : ""} registrado${todayAttendances.length !== 1 ? "s" : ""} hoje.`}
+          title="Movimentações do dia"
+          description={`${movements.length} movimentação${movements.length !== 1 ? "ões" : ""} registrada${movements.length !== 1 ? "s" : ""} hoje — ${entries.length} entrada${entries.length !== 1 ? "s" : ""}, ${exits.length} saída${exits.length !== 1 ? "s" : ""}.`}
           action={
-            <Button size="sm" variant="outline" onClick={fetchTodayAttendances} disabled={loadingAttendances}>
-              <RefreshCw className={`size-3.5 ${loadingAttendances ? "animate-spin" : ""}`} />
+            <Button size="sm" variant="outline" onClick={fetchMovements} disabled={loadingMovements}>
+              <RefreshCw className={`size-3.5 ${loadingMovements ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
           }
         >
           <div className="space-y-3">
-            {loadingAttendances ? (
+            {loadingMovements ? (
               <p className="py-6 text-center text-sm text-slate-400">Carregando...</p>
-            ) : todayAttendances.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400">Nenhum atendimento registrado hoje.</p>
+            ) : movements.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">Nenhuma movimentação registrada hoje.</p>
             ) : (
-              todayAttendances.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-white p-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-bold tracking-wider text-slate-900">{item.plate}</span>
-                      <Badge className={statusColor[item.status] ?? "bg-slate-100 text-slate-600"}>
-                        {statusLabel[item.status] ?? item.status}
-                      </Badge>
+              movements.map((item) => {
+                const isEntry = item.type === "Entrada";
+                return (
+                  <div key={item.id} className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : "border-amber-100 bg-amber-50/40"}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`shrink-0 rounded-xl p-2 ${isEntry ? "bg-violet-100" : "bg-amber-100"}`}>
+                        {isEntry
+                          ? <PackagePlus className="size-4 text-violet-600" />
+                          : <PackageMinus className="size-4 text-amber-600" />
+                        }
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">{item.product_name}</p>
+                        <p className="mt-0.5 text-sm text-slate-500">
+                          {item.store_name} • {item.manufacturer}
+                          {item.user_name ? ` • ${item.user_name}` : ""}
+                        </p>
+                        {item.note && <p className="mt-0.5 text-xs text-slate-400">{item.note}</p>}
+                      </div>
                     </div>
-                    <p className="mt-0.5 text-sm text-slate-500">
-                      {new Date(item.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                      {item.store_name ? ` · ${item.store_name}` : ""}
-                      {item.executing_employee ? ` · ${item.executing_employee}` : ""}
-                    </p>
-                    {item.service_title && (
-                      <p className="mt-0.5 text-sm text-slate-700">{item.service_title}{item.billing_type ? ` · ${item.billing_type}` : ""}</p>
-                    )}
+                    <div className="shrink-0 text-right">
+                      <Badge className={isEntry ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700"}>
+                        {isEntry ? "+" : ""}{Math.abs(item.quantity)} un.
+                      </Badge>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {new Date(item.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </SectionCard>
 
+        {/* Estoque abaixo do mínimo */}
         <SectionCard
           title="Estoque abaixo do mínimo"
           description="Itens com quantidade atual menor que o mínimo indicado."
