@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Download, RefreshCw } from "lucide-react";
+import { FileDown, RefreshCw } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { SectionCard } from "@/components/shared/section-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,16 +78,31 @@ function StockByStoreReport() {
     setLoading(false);
   }
 
-  function exportCsv() {
-    const header = "Loja,Produto,Fabricante,Tipo,Característica,Localização,Estoque,Mínimo";
-    const body = rows.map((r) =>
-      [r.store_name, r.product_name, r.manufacturer, r.glass_type, r.feature, r.location, r.stock, r.min_quantity].join(",")
-    ).join("\n");
-    const blob = new Blob([header + "\n" + body], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "estoque_por_loja.csv"; a.click();
-    URL.revokeObjectURL(url);
+  function exportPdf() {
+    const doc = new jsPDF({ orientation: "landscape" });
+    const storeName = storeId === "all" ? "Todas as lojas" : (stores.find((s) => s.id === storeId)?.name ?? "");
+    doc.setFontSize(14);
+    doc.text("Estoque Atual por Loja", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(`Loja: ${storeName}   •   Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 23);
+    doc.setTextColor(0);
+    autoTable(doc, {
+      startY: 28,
+      head: [["Loja", "Produto", "Fabricante", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"]],
+      body: rows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.glass_type, r.feature, r.location, r.stock, r.min_quantity]),
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.column.index === 6) {
+          const stock = Number(data.cell.raw);
+          const min = Number(rows[data.row.index]?.min_quantity ?? 0);
+          if (min > 0 && stock < min) data.cell.styles.textColor = [220, 38, 38];
+        }
+      },
+    });
+    doc.save("estoque_por_loja.pdf");
   }
 
   return (
@@ -103,8 +120,8 @@ function StockByStoreReport() {
             Consultar
           </Button>
           {rows.length > 0 && (
-            <Button size="sm" variant="outline" onClick={exportCsv}>
-              <Download className="size-3.5" /> CSV
+            <Button size="sm" variant="outline" onClick={exportPdf}>
+              <FileDown className="size-3.5" /> PDF
             </Button>
           )}
         </div>
@@ -202,22 +219,44 @@ function MovementByStoreReport() {
     setLoading(false);
   }
 
-  function exportCsv() {
-    const header = "Data,Hora,Tipo,Loja,Produto,Fabricante,Quantidade,Usuário,Observação";
-    const body = rows.map((r) => {
-      const d = new Date(r.created_at);
-      return [
-        d.toLocaleDateString("pt-BR"),
-        d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-        r.type, r.store_name, r.product_name, r.manufacturer,
-        r.quantity, r.user_name, r.note ?? "",
-      ].join(",");
-    }).join("\n");
-    const blob = new Blob([header + "\n" + body], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "movimentacoes_por_loja.csv"; a.click();
-    URL.revokeObjectURL(url);
+  function exportPdf() {
+    const doc = new jsPDF({ orientation: "landscape" });
+    const storeName = storeId === "all" ? "Todas as lojas" : (stores.find((s) => s.id === storeId)?.name ?? "");
+    const typeLabel = typeFilter === "all" ? "Entrada + Saída" : typeFilter;
+    doc.setFontSize(14);
+    doc.text("Movimentações por Loja", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(
+      `Loja: ${storeName}   •   Tipo: ${typeLabel}   •   Período: ${dateFrom} a ${dateTo}   •   Gerado em: ${new Date().toLocaleString("pt-BR")}`,
+      14, 23
+    );
+    doc.text(`Entradas: ${totalEntradas} un.   |   Saídas: ${totalSaidas} un.`, 14, 29);
+    doc.setTextColor(0);
+    autoTable(doc, {
+      startY: 34,
+      head: [["Data", "Hora", "Tipo", "Loja", "Produto", "Fabricante", "Qtd", "Usuário", "Observação"]],
+      body: rows.map((r) => {
+        const d = new Date(r.created_at);
+        return [
+          d.toLocaleDateString("pt-BR"),
+          d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          r.type, r.store_name, r.product_name, r.manufacturer,
+          (r.type === "Entrada" ? "+" : "-") + r.quantity,
+          r.user_name || "—", r.note || "—",
+        ];
+      }),
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.column.index === 2) {
+          const type = String(data.cell.raw);
+          data.cell.styles.textColor = type === "Entrada" ? [109, 40, 217] : [180, 83, 9];
+        }
+      },
+    });
+    doc.save("movimentacoes_por_loja.pdf");
   }
 
   const totalEntradas = rows.filter((r) => r.type === "Entrada").reduce((s, r) => s + r.quantity, 0);
@@ -246,8 +285,8 @@ function MovementByStoreReport() {
             Consultar
           </Button>
           {rows.length > 0 && (
-            <Button size="sm" variant="outline" onClick={exportCsv}>
-              <Download className="size-3.5" /> CSV
+            <Button size="sm" variant="outline" onClick={exportPdf}>
+              <FileDown className="size-3.5" /> PDF
             </Button>
           )}
         </div>
