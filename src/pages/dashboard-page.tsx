@@ -6,7 +6,6 @@ import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getIcon } from "@/components/shared/icon-map";
-import { stores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
 
 const mobileNavItems = [
@@ -39,36 +38,54 @@ type LowStockItem = {
   min_quantity: number;
 };
 
+type DbStore = { id: string; name: string; city: string };
+
+function isTodayLocal(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  const today = new Date();
+  return (
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate()
+  );
+}
+
 export function DashboardPage() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(true);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [loadingLowStock, setLoadingLowStock] = useState(true);
+  const [dbStores, setDbStores] = useState<DbStore[]>([]);
 
   async function fetchMovements() {
     setLoadingMovements(true);
     if (!supabase) { setLoadingMovements(false); return; }
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    const { data } = await supabase
+    // Busca últimas 48h para cobrir fuso horário e filtra por data local no cliente
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 1);
+    cutoff.setHours(0, 0, 0, 0);
+    const { data, error } = await supabase
       .from("stock_movements")
       .select("id, type, product_name, store_name, manufacturer, user_name, quantity, note, created_at")
-      .gte("created_at", start.toISOString())
-      .lte("created_at", end.toISOString())
+      .gte("created_at", cutoff.toISOString())
       .order("created_at", { ascending: false });
-    setMovements(data ?? []);
+    if (error) { console.error("stock_movements:", error.message); }
+    const todayOnly = (data ?? []).filter((m) => m.created_at && isTodayLocal(m.created_at));
+    setMovements(todayOnly);
     setLoadingMovements(false);
   }
 
   async function fetchLowStock() {
     setLoadingLowStock(true);
     if (!supabase) { setLoadingLowStock(false); return; }
-    const { data } = await supabase
-      .from("product_store_inventory")
-      .select("id, stock, min_quantity, store_id, product_manufacturers(manufacturer, products(name)), stores(name)")
-      .gt("min_quantity", 0);
+    const [{ data: storesData }, { data }] = await Promise.all([
+      supabase.from("stores").select("id, name, city"),
+      supabase
+        .from("product_store_inventory")
+        .select("id, stock, min_quantity, store_id, product_manufacturers(manufacturer, products(name)), stores(name)")
+        .gt("min_quantity", 0),
+    ]);
+    if (storesData) setDbStores(storesData);
     const mapped: LowStockItem[] = (data ?? [])
       .filter((row: any) => (row.stock ?? 0) < (row.min_quantity ?? 0))
       .map((row: any) => ({
@@ -87,8 +104,8 @@ export function DashboardPage() {
 
   useEffect(() => { fetchMovements(); fetchLowStock(); }, []);
 
-  const entries = movements.filter((m) => m.type === "Entrada");
-  const exits   = movements.filter((m) => m.type === "Saída");
+  const entries = movements.filter((m) => m.type === "Entrada" || m.type === "entrada");
+  const exits   = movements.filter((m) => m.type === "Saída" || m.type === "saida" || m.type === "Saida");
 
   return (
     <div className="space-y-6">
@@ -124,14 +141,14 @@ export function DashboardPage() {
           }
         >
           <div className="grid gap-4 md:grid-cols-2">
-            {stores.map((store) => {
+            {dbStores.map((store) => {
               const entryCount = entries.filter((m) => m.store_name === store.name).length;
               const exitCount  = exits.filter((m) => m.store_name === store.name).length;
               const lowCount   = lowStock.filter((item) => item.store_name === store.name).length;
               return (
                 <div key={store.id} className="rounded-2xl border border-border bg-white p-5">
                   <p className="text-lg font-semibold text-slate-900">{store.name}</p>
-                  <p className="mt-1 text-sm text-slate-500">{store.city}</p>
+                  <p className="mt-1 text-sm text-slate-500">{(store as any).city ?? ""}</p>
                   <div className="mt-4 grid grid-cols-3 gap-3">
                     <div className="rounded-2xl bg-violet-50 p-4">
                       <p className="text-xs uppercase tracking-[0.12em] text-violet-600">Entradas hoje</p>
