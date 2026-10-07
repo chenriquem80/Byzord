@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,21 +19,33 @@ export function ContextMenuDropdown({
   placeholder = "Selecione", disabled, className,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
   const [showAdd, setShowAdd] = useState(false);
   const [newItem, setNewItem] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ visible: boolean; item: string; x: number; y: number }>({ visible: false, item: "", x: 0, y: 0 });
   const [editDialog, setEditDialog] = useState<{ open: boolean; original: string; value: string }>({ open: false, original: "", value: "" });
-  const dropRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
-      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setOpen(false);
+      setOpen(false);
       setCtxMenu((m) => ({ ...m, visible: false }));
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
+    if (open || ctxMenu.visible) {
+      document.addEventListener("mousedown", onClickOutside);
+      return () => document.removeEventListener("mousedown", onClickOutside);
+    }
+  }, [open, ctxMenu.visible]);
+
+  function handleOpen() {
+    if (disabled) return;
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropPos({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+    }
+    setOpen((v) => !v);
+  }
 
   function handleAdd() {
     const trimmed = newItem.trim();
@@ -61,36 +74,17 @@ export function ContextMenuDropdown({
     <>
       <div className={`space-y-2 ${className ?? ""}`}>
         <div className="flex gap-2">
-          <div ref={dropRef} className="relative flex-1">
+          <div className="relative flex-1">
             <button
+              ref={btnRef}
               type="button"
               disabled={disabled}
-              onClick={() => !disabled && setOpen((v) => !v)}
+              onClick={handleOpen}
               className="flex h-11 w-full items-center justify-between rounded-xl border border-border bg-white px-4 py-2 text-sm shadow-sm outline-none transition hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-slate-50 disabled:text-slate-400"
             >
               <span className={value ? "text-slate-900" : "text-slate-400"}>{value || placeholder}</span>
               <ChevronDown className="size-4 shrink-0 text-slate-400" />
             </button>
-
-            {open && (
-              <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-border bg-white shadow-lg">
-                <button type="button" className="w-full px-4 py-2 text-left text-sm text-slate-400 hover:bg-slate-50"
-                  onClick={() => { onChange(""); setOpen(false); }}>
-                  {placeholder}
-                </button>
-                {options.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ visible: true, item, x: e.clientX, y: e.clientY }); setOpen(false); }}
-                    onClick={() => { onChange(item); setOpen(false); }}
-                    className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 ${value === item ? "bg-primary/5 font-semibold text-primary" : "text-slate-900"}`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {!disabled && (
@@ -125,11 +119,38 @@ export function ContextMenuDropdown({
         )}
       </div>
 
+      {/* Dropdown list — portal para ficar acima de tudo */}
+      {open && createPortal(
+        <div
+          className="fixed z-[9999] max-h-60 overflow-auto rounded-xl border border-border bg-white shadow-lg"
+          style={{ top: dropPos.top + 4, left: dropPos.left, width: dropPos.width }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button type="button" className="w-full px-4 py-2 text-left text-sm text-slate-400 hover:bg-slate-50"
+            onClick={() => { onChange(""); setOpen(false); }}>
+            {placeholder}
+          </button>
+          {options.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ visible: true, item, x: e.clientX, y: e.clientY }); setOpen(false); }}
+              onClick={() => { onChange(item); setOpen(false); }}
+              className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 ${value === item ? "bg-primary/5 font-semibold text-primary" : "text-slate-900"}`}
+            >
+              {item}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+
       {/* Context menu */}
-      {ctxMenu.visible && (
+      {ctxMenu.visible && createPortal(
         <div
           className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-xl border border-border bg-white shadow-lg"
           style={{ top: ctxMenu.y, left: ctxMenu.x }}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="border-b border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
             {ctxMenu.item}
@@ -144,11 +165,12 @@ export function ContextMenuDropdown({
             onClick={() => handleDelete(ctxMenu.item)}>
             <Trash2 className="size-3.5" /> Excluir
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit dialog */}
-      {editDialog.open && (
+      {editDialog.open && createPortal(
         <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40">
           <div className="w-full max-w-sm rounded-2xl border border-border bg-white p-6 shadow-xl">
             <p className="text-base font-semibold text-slate-900">Editar item</p>
@@ -168,7 +190,8 @@ export function ContextMenuDropdown({
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
