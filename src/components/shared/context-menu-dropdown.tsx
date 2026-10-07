@@ -38,11 +38,25 @@ export function ContextMenuDropdown({
     }
   }, [open, ctxMenu.visible]);
 
+  // Recalcula posição do dropdown ao rolar, para fixed seguir o botão
+  useEffect(() => {
+    if (!open) return;
+    function updatePos() {
+      if (btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        setDropPos({ top: rect.bottom, left: rect.left, width: rect.width });
+      }
+    }
+    window.addEventListener("scroll", updatePos, true);
+    return () => window.removeEventListener("scroll", updatePos, true);
+  }, [open]);
+
   function handleOpen() {
     if (disabled) return;
     if (!open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setDropPos({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+      // fixed positioning é relativo ao viewport, sem somar scroll
+      setDropPos({ top: rect.bottom, left: rect.left, width: rect.width });
     }
     setOpen((v) => !v);
   }
