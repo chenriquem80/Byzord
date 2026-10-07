@@ -12,7 +12,8 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { products, stores } from "@/data/mock-data";
 import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
-import { Check, ChevronDown, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ImagePlus, Pencil, Trash2, X } from "lucide-react";
+import { ContextMenuDropdown } from "@/components/shared/context-menu-dropdown";
 import { supabase } from "@/lib/database";
 import { productSchema } from "@/lib/schemas";
 import type { Product, VehicleCompatibility } from "@/types/domain";
@@ -122,31 +123,9 @@ export function ProductsPage() {
   const DEFAULT_MANUFACTURERS = ["AGC", "PILKINGTON", "SAINT-GOBAIN", "FANAVID", "XYG", "OUTRO"];
 
   const [glassTypes, setGlassTypes] = useState(DEFAULT_GLASS_TYPES);
-  const [showAddGlassType, setShowAddGlassType] = useState(false);
-  const [newGlassType, setNewGlassType] = useState("");
-  const newGlassTypeRef = useRef<HTMLInputElement>(null);
-  const [showEditGlassType, setShowEditGlassType] = useState(false);
-  const [editGlassTypeValue, setEditGlassTypeValue] = useState("");
-  const editGlassTypeRef = useRef<HTMLInputElement>(null);
-
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
-  const [showAddFeature, setShowAddFeature] = useState(false);
-  const [newFeature, setNewFeature] = useState("");
-  const newFeatureRef = useRef<HTMLInputElement>(null);
-  const [featureOpen, setFeatureOpen] = useState(false);
-  const featureDropRef = useRef<HTMLDivElement>(null);
-  const [featureCtxMenu, setFeatureCtxMenu] = useState<{ visible: boolean; feature: string; x: number; y: number }>({ visible: false, feature: "", x: 0, y: 0 });
-  const [editFeatureDialog, setEditFeatureDialog] = useState<{ open: boolean; original: string; value: string }>({ open: false, original: "", value: "" });
-
   const [manufacturers, setManufacturers] = useState(DEFAULT_MANUFACTURERS);
-  const [showAddManufacturer, setShowAddManufacturer] = useState(false);
-  const [newManufacturer, setNewManufacturer] = useState("");
-  const newManufacturerRef = useRef<HTMLInputElement>(null);
-
   const [suppliersList, setSuppliersList] = useState<string[]>([]);
-  const [showAddSupplier, setShowAddSupplier] = useState(false);
-  const [newSupplier, setNewSupplier] = useState("");
-  const newSupplierRef = useRef<HTMLInputElement>(null);
 
   const [dbStores, setDbStores] = useState<any[]>([]);
   const [newProductStoreId, setNewProductStoreId] = useState<string>("");
@@ -175,17 +154,6 @@ export function ProductsPage() {
   const [knownAutomakers, setKnownAutomakers] = useState<string[]>([]);
   const [automakerDropdownOpen, setAutomakerDropdownOpen] = useState(false);
   const [editAutomakerDropdownOpen, setEditAutomakerDropdownOpen] = useState(false);
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (featureDropRef.current && !featureDropRef.current.contains(e.target as Node)) {
-        setFeatureOpen(false);
-      }
-      setFeatureCtxMenu((m) => ({ ...m, visible: false }));
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
 
   useEffect(() => {
     async function fetchOptions() {
@@ -378,68 +346,6 @@ export function ProductsPage() {
     lastPurchaseDate: "Última data de compra",
     lastSupplier: "Fornecedor",
   };
-
-  function handleDeleteFeature(feat: string) {
-    setFeatures((prev) => prev.filter((f) => f !== feat));
-    if (form.getValues("feature") === feat) form.setValue("feature", "");
-    setFeatureCtxMenu((m) => ({ ...m, visible: false }));
-  }
-
-  function handleSaveEditFeature() {
-    const trimmed = editFeatureDialog.value.trim();
-    if (!trimmed) return;
-    setFeatures((prev) => prev.map((f) => f === editFeatureDialog.original ? trimmed : f));
-    if (form.getValues("feature") === editFeatureDialog.original) form.setValue("feature", trimmed);
-    setEditFeatureDialog({ open: false, original: "", value: "" });
-  }
-
-  function handleAddFeature() {
-    const trimmed = newFeature.trim();
-    if (!trimmed || features.includes(trimmed)) return;
-    setFeatures((prev) => [...prev, trimmed]);
-    form.setValue("feature", trimmed);
-    setNewFeature("");
-    setShowAddFeature(false);
-  }
-
-  function handleAddManufacturer() {
-    const trimmed = newManufacturer.trim();
-    if (!trimmed || manufacturers.includes(trimmed)) return;
-    setManufacturers((prev) => [...prev, trimmed]);
-    form.setValue("manufacturer", trimmed);
-    setNewManufacturer("");
-    setShowAddManufacturer(false);
-  }
-
-  function handleAddSupplier() {
-    const trimmed = newSupplier.trim();
-    if (!trimmed || suppliersList.includes(trimmed)) return;
-    setSuppliersList((prev) => [...prev, trimmed]);
-    form.setValue("lastSupplier", trimmed);
-    setNewSupplier("");
-    setShowAddSupplier(false);
-  }
-
-  function handleAddGlassType() {
-    const trimmed = newGlassType.trim();
-    if (!trimmed || glassTypes.includes(trimmed)) return;
-    setGlassTypes((prev) => [...prev, trimmed]);
-    form.setValue("glassType", trimmed);
-    setNewGlassType("");
-    setShowAddGlassType(false);
-  }
-
-  async function handleEditGlassType() {
-    const oldValue = form.getValues("glassType");
-    const trimmed = editGlassTypeValue.trim();
-    if (!trimmed || trimmed === oldValue) { setShowEditGlassType(false); return; }
-    if (supabase) {
-      await supabase.from("products").update({ glass_type: trimmed }).eq("glass_type", oldValue);
-    }
-    setGlassTypes((prev) => prev.map((t) => (t === oldValue ? trimmed : t)));
-    form.setValue("glassType", trimmed);
-    setShowEditGlassType(false);
-  }
 
   async function handleAddVehicle() {
     if (!supabase || !currentProduct || !vehicleForm.automaker.trim() || !vehicleForm.model.trim()) return;
@@ -825,188 +731,35 @@ export function ProductsPage() {
 
           {/* Linha de classificação */}
           <FormField label="Tipo do item" error={form.formState.errors.glassType?.message}>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Select {...form.register("glassType")} className="flex-1">
-                  <option value="">Selecione</option>
-                  {glassTypes.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </Select>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const current = form.getValues("glassType");
-                    if (!current) return;
-                    setEditGlassTypeValue(current);
-                    setShowEditGlassType(true);
-                    setShowAddGlassType(false);
-                    setTimeout(() => editGlassTypeRef.current?.focus(), 50);
-                  }}
-                  className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
-                  title="Editar tipo selecionado"
-                >
-                  <Pencil className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowAddGlassType((v) => !v); setNewGlassType(""); setShowEditGlassType(false); setTimeout(() => newGlassTypeRef.current?.focus(), 50); }}
-                  className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
-                  title="Adicionar novo tipo"
-                >
-                  <Plus className="size-4" />
-                </button>
-              </div>
-              {showEditGlassType && (
-                <div className="flex gap-2">
-                  <Input
-                    ref={editGlassTypeRef}
-                    value={editGlassTypeValue}
-                    onChange={(e) => setEditGlassTypeValue(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleEditGlassType(); } if (e.key === "Escape") setShowEditGlassType(false); }}
-                    placeholder="Novo nome do tipo..."
-                    className="flex-1"
-                  />
-                  <Button type="button" size="sm" onClick={handleEditGlassType} disabled={!editGlassTypeValue.trim()}>
-                    <Check className="size-3.5" />
-                  </Button>
-                  <button type="button" onClick={() => setShowEditGlassType(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
-                    <X className="size-4" />
-                  </button>
-                </div>
-              )}
-              {showAddGlassType && (
-                <div className="flex gap-2">
-                  <Input
-                    ref={newGlassTypeRef}
-                    value={newGlassType}
-                    onChange={(e) => setNewGlassType(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddGlassType(); } if (e.key === "Escape") setShowAddGlassType(false); }}
-                    placeholder="Nome do novo tipo..."
-                    className="flex-1"
-                  />
-                  <Button type="button" size="sm" onClick={handleAddGlassType} disabled={!newGlassType.trim()}>
-                    <Check className="size-3.5" />
-                  </Button>
-                  <button type="button" onClick={() => setShowAddGlassType(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
-                    <X className="size-4" />
-                  </button>
-                </div>
-              )}
-            </div>
+            <ContextMenuDropdown
+              value={form.watch("glassType")}
+              options={glassTypes}
+              onChange={(v) => form.setValue("glassType", v as any)}
+              onOptionsChange={setGlassTypes}
+            />
           </FormField>
           <FormField label="Característica" error={form.formState.errors.feature?.message}>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                {/* Dropdown customizado com suporte a clique direito */}
-                <div ref={featureDropRef} className="relative flex-1">
-                  <button
-                    type="button"
-                    onClick={() => setFeatureOpen((v) => !v)}
-                    className="flex h-11 w-full items-center justify-between rounded-xl border border-border bg-white px-4 py-2 text-sm text-slate-900 shadow-sm outline-none transition hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  >
-                    <span className={form.watch("feature") ? "text-slate-900" : "text-slate-400"}>
-                      {form.watch("feature") || "Selecione"}
-                    </span>
-                    <ChevronDown className="size-4 shrink-0 text-slate-400" />
-                  </button>
-                  {featureOpen && (
-                    <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-border bg-white shadow-lg">
-                      <button
-                        type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-slate-400 hover:bg-slate-50"
-                        onClick={() => { form.setValue("feature", ""); setFeatureOpen(false); }}
-                      >
-                        Selecione
-                      </button>
-                      {features.map((item) => (
-                        <button
-                          key={item}
-                          type="button"
-                          onContextMenu={(e) => { e.preventDefault(); setFeatureCtxMenu({ visible: true, feature: item, x: e.clientX, y: e.clientY }); }}
-                          onClick={() => { form.setValue("feature", item); setFeatureOpen(false); }}
-                          className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 ${form.watch("feature") === item ? "bg-primary/5 font-semibold text-primary" : "text-slate-900"}`}
-                        >
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { setShowAddFeature((v) => !v); setNewFeature(""); setTimeout(() => newFeatureRef.current?.focus(), 50); }}
-                  className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
-                  title="Adicionar nova característica"
-                >
-                  <Plus className="size-4" />
-                </button>
-              </div>
-              {showAddFeature && (
-                <div className="flex gap-2">
-                  <Input
-                    ref={newFeatureRef}
-                    value={newFeature}
-                    onChange={(e) => setNewFeature(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddFeature(); } if (e.key === "Escape") setShowAddFeature(false); }}
-                    placeholder="Nova característica..."
-                    className="flex-1"
-                  />
-                  <Button type="button" size="sm" onClick={handleAddFeature} disabled={!newFeature.trim()}>
-                    <Check className="size-3.5" />
-                  </Button>
-                  <button type="button" onClick={() => setShowAddFeature(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
-                    <X className="size-4" />
-                  </button>
-                </div>
-              )}
-            </div>
+            <ContextMenuDropdown
+              value={form.watch("feature")}
+              options={features}
+              onChange={(v) => form.setValue("feature", v as any)}
+              onOptionsChange={setFeatures}
+            />
           </FormField>
           <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
             {isEditing && manufacturerId ? (
-              /* Modo edição: campo de texto livre para renomear o fabricante */
               <Input
                 {...form.register("manufacturer")}
                 placeholder="Nome do fabricante"
                 title="Edite o nome do fabricante diretamente"
               />
             ) : (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Select {...form.register("manufacturer")} className="flex-1">
-                    <option value="">Selecione</option>
-                    {manufacturers.map((item) => (
-                      <option key={item} value={item}>{item}</option>
-                    ))}
-                  </Select>
-                  <button
-                    type="button"
-                    onClick={() => { setShowAddManufacturer((v) => !v); setNewManufacturer(""); setTimeout(() => newManufacturerRef.current?.focus(), 50); }}
-                    className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
-                    title="Adicionar novo fabricante"
-                  >
-                    <Plus className="size-4" />
-                  </button>
-                </div>
-                {showAddManufacturer && (
-                  <div className="flex gap-2">
-                    <Input
-                      ref={newManufacturerRef}
-                      value={newManufacturer}
-                      onChange={(e) => setNewManufacturer(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddManufacturer(); } if (e.key === "Escape") setShowAddManufacturer(false); }}
-                      placeholder="Novo fabricante..."
-                      className="flex-1"
-                    />
-                    <Button type="button" size="sm" onClick={handleAddManufacturer} disabled={!newManufacturer.trim()}>
-                      <Check className="size-3.5" />
-                    </Button>
-                    <button type="button" onClick={() => setShowAddManufacturer(false)} className="flex size-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-600">
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
+              <ContextMenuDropdown
+                value={form.watch("manufacturer")}
+                options={manufacturers}
+                onChange={(v) => form.setValue("manufacturer", v)}
+                onOptionsChange={setManufacturers}
+              />
             )}
           </FormField>
           <FormField label="Condição especial">
@@ -1483,58 +1236,6 @@ export function ProductsPage() {
 
     </div>
 
-      {/* Context menu de característica */}
-      {featureCtxMenu.visible && (
-        <div
-          className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-xl border border-border bg-white shadow-lg"
-          style={{ top: featureCtxMenu.y, left: featureCtxMenu.x }}
-        >
-          <div className="border-b border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {featureCtxMenu.feature}
-          </div>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            onClick={() => {
-              setEditFeatureDialog({ open: true, original: featureCtxMenu.feature, value: featureCtxMenu.feature });
-              setFeatureCtxMenu((m) => ({ ...m, visible: false }));
-            }}
-          >
-            <Pencil className="size-3.5" /> Editar
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            onClick={() => handleDeleteFeature(featureCtxMenu.feature)}
-          >
-            <Trash2 className="size-3.5" /> Excluir
-          </button>
-        </div>
-      )}
-
-      {/* Dialog de edição de característica */}
-      {editFeatureDialog.open && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-white p-6 shadow-xl">
-            <p className="text-base font-semibold text-slate-900">Editar característica</p>
-            <Input
-              className="mt-3"
-              value={editFeatureDialog.value}
-              onChange={(e) => setEditFeatureDialog((d) => ({ ...d, value: e.target.value }))}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSaveEditFeature(); } if (e.key === "Escape") setEditFeatureDialog({ open: false, original: "", value: "" }); }}
-              autoFocus
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setEditFeatureDialog({ open: false, original: "", value: "" })}>
-                <X className="size-3.5" /> Cancelar
-              </Button>
-              <Button type="button" size="sm" onClick={handleSaveEditFeature} disabled={!editFeatureDialog.value.trim()}>
-                <Check className="size-3.5" /> Salvar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
