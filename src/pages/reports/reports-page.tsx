@@ -3,26 +3,11 @@ import { FileDown, RefreshCw } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { SectionCard } from "@/components/shared/section-card";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/database";
 
-const catalogReports = [
-  "Estoque atual",
-  "Produtos zerados",
-  "Estoque baixo",
-  "Valor total em estoque por custo",
-  "Valor total em estoque por venda",
-  "Margem por produto",
-  "Histórico de custo",
-  "Última data de compra por produto",
-  "Produtos mais vendidos",
-  "Produtos parados",
-  "Compatibilidade por veículo",
-  "Vendas por período",
-];
 
 type StoreRow = { id: string; name: string };
 
@@ -356,19 +341,6 @@ function MovementByStoreReport() {
 export function ReportsPage() {
   return (
     <div className="space-y-6">
-      <SectionCard title="Catálogo de relatórios" description="Organizado para o financeiro e a gestão do estoque.">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {catalogReports.map((report) => (
-            <Card key={report}>
-              <CardContent className="p-5">
-                <p className="font-semibold text-slate-900">{report}</p>
-                <p className="mt-2 text-sm text-slate-600">Pronto para exportação e consulta por filtro.</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </SectionCard>
-
       <StockByStoreReport />
       <MovementByStoreReport />
     </div>
