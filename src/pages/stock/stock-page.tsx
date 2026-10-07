@@ -468,24 +468,23 @@ export function StockPage() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              title="Alterar produto"
               onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}`)}
+              className="flex size-8 items-center justify-center rounded-lg border border-border text-slate-500 transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
             >
-              <Pencil className="size-3" />
-              Alterar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-1.5"
+              <Pencil className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              title="Excluir produto"
               onClick={() => setDeleteDialog({ open: true, row: row.original, deleting: false })}
+              className="flex size-8 items-center justify-center rounded-lg border border-red-200 text-red-400 transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-600"
             >
-              <Trash2 className="size-3" />
-              Excluir
-            </Button>
+              <Trash2 className="size-3.5" />
+            </button>
           </div>
         ),
       },
