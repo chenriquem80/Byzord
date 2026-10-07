@@ -781,6 +781,7 @@ export function ProductsPage() {
 
 
   return (
+    <>
     <div className="space-y-6">
       {/* Dados do Produto */}
       <SectionCard
@@ -1534,5 +1535,6 @@ export function ProductsPage() {
           </div>
         </div>
       )}
+    </>
   );
 }
