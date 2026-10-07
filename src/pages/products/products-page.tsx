@@ -951,16 +951,13 @@ export function ProductsPage() {
             <Input type="date" {...form.register("lastPurchaseDate")} />
           </FormField>
           <FormField label="Fornecedor" error={form.formState.errors.lastSupplier?.message}>
-            <Input
-              {...form.register("lastSupplier")}
-              list="suppliers-datalist"
-              placeholder="Digite ou selecione o fornecedor"
+            <ContextMenuDropdown
+              value={form.watch("lastSupplier")}
+              options={suppliersList}
+              onChange={(v) => form.setValue("lastSupplier", v)}
+              onOptionsChange={setSuppliersList}
+              placeholder="Selecione o fornecedor"
             />
-            <datalist id="suppliers-datalist">
-              {suppliersList.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
           </FormField>
         </div>
       </SectionCard>
