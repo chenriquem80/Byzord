@@ -183,15 +183,15 @@ export function ProductsPage() {
         supabase.from("vehicles").select("automaker"),
       ]);
       if (pData) {
-        const dbTypes = pData.map((r: any) => r.glass_type).filter(Boolean);
-        const dbFeatures = pData.map((r: any) => r.feature).filter(Boolean);
+        const dbTypes = pData.map((r: any) => r.glass_type).filter(Boolean).map((v: string) => v.toUpperCase());
+        const dbFeatures = pData.map((r: any) => r.feature).filter(Boolean).map((v: string) => v.toUpperCase());
         setGlassTypes([...new Set([...DEFAULT_GLASS_TYPES, ...dbTypes])]);
         setFeatures([...new Set([...DEFAULT_FEATURES, ...dbFeatures])]);
       }
       if (mfData) {
-        const dbMfrs = mfData.map((r: any) => r.manufacturer).filter(Boolean);
+        const dbMfrs = mfData.map((r: any) => r.manufacturer).filter(Boolean).map((v: string) => v.toUpperCase());
         setManufacturers([...new Set([...DEFAULT_MANUFACTURERS, ...dbMfrs])]);
-        const dbSupps = mfData.map((r: any) => r.supplier).filter(Boolean);
+        const dbSupps = mfData.map((r: any) => r.supplier).filter(Boolean).map((v: string) => v.toUpperCase());
         setSuppliersList((prev) => [...new Set([...prev, ...dbSupps])]);
       }
       if (suppData) {
