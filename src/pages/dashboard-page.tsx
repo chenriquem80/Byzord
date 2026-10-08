@@ -102,7 +102,12 @@ export function DashboardPage() {
 
   function refresh() { fetchMovements(); fetchLowStock(); }
 
-  useEffect(() => { fetchMovements(); fetchLowStock(); }, []);
+  useEffect(() => {
+    fetchMovements();
+    fetchLowStock();
+    const interval = setInterval(() => { fetchMovements(); fetchLowStock(); }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const entries = movements.filter((m) => m.type === "Entrada" || m.type === "entrada");
   const exits   = movements.filter((m) => m.type === "Saída" || m.type === "saida" || m.type === "Saida");

@@ -9,7 +9,8 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { currentUser, products as mockProducts, stores as mockStores, suppliers } from "@/data/mock-data";
+import { products as mockProducts, stores as mockStores, suppliers } from "@/data/mock-data";
+import { useAuth } from "@/contexts/auth-context";
 import { formatCurrency } from "@/lib/format";
 import { supabase } from "@/lib/database";
 import type { Product } from "@/types/domain";
@@ -31,6 +32,7 @@ type EntryItem = {
 
 export function EntryPage() {
   const { readOnly } = usePermissions();
+  const { user: authUser } = useAuth();
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [stores, setStores] = useState(mockStores);
@@ -360,7 +362,7 @@ export function EntryPage() {
             product_name: item.product.name,
             store_name: store.name,
             manufacturer: mfName,
-            user_name: currentUser?.name ?? "",
+            user_name: authUser?.name ?? "",
             quantity: qty,
             note: noteWithLado,
             special_condition: specialCond,

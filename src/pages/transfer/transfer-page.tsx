@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { currentUser, products as mockProducts, stores as mockStores } from "@/data/mock-data";
+import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
+import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/database";
 import type { Product } from "@/types/domain";
 
 type Manufacturer = Product["manufacturers"][0];
 
 export function TransferPage() {
+  const { user: authUser } = useAuth();
   const [query, setQuery] = useState("");
   const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -227,7 +229,7 @@ export function TransferPage() {
         product_name: selectedProduct.name,
         store_name: `${fromStore?.name} → ${toStore?.name}`,
         manufacturer: selectedManufacturer?.manufacturer ?? "",
-        user_name: currentUser?.name ?? "",
+        user_name: authUser?.name ?? "",
         quantity: qty,
         note: `Transferência de ${fromStore?.name} para ${toStore?.name}`,
         special_condition: null,

@@ -17,7 +17,8 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { currentUser, customers, products as mockProducts, stores as mockStores } from "@/data/mock-data";
+import { customers, products as mockProducts, stores as mockStores } from "@/data/mock-data";
+import { useAuth } from "@/contexts/auth-context";
 import { formatCurrency } from "@/lib/format";
 import { saleSchema } from "@/lib/schemas";
 import { supabase } from "@/lib/database";
@@ -40,6 +41,7 @@ type SaleFormValues = {
 
 export function ExitPage() {
   const { readOnly } = usePermissions();
+  const { user: authUser } = useAuth();
   const form = useForm<SaleFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(saleSchema) as any,
@@ -243,7 +245,7 @@ export function ExitPage() {
         product_name: selectedProduct.name,
         store_name: storeName,
         manufacturer: values.manufacturer,
-        user_name: currentUser?.name ?? "",
+        user_name: authUser?.name ?? "",
         quantity: -qty,
         note: values.note || null,
         special_condition: saleSpecialCond,

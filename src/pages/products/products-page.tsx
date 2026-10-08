@@ -10,7 +10,8 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { currentUser, products, stores } from "@/data/mock-data";
+import { products, stores } from "@/data/mock-data";
+import { useAuth } from "@/contexts/auth-context";
 import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
 import { ImagePlus, Pencil, Trash2, X } from "lucide-react";
 import { ContextMenuDropdown } from "@/components/shared/context-menu-dropdown";
@@ -109,6 +110,7 @@ function buildFormValues(p: Product, mfId?: string | null, storeId?: string | nu
 
 export function ProductsPage() {
   const { readOnly } = usePermissions();
+  const { user: authUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("id");
@@ -627,7 +629,7 @@ export function ProductsPage() {
             product_name: values.name,
             store_name: "",
             manufacturer: values.manufacturer,
-            user_name: currentUser?.name ?? "",
+            user_name: authUser?.name ?? "",
             quantity: 0,
             note: `Novo produto cadastrado`,
           }).then(({ error }) => { if (error) console.warn("audit log:", error.message); });
