@@ -372,6 +372,7 @@ function UserActionReport() {
   const [rows, setRows] = useState<UserActionRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+  const [queryError, setQueryError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -398,6 +399,7 @@ function UserActionReport() {
   async function fetchReport() {
     if (!supabase) return;
     setLoading(true);
+    setQueryError(null);
     const start = new Date(dateFrom + "T00:00:00");
     const end = new Date(dateTo + "T23:59:59.999");
     let q = supabase
@@ -410,7 +412,7 @@ function UserActionReport() {
     if (selectedUser !== "all") q = q.eq("user_name", selectedUser);
     if (typeFilter !== "all") q = q.eq("type", typeFilter);
     const { data, error } = await q;
-    if (error) { console.error(error); setLoading(false); return; }
+    if (error) { console.error(error); setQueryError(`Erro ao consultar: ${error.message}`); }
     setRows(data ?? []);
     setFetched(true);
     setLoading(false);
@@ -499,6 +501,9 @@ function UserActionReport() {
         </div>
       }
     >
+      {queryError && (
+        <p className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{queryError}</p>
+      )}
       {!fetched ? (
         <p className="py-8 text-center text-sm text-slate-400">Selecione os filtros e clique em Consultar.</p>
       ) : rows.length === 0 ? (
@@ -584,10 +589,12 @@ function ItemChangeReport() {
   const [rows, setRows] = useState<ItemChangeRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+  const [queryError, setQueryError] = useState<string | null>(null);
 
   async function fetchReport() {
     if (!supabase) return;
     setLoading(true);
+    setQueryError(null);
     const start = new Date(dateFrom + "T00:00:00");
     const end = new Date(dateTo + "T23:59:59.999");
     const { data, error } = await supabase
@@ -597,7 +604,7 @@ function ItemChangeReport() {
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("created_at", { ascending: false });
-    if (error) { console.error(error); setLoading(false); return; }
+    if (error) { console.error(error); setQueryError(`Erro ao consultar: ${error.message}`); }
     setRows(data ?? []);
     setFetched(true);
     setLoading(false);
@@ -661,6 +668,9 @@ function ItemChangeReport() {
         </div>
       }
     >
+      {queryError && (
+        <p className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{queryError}</p>
+      )}
       {!fetched ? (
         <p className="py-8 text-center text-sm text-slate-400">Selecione o período e clique em Consultar.</p>
       ) : filtered.length === 0 ? (
