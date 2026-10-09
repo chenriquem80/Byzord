@@ -44,7 +44,12 @@ export function TransferPage() {
 
     if (stores.length > 0) {
       setAllStores(stores);
-      setFromStoreId((prev) => prev || stores[0].id);
+      // Usa a loja do funcionário logado como origem; senão primeira da lista
+      setFromStoreId((prev) => {
+        if (prev) return prev;
+        const userStore = authUser?.storeId && stores.some((s: any) => s.id === authUser.storeId);
+        return userStore ? authUser!.storeId! : stores[0].id;
+      });
     }
 
     if (rawProducts.length > 0) {

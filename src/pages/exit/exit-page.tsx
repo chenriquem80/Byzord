@@ -46,7 +46,7 @@ export function ExitPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(saleSchema) as any,
     defaultValues: {
-      storeId: mockStores[0].id,
+      storeId: authUser?.storeId ?? mockStores[0].id,
       productId: mockProducts[0].id,
       manufacturer: mockProducts[0].manufacturers[1].manufacturer,
       productName: "",
@@ -88,7 +88,9 @@ export function ExitPage() {
 
       if (stores.length > 0) {
         setDbStores(stores);
-        form.setValue("storeId", stores[0].id);
+        // Usa a loja do funcionário logado como padrão; senão primeira da lista
+        const userStoreExists = authUser?.storeId && stores.some((s: any) => s.id === authUser.storeId);
+        form.setValue("storeId", userStoreExists ? authUser!.storeId! : stores[0].id);
       }
 
       if (rawProducts.length > 0) {

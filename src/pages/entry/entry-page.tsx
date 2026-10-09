@@ -81,7 +81,12 @@ export function EntryPage() {
       const rawInv = invResp.data ?? [];
       const rawCompat = compatResp.data ?? [];
 
-      if (dbStores.length > 0) setStores(dbStores);
+      if (dbStores.length > 0) {
+        setStores(dbStores);
+        // Usa a loja do funcionário logado como padrão; senão "all"
+        const userStore = authUser?.storeId && dbStores.find((s: any) => s.id === authUser.storeId);
+        if (userStore) setSelectedStoreId((authUser as any).storeId);
+      }
 
       const uniqueSuppliers = [...new Set(rawMf.map((mf: any) => mf.supplier).filter(Boolean))] as string[];
       const uniqueManufacturers = [...new Set(rawMf.map((mf: any) => mf.manufacturer).filter(Boolean))] as string[];
@@ -399,7 +404,7 @@ export function EntryPage() {
     setNewManufacturer("");
     setIsLadoD(false);
     setIsLadoE(false);
-    setSelectedStoreId("all");
+    setSelectedStoreId(authUser?.storeId ?? "all");
   }
 
   const isAlreadyAdded = (row: SearchRow) =>
