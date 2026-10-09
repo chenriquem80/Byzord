@@ -718,7 +718,7 @@ export function ProductsPage() {
           product_name: values.name,
           store_name: "",
           manufacturer: values.manufacturer,
-          user_name: currentUser?.name ?? "",
+          user_name: authUser?.name ?? "",
           quantity: 0,
           note: diff.length > 0 ? diff.join(" | ") : "Sem alterações detectadas",
         }).then(({ error }) => { if (error) console.warn("audit log:", error.message); });
