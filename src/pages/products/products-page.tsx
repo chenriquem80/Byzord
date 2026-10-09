@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useForm } from "react-hook-form";
 import type { FieldErrors } from "react-hook-form";
@@ -111,7 +111,7 @@ function buildFormValues(p: Product, mfId?: string | null, storeId?: string | nu
 export function ProductsPage() {
   const { readOnly } = usePermissions();
   const { user: authUser } = useAuth();
-  const navigate = useNavigate();
+
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("id");
   const manufacturerId = searchParams.get("mf");
@@ -634,7 +634,12 @@ export function ProductsPage() {
             note: `Novo produto cadastrado`,
           }).then(({ error }) => { if (error) console.warn("audit log:", error.message); });
 
-          navigate(`/app/produtos?id=${productDbId}`);
+          form.reset(getEmptyFormValues());
+          setInvLocation("");
+          setInvQuantity(0);
+          setInvMinimum(0);
+          setPhotoUrls([]);
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }
       } else {
         // Sem Supabase: salva só em memória (dados perdidos ao recarregar)
@@ -687,7 +692,12 @@ export function ProductsPage() {
             }],
             compatibilities: [],
           });
-          navigate(`/app/produtos?id=${newId}`);
+          form.reset(getEmptyFormValues());
+          setInvLocation("");
+          setInvQuantity(0);
+          setInvMinimum(0);
+          setPhotoUrls([]);
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }
       }
 
