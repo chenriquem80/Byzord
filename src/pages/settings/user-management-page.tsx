@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { Plus, Search, UserMinus, UserCheck, Shield, ShieldCheck, KeyRound, UserCog } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Pencil, Plus, Search, UserMinus, UserCheck, Shield, ShieldCheck, KeyRound, UserCog } from "lucide-react";
 import { supabase, supabaseAdmin } from "@/lib/database";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { DataTable } from "@/components/shared/data-table";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -33,6 +33,7 @@ export function UserManagementPage() {
   const isAdmin = currentUser?.role === "ADMIN";
 
   const [users, setUsers] = useState<User[]>([]);
+  const [dbStores, setDbStores] = useState<{ id: string; name: string }[]>([]);
   const [_loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -41,6 +42,18 @@ export function UserManagementPage() {
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Context menu
+  const [ctxMenu, setCtxMenu] = useState<{ visible: boolean; x: number; y: number; user: User | null }>({ visible: false, x: 0, y: 0, user: null });
+  const ctxRef = useRef<HTMLDivElement>(null);
+
+  // Edição completa do usuário
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState<UserRole>("ATENDENTE");
+  const [editStoreId, setEditStoreId] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Estado para edição de perfil (role) do usuário
   const [editRoleUser, setEditRoleUser] = useState<User | null>(null);
@@ -60,7 +73,55 @@ export function UserManagementPage() {
 
   useEffect(() => {
     fetchUsers();
+    if (supabase) {
+      supabase.from("stores").select("id, name").then(({ data }) => { if (data) setDbStores(data); });
+    } else {
+      setDbStores(mockStores.map((s) => ({ id: s.id, name: s.name })));
+    }
   }, []);
+
+  // Fecha menu de contexto ao clicar fora
+  useEffect(() => {
+    if (!ctxMenu.visible) return;
+    function close() { setCtxMenu((m) => ({ ...m, visible: false })); }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [ctxMenu.visible]);
+
+  function openCtxMenu(e: React.MouseEvent, user: User) {
+    e.preventDefault();
+    setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, user });
+  }
+
+  function openEdit(user: User) {
+    setEditUser(user);
+    setEditName(user.name);
+    setEditRole(user.role);
+    setEditStoreId(user.storeId ?? dbStores[0]?.id ?? "");
+    setEditError(null);
+    setCtxMenu((m) => ({ ...m, visible: false }));
+  }
+
+  async function handleSaveEdit() {
+    if (!editUser || !supabase) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const { error } = await supabase.from("profiles").update({
+        name: editName.trim(),
+        role: editRole,
+        store_id: editStoreId || null,
+        allow_cost_view: editRole === "ADMIN" || editRole === "GERENTE",
+      }).eq("id", editUser.id);
+      if (error) throw error;
+      setEditUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      setEditError(err.message ?? "Erro ao salvar.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   async function fetchUsers() {
     if (!supabase) {
@@ -280,81 +341,81 @@ export function UserManagementPage() {
     { value: "none",  label: "🚫 Sem acesso",  color: "text-slate-500 bg-slate-100" },
   ];
 
-  const columns = [
-    {
-      header: "Usuário",
-      cell: ({ row }: any) => (
-        <div className="flex flex-col">
-          <span className="font-semibold text-slate-900">{row.original.name}</span>
-          <span className="text-xs text-slate-500">{row.original.email}</span>
-        </div>
-      ),
-    },
-    {
-      header: "Perfil",
-      cell: ({ row }: any) =>
-        isAdmin ? (
-          <button
-            type="button"
-            onClick={() => openEditRole(row.original)}
-            title="Clique para alterar o perfil"
-            className="group"
-          >
-            <Badge className="bg-slate-100 font-medium transition-colors group-hover:bg-blue-100 group-hover:text-blue-700 group-hover:ring-2 group-hover:ring-blue-200 cursor-pointer">
-              <UserCog className="mr-1 size-3 opacity-0 transition-opacity group-hover:opacity-100" />
-              {row.original.role}
-            </Badge>
-          </button>
-        ) : (
-          <Badge className="bg-slate-100 font-medium">{row.original.role}</Badge>
-        ),
-    },
-    { header: "Loja", accessorKey: "storeName" },
-    {
-      header: "Status",
-      cell: ({ row }: any) => (
-        <Badge className={row.original.status === "ativo" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}>
-          {row.original.status === "ativo" ? "Ativo" : "Inativo"}
-        </Badge>
-      ),
-    },
-    {
-      header: "Ações",
-      cell: ({ row }: any) => (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => openPermissions(row.original)}
-            className="size-9 p-0"
-            title="Editar permissões"
-          >
-            <ShieldCheck className="size-4 text-blue-500" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => toggleUserStatus(row.original)}
-            className="size-9 p-0"
-            title={row.original.status === "ativo" ? "Desativar usuário" : "Ativar usuário"}
-          >
-            {row.original.status === "ativo"
-              ? <UserMinus className="size-4 text-rose-500" />
-              : <UserCheck className="size-4 text-emerald-500" />}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => forcePasswordChange(row.original)}
-            className={`size-9 p-0 ${row.original.mustChangePassword ? "border-amber-300 bg-amber-50" : ""}`}
-            title={row.original.mustChangePassword ? "Troca de senha já solicitada" : "Solicitar troca de senha no próximo acesso"}
-          >
-            <KeyRound className={`size-4 ${row.original.mustChangePassword ? "text-amber-500" : "text-slate-500"}`} />
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  function UserTable({ data }: { data: User[] }) {
+    return (
+      <div className="overflow-x-auto rounded-2xl border border-border bg-white">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              {["Usuário", "Perfil", "Loja", "Status", "Ações"].map((h) => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {data.length === 0 && (
+              <tr><td colSpan={5} className="py-10 text-center text-sm text-slate-400">Nenhum usuário encontrado.</td></tr>
+            )}
+            {data.map((u) => (
+              <tr
+                key={u.id}
+                onContextMenu={(e) => openCtxMenu(e, u)}
+                className="hover:bg-slate-50 cursor-context-menu select-none"
+                title="Clique com o botão direito para editar"
+              >
+                <td className="px-4 py-3">
+                  <p className="font-semibold text-slate-900">{u.name}</p>
+                  <p className="text-xs text-slate-500">{u.email}</p>
+                </td>
+                <td className="px-4 py-3">
+                  {isAdmin ? (
+                    <button type="button" onClick={() => openEditRole(u)} title="Clique para alterar o perfil" className="group">
+                      <Badge className="bg-slate-100 font-medium transition-colors group-hover:bg-blue-100 group-hover:text-blue-700 cursor-pointer">
+                        <UserCog className="mr-1 size-3 opacity-0 group-hover:opacity-100" />
+                        {u.role}
+                      </Badge>
+                    </button>
+                  ) : (
+                    <Badge className="bg-slate-100 font-medium">{u.role}</Badge>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-slate-700">{u.storeName}</td>
+                <td className="px-4 py-3">
+                  <Badge className={(u as any).status === "ativo" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}>
+                    {(u as any).status === "ativo" ? "Ativo" : "Inativo"}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => openEdit(u)} title="Editar usuário"
+                      className="flex size-9 items-center justify-center rounded-lg border border-border text-slate-500 hover:border-primary hover:bg-primary/5 hover:text-primary transition-colors">
+                      <Pencil className="size-4" />
+                    </button>
+                    <button type="button" onClick={() => openPermissions(u)} title="Editar permissões"
+                      className="flex size-9 items-center justify-center rounded-lg border border-border text-blue-500 hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                      <ShieldCheck className="size-4" />
+                    </button>
+                    <button type="button" onClick={() => toggleUserStatus(u)}
+                      title={(u as any).status === "ativo" ? "Desativar usuário" : "Ativar usuário"}
+                      className="flex size-9 items-center justify-center rounded-lg border border-border transition-colors hover:border-rose-300 hover:bg-rose-50">
+                      {(u as any).status === "ativo"
+                        ? <UserMinus className="size-4 text-rose-500" />
+                        : <UserCheck className="size-4 text-emerald-500" />}
+                    </button>
+                    <button type="button" onClick={() => forcePasswordChange(u)}
+                      title={(u as any).mustChangePassword ? "Troca de senha já solicitada" : "Solicitar troca de senha"}
+                      className={`flex size-9 items-center justify-center rounded-lg border transition-colors ${(u as any).mustChangePassword ? "border-amber-300 bg-amber-50" : "border-border hover:border-amber-300 hover:bg-amber-50"}`}>
+                      <KeyRound className={`size-4 ${(u as any).mustChangePassword ? "text-amber-500" : "text-slate-500"}`} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -395,7 +456,8 @@ export function UserManagementPage() {
         </div>
 
         <div className="mt-6">
-          <DataTable columns={columns} data={filteredUsers} />
+          <UserTable data={filteredUsers} />
+          <p className="mt-2 text-xs text-slate-400">{filteredUsers.length} usuário{filteredUsers.length !== 1 ? "s" : ""} • Clique com o botão direito em uma linha para editar</p>
         </div>
       </SectionCard>
 
@@ -548,6 +610,82 @@ export function UserManagementPage() {
               {isSubmitting ? "Criando..." : "Criar Usuário"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Context menu — botão direito na linha */}
+      {ctxMenu.visible && ctxMenu.user && createPortal(
+        <div
+          ref={ctxRef}
+          className="fixed z-[9999] min-w-[200px] overflow-hidden rounded-xl border border-border bg-white shadow-lg"
+          style={{ top: ctxMenu.y, left: ctxMenu.x }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="border-b border-border px-4 py-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Usuário</p>
+            <p className="text-sm font-semibold text-slate-900">{ctxMenu.user.name}</p>
+          </div>
+          <button type="button" className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+            onClick={() => openEdit(ctxMenu.user!)}>
+            <Pencil className="size-4" /> Editar dados
+          </button>
+          <button type="button" className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-blue-700 hover:bg-blue-50"
+            onClick={() => { openPermissions(ctxMenu.user!); setCtxMenu((m) => ({ ...m, visible: false })); }}>
+            <ShieldCheck className="size-4" /> Permissões
+          </button>
+          <button type="button"
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-slate-50"
+            onClick={() => { toggleUserStatus(ctxMenu.user!); setCtxMenu((m) => ({ ...m, visible: false })); }}>
+            {(ctxMenu.user as any).status === "ativo"
+              ? <><UserMinus className="size-4 text-rose-500" /><span className="text-rose-600">Desativar</span></>
+              : <><UserCheck className="size-4 text-emerald-500" /><span className="text-emerald-600">Ativar</span></>}
+          </button>
+          <button type="button" className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50"
+            onClick={() => { forcePasswordChange(ctxMenu.user!); setCtxMenu((m) => ({ ...m, visible: false })); }}>
+            <KeyRound className="size-4" /> Solicitar troca de senha
+          </button>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal: Editar Usuário */}
+      <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="size-4 text-primary" />
+              Editar Usuário
+            </DialogTitle>
+            <DialogDescription>
+              Altere os dados de <strong>{editUser?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <FormField label="Nome">
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nome completo" />
+            </FormField>
+            <FormField label="Perfil">
+              <Select value={editRole} onChange={(e) => setEditRole(e.target.value as UserRole)}>
+                <option value="ATENDENTE">ATENDENTE</option>
+                <option value="ESTOQUISTA">ESTOQUISTA</option>
+                <option value="GERENTE">GERENTE</option>
+                <option value="ADMIN">ADMIN</option>
+              </Select>
+            </FormField>
+            <FormField label="Loja">
+              <Select value={editStoreId} onChange={(e) => setEditStoreId(e.target.value)}>
+                <option value="">Sem loja</option>
+                {dbStores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </Select>
+            </FormField>
+            {editError && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600">{editError}</p>}
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setEditUser(null)}>Cancelar</Button>
+              <Button onClick={handleSaveEdit} disabled={editSaving || !editName.trim()}>
+                {editSaving ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
