@@ -163,8 +163,13 @@ type MovRow = {
   note: string | null;
 };
 
+function localDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function MovementByStoreReport() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateStr();
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [storeId, setStoreId] = useState("all");
   const [dateFrom, setDateFrom] = useState(today);
@@ -173,6 +178,7 @@ function MovementByStoreReport() {
   const [rows, setRows] = useState<MovRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+  const [queryError, setQueryError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -184,6 +190,7 @@ function MovementByStoreReport() {
   async function fetchReport() {
     if (!supabase) return;
     setLoading(true);
+    setQueryError(null);
     const start = new Date(dateFrom + "T00:00:00");
     const end = new Date(dateTo + "T23:59:59.999");
     let q = supabase
@@ -198,7 +205,10 @@ function MovementByStoreReport() {
     }
     if (typeFilter !== "all") q = q.eq("type", typeFilter);
     const { data, error } = await q;
-    if (error) { console.error(error); setLoading(false); return; }
+    if (error) {
+      console.error(error);
+      setQueryError(`Erro ao consultar: ${error.message}`);
+    }
     setRows(data ?? []);
     setFetched(true);
     setLoading(false);
@@ -277,6 +287,9 @@ function MovementByStoreReport() {
         </div>
       }
     >
+      {queryError && (
+        <p className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{queryError}</p>
+      )}
       {!fetched ? (
         <p className="py-8 text-center text-sm text-slate-400">Selecione os filtros e clique em Consultar.</p>
       ) : rows.length === 0 ? (
@@ -350,7 +363,7 @@ type UserActionRow = {
 };
 
 function UserActionReport() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateStr();
   const [users, setUsers] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState("all");
   const [dateFrom, setDateFrom] = useState(today);
@@ -564,7 +577,7 @@ type ItemChangeRow = {
 };
 
 function ItemChangeReport() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateStr();
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);

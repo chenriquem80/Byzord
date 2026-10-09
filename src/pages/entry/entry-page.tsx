@@ -356,7 +356,12 @@ export function EntryPage() {
         for (const store of stores) {
           const qty = Number(item.quantities[store.id] ?? 0);
           if (qty <= 0) continue;
-          const noteWithLado = [ladoValue ? `Lado: ${ladoValue}` : null, note || null].filter(Boolean).join(" | ") || null;
+          const noteParts = [
+            ladoValue ? `Lado: ${ladoValue}` : null,
+            specialCond ? `Condição: ${specialCond}` : null,
+            invoiceNumber ? `NF: ${invoiceNumber}` : null,
+            note || null,
+          ].filter(Boolean);
           const { error: mvErr } = await supabase.from("stock_movements").insert({
             type: "Entrada",
             product_name: item.product.name,
@@ -364,10 +369,12 @@ export function EntryPage() {
             manufacturer: mfName,
             user_name: authUser?.name ?? "",
             quantity: qty,
-            note: noteWithLado,
-            special_condition: specialCond,
+            note: noteParts.length > 0 ? noteParts.join(" | ") : null,
           });
-          if (mvErr) console.error("Erro ao registrar movimentação de entrada:", mvErr.message);
+          if (mvErr) {
+            console.error("Erro ao registrar movimentação de entrada:", mvErr.message);
+            setSaveError(`Entrada salva, mas falha ao registrar no log: ${mvErr.message}`);
+          }
         }
       }
       setSaveSuccess(true);

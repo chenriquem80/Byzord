@@ -240,17 +240,23 @@ export function ExitPage() {
         .eq("id", selectedInventory.id);
       if (error) throw error;
       const storeName = allStores.find((s) => s.id === values.storeId)?.name ?? values.storeId;
+      const noteParts = [
+        saleSpecialCond ? `Condição: ${saleSpecialCond}` : null,
+        values.note || null,
+      ].filter(Boolean);
       const { error: mvErr } = await supabase.from("stock_movements").insert({
         type: "Saída",
         product_name: selectedProduct.name,
         store_name: storeName,
         manufacturer: values.manufacturer,
         user_name: authUser?.name ?? "",
-        quantity: -qty,
-        note: values.note || null,
-        special_condition: saleSpecialCond,
+        quantity: qty,
+        note: noteParts.length > 0 ? noteParts.join(" | ") : null,
       });
-      if (mvErr) console.error("Erro ao registrar movimentação:", mvErr.message);
+      if (mvErr) {
+        console.error("Erro ao registrar movimentação:", mvErr.message);
+        setSaveError(`Saída registrada, mas falha no log: ${mvErr.message}`);
+      }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
       form.reset({
