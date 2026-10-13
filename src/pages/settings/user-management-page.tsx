@@ -268,7 +268,14 @@ export function UserManagementPage() {
       setNewRole("ATENDENTE"); setNewStoreId(mockStores[0].id);
       fetchUsers();
     } catch (err: any) {
-      setCreateError(err.message ?? "Erro ao criar usuário.");
+      const msg = err.message ?? "";
+      if (msg.includes("rate limit")) {
+        setCreateError("Limite de cadastros atingido. Desative 'Confirm email' em Supabase → Authentication → Providers → Email, ou configure a VITE_SUPABASE_SERVICE_ROLE_KEY na Vercel.");
+      } else if (msg.includes("already registered") || msg.includes("already been registered")) {
+        setCreateError("Já existe um usuário com este nome.");
+      } else {
+        setCreateError(msg || "Erro ao criar usuário.");
+      }
     } finally {
       setIsSubmitting(false);
     }
