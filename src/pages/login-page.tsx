@@ -27,7 +27,7 @@ export function LoginPage() {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("email")
-        .eq("name", username.trim())
+        .ilike("name", username.trim())
         .maybeSingle();
 
       if (profileError) throw profileError;
