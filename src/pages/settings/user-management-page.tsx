@@ -66,10 +66,17 @@ export function UserManagementPage() {
 
   // Form states
   const [newName, setNewName] = useState("");
-  const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<UserRole>("ATENDENTE");
   const [newStoreId, setNewStoreId] = useState(mockStores[0].id);
+
+  // Gera email interno a partir do nome (sem expor ao admin)
+  function makeInternalEmail(name: string) {
+    const slug = name.trim().toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
+    return `${slug}@byzord.internal`;
+  }
 
   useEffect(() => {
     fetchUsers();
@@ -183,8 +190,7 @@ export function UserManagementPage() {
   }
 
   const filteredUsers = users.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
     const matchesStatus = statusFilter === "all" || (u as any).status === statusFilter;
     return matchesSearch && matchesRole && matchesStatus;
@@ -206,10 +212,11 @@ export function UserManagementPage() {
     }
 
     setIsSubmitting(true);
+    const internalEmail = makeInternalEmail(newName);
     try {
       if (supabaseAdmin) {
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email: newEmail,
+          email: internalEmail,
           password: newPassword,
           email_confirm: true,
           user_metadata: { name: newName },
@@ -220,7 +227,7 @@ export function UserManagementPage() {
         const { error: profileError } = await supabase.from("profiles").insert({
           id: authData.user.id,
           name: newName,
-          email: newEmail,
+          email: internalEmail,
           role: newRole,
           store_id: newStoreId,
           allow_cost_view: newRole === "ADMIN" || newRole === "GERENTE",
@@ -235,7 +242,7 @@ export function UserManagementPage() {
           { auth: { persistSession: false, autoRefreshToken: false } },
         );
         const { data: authData, error: authError } = await tempClient.auth.signUp({
-          email: newEmail,
+          email: internalEmail,
           password: newPassword,
           options: { data: { name: newName } },
         });
@@ -245,7 +252,7 @@ export function UserManagementPage() {
         const { error: profileError } = await supabase.from("profiles").insert({
           id: authData.user.id,
           name: newName,
-          email: newEmail,
+          email: internalEmail,
           role: newRole,
           store_id: newStoreId,
           allow_cost_view: newRole === "ADMIN" || newRole === "GERENTE",
@@ -257,7 +264,7 @@ export function UserManagementPage() {
 
       setIsCreateModalOpen(false);
       setTempPassword(newPassword);
-      setNewName(""); setNewEmail(""); setNewPassword("");
+      setNewName(""); setNewPassword("");
       setNewRole("ATENDENTE"); setNewStoreId(mockStores[0].id);
       fetchUsers();
     } catch (err: any) {
@@ -365,7 +372,6 @@ export function UserManagementPage() {
               >
                 <td className="px-4 py-3">
                   <p className="font-semibold text-slate-900">{u.name}</p>
-                  <p className="text-xs text-slate-500">{u.email}</p>
                 </td>
                 <td className="px-4 py-3">
                   {isAdmin ? (
@@ -433,7 +439,7 @@ export function UserManagementPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="Buscar por nome ou e-mail..."
+              placeholder="Buscar por nome..."
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -522,7 +528,6 @@ export function UserManagementPage() {
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
               <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Usuário</p>
               <p className="mt-1 text-sm font-semibold text-slate-900">{editRoleUser?.name}</p>
-              <p className="text-xs text-slate-500">{editRoleUser?.email}</p>
             </div>
 
             <FormField label="Novo perfil">
@@ -576,11 +581,8 @@ export function UserManagementPage() {
           </DialogHeader>
 
           <form onSubmit={handleCreateUser} className="mt-4 space-y-4">
-            <FormField label="Nome completo">
+            <FormField label="Nome de usuário">
               <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: João Silva" required />
-            </FormField>
-            <FormField label="E-mail">
-              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="joao@autovitrais.com.br" required />
             </FormField>
             <FormField label="Senha">
               <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required />
