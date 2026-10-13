@@ -6,10 +6,11 @@ import { supabase } from "@/lib/database";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -22,8 +23,23 @@ export function LoginPage() {
     }
 
     try {
+      // Busca o email pelo nome de usuário na tabela profiles
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("name", username.trim())
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (!profile?.email) {
+        setError("Usuário não encontrado. Verifique o nome informado.");
+        setLoading(false);
+        return;
+      }
+
       const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
+        email: profile.email,
         password,
       });
 
@@ -33,9 +49,9 @@ export function LoginPage() {
     } catch (err: any) {
       console.error("Erro de login:", err);
       if (err.message === "Invalid login credentials") {
-        setError("E-mail ou senha incorretos.");
+        setError("Usuário ou senha incorretos.");
       } else if (err.message === "Email not confirmed") {
-        setError("Por favor, confirme seu e-mail antes de entrar (verifique sua caixa de entrada).");
+        setError("Conta não confirmada. Entre em contato com o administrador.");
       } else if (err.message === "Failed to fetch" || err.name === "TypeError") {
         setError("Não foi possível conectar ao servidor. O banco de dados pode estar pausado — acesse supabase.com/dashboard e reative o projeto.");
       } else {
@@ -74,18 +90,19 @@ export function LoginPage() {
               </p>
               <h2 className="mt-3 text-4xl font-bold text-slate-950">Bem-vindo</h2>
               <p className="mt-2 text-base text-slate-500">
-                Use seu acesso para entrar no painel operacional.
+                Use seu usuário e senha para entrar no painel operacional.
               </p>
             </div>
 
             <div className="grid gap-5">
               <div>
-                <p className="mb-2 text-sm font-medium text-slate-700">E-mail</p>
-                <Input 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  placeholder="seu@email.com" 
+                <p className="mb-2 text-sm font-medium text-slate-700">Usuário</p>
+                <Input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Seu nome de usuário"
+                  autoComplete="username"
                   required
                 />
               </div>
@@ -128,4 +145,3 @@ export function LoginPage() {
     </div>
   );
 }
-
