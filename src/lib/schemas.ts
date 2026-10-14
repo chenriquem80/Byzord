@@ -46,7 +46,7 @@ export const saleSchema = z.object({
   plate: z.string().optional().default(""),
   paymentMethod: z.string().optional().default(""),
   quantity: z.coerce.number().min(1, "Quantidade mínima de 1."),
-  price: z.coerce.number().min(0.01, "Informe o valor da venda."),
+  price: z.coerce.number().min(0).default(0),
   discount: z.coerce.number().min(0).default(0),
   note: z.string().optional(),
 });
