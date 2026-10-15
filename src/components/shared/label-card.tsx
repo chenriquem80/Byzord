@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 
 const LOGO_URL = `${window.location.origin}/logo.png`;
 
+const up = (value?: string | null) => (value ?? "").toLocaleUpperCase("pt-BR");
+
 export function noiseDigits(seed: string, count: number, salt: number): string {
   const s = seed.replace(/\D/g, "").padStart(10, "0") + salt;
   let h = salt * 2654435761;
@@ -72,20 +74,20 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
 </head>
 <body>
   <div class="code-row">
-    <span class="code-label">Codigo:</span>
-    <span class="code-value">${codeValue}</span>
+    <span class="code-label">CODIGO:</span>
+    <span class="code-value">${up(codeValue)}</span>
   </div>
   <div class="logo-wrap">
     <img src="${LOGO_URL}" alt="Byzord Auto Vitrais" />
   </div>
   <div class="info">
-    <p>${label.vehicleLabel.toLowerCase()}</p>
-    ${label.yearRange ? `<p>${label.yearRange}</p>` : ""}
-    ${label.feature ? `<p>${label.feature}</p>` : ""}
-    ${label.glassType ? `<p>${label.glassType.toLowerCase()}${label.lado ? ` - ${label.lado}` : ""}</p>` : ""}
-    ${label.manufacturer ? `<p>${label.manufacturer}</p>` : ""}
+    <p>${up(label.vehicleLabel)}</p>
+    ${label.yearRange ? `<p>${up(label.yearRange)}</p>` : ""}
+    ${label.feature ? `<p>${up(label.feature)}</p>` : ""}
+    ${label.glassType ? `<p>${up(label.glassType)}${label.lado ? ` - ${up(label.lado)}` : ""}</p>` : ""}
+    ${label.manufacturer ? `<p>${up(label.manufacturer)}</p>` : ""}
   </div>
-  ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${label.purchaseSummary}\\00\\${n2}</div>` : ""}
+  ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${up(label.purchaseSummary)}\\00\\${n2}</div>` : ""}
   ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
   ${codeValue && bcSvg ? `<div class="bc-box">${bcSvg}</div>` : ""}
 </body>
@@ -101,22 +103,22 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     <div className={wrapperClassName ?? "flex flex-col items-center gap-3"}>
       <div className="flex w-full max-w-[260px] flex-col justify-between rounded-[18px] bg-white px-4 pb-4 pt-3 text-slate-950 shadow-sm">
         <div className="flex items-baseline gap-2">
-          <span className="shrink-0 text-[11px] font-medium text-slate-500">Codigo:</span>
-          <span className="break-all text-[15px] font-bold leading-tight tracking-tight">{codeValue}</span>
+          <span className="shrink-0 text-[11px] font-medium text-slate-500">CODIGO:</span>
+          <span className="break-all text-[15px] font-bold leading-tight tracking-tight">{up(codeValue)}</span>
         </div>
         <div className="mt-2 flex justify-center">
           <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-14 w-auto object-contain" />
         </div>
         <div className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
-          <p>{label.vehicleLabel.toLowerCase()}</p>
-          {label.yearRange && <p>{label.yearRange}</p>}
-          {label.feature && <p>{label.feature}</p>}
-          {label.glassType && <p>{label.glassType.toLowerCase()}{label.lado ? ` - ${label.lado}` : ""}</p>}
-          {label.manufacturer && <p>{label.manufacturer}</p>}
+          <p>{up(label.vehicleLabel)}</p>
+          {label.yearRange && <p>{up(label.yearRange)}</p>}
+          {label.feature && <p>{up(label.feature)}</p>}
+          {label.glassType && <p>{up(label.glassType)}{label.lado ? ` - ${up(label.lado)}` : ""}</p>}
+          {label.manufacturer && <p>{up(label.manufacturer)}</p>}
         </div>
         {label.purchaseSummary && (
           <div className="mt-2 font-mono text-[11px]">
-            {n1}\00\{label.purchaseSummary}\00\{n2}
+            {n1}\00\{up(label.purchaseSummary)}\00\{n2}
           </div>
         )}
         <div ref={qrWrapRef} className="mt-3 flex justify-center rounded-md border border-slate-300 p-1">
