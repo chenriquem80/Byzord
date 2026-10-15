@@ -589,6 +589,8 @@ export function ProductsPage() {
           if (insertError) { console.error("Supabase insert error:", insertError); throw insertError; }
 
           const productDbId = inserted.id;
+          const activeStores = dbStores.length > 0 ? dbStores : stores;
+          const targetStoreId = newProductStoreId || activeStores[0]?.id;
 
           try {
             const { data: mf, error: mfError } = await supabase
@@ -605,8 +607,6 @@ export function ProductsPage() {
               .single();
             if (mfError) throw mfError;
 
-            const activeStores = dbStores.length > 0 ? dbStores : stores;
-            const targetStoreId = newProductStoreId || activeStores[0]?.id;
             const inventoryRows = activeStores.map((store: any) => ({
               manufacturer_id: mf.id,
               store_id: store.id,
@@ -633,6 +633,22 @@ export function ProductsPage() {
             quantity: 0,
             note: `Novo produto cadastrado`,
           }).then(({ error }) => { if (error) console.warn("audit log:", error.message); });
+
+          // Estoque inicial do cadastro conta como entrada no dashboard
+          const initialQty = Math.max(0, invQuantity);
+          if (initialQty > 0) {
+            const targetStore = activeStores.find((store: any) => store.id === targetStoreId);
+            const { error: mvErr } = await supabase.from("stock_movements").insert({
+              type: "Entrada",
+              product_name: values.name,
+              store_name: targetStore?.name ?? "",
+              manufacturer: values.manufacturer,
+              user_name: authUser?.name ?? "",
+              quantity: initialQty,
+              note: "Estoque inicial (cadastro de produto)",
+            });
+            if (mvErr) console.error("Erro ao registrar movimentação de entrada:", mvErr.message);
+          }
 
           form.reset(getEmptyFormValues());
           setInvLocation("");
