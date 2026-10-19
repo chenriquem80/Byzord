@@ -6,6 +6,7 @@ import { getAllowedRoles } from "@/lib/permissions";
 
 const LoginPage = lazy(() => import("@/pages/login-page").then((module) => ({ default: module.LoginPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard-page").then((module) => ({ default: module.DashboardPage })));
+const AgendaPage = lazy(() => import("@/pages/agenda/agenda-page").then((module) => ({ default: module.AgendaPage })));
 const AttendancePage = lazy(() => import("@/pages/attendance/attendance-page").then((module) => ({ default: module.AttendancePage })));
 const AttendanceQueryPage = lazy(() => import("@/pages/attendance/attendance-query-page").then((module) => ({ default: module.AttendanceQueryPage })));
 const StockPage = lazy(() => import("@/pages/stock/stock-page").then((module) => ({ default: module.StockPage })));
@@ -141,6 +142,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: withSuspense(<DashboardPage />) },
       { path: "home", element: <Navigate to="/app" replace /> },
+      { path: "agenda",      element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/agenda")}><AgendaPage /></AuthGuard>) },
       { path: "atendimento", element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/atendimento")}><AttendancePage /></AuthGuard>) },
       { path: "atendimento-consulta", element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/atendimento-consulta")}><AttendanceQueryPage /></AuthGuard>) },
       { path: "estoque",     element: withSuspense(<AuthGuard allowedRoles={getAllowedRoles("/app/estoque")}><StockPage /></AuthGuard>) },

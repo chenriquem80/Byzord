@@ -4,6 +4,7 @@ export type PagePermission = "write" | "read" | "none";
 
 export type AppPage =
   | "/app"
+  | "/app/agenda"
   | "/app/atendimento"
   | "/app/atendimento-consulta"
   | "/app/estoque"
@@ -25,6 +26,7 @@ export type AppPage =
 
 export const PAGE_LABELS: Record<AppPage, string> = {
   "/app":                       "Dashboard",
+  "/app/agenda":                "Agenda",
   "/app/atendimento":           "Novo Atendimento",
   "/app/atendimento-consulta":  "Consulta de Atendimentos",
   "/app/estoque":               "Estoque",
@@ -50,6 +52,7 @@ export const ALL_PAGES = Object.keys(PAGE_LABELS) as AppPage[];
 // Páginas exibidas na dialog de permissões — correspondem ao menu lateral
 export const SIDEBAR_PAGES: AppPage[] = [
   "/app",
+  "/app/agenda",
   "/app/atendimento",
   "/app/atendimento-consulta",
   "/app/orcamento",
@@ -71,6 +74,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   // Acesso total a tudo
   ADMIN: {
     "/app":                       "write",
+    "/app/agenda":                "write",
     "/app/atendimento":           "write",
     "/app/atendimento-consulta":  "write",
     "/app/estoque":               "write",
@@ -93,6 +97,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   // Acesso total, exceto cadastro de usuários
   GERENTE: {
     "/app":                       "write",
+    "/app/agenda":                "write",
     "/app/atendimento":           "write",
     "/app/atendimento-consulta":  "write",
     "/app/estoque":               "write",
@@ -115,6 +120,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   // Atendimento (write) + Orçamento (somente leitura) + Clientes (leitura)
   ATENDENTE: {
     "/app":                       "read",
+    "/app/agenda":                "write",
     "/app/atendimento":           "write",
     "/app/atendimento-consulta":  "write",
     "/app/estoque":               "none",
@@ -137,6 +143,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   // Área de estoque completa (write), sem acesso a atendimento/orçamento
   ESTOQUISTA: {
     "/app":                       "read",
+    "/app/agenda":                "write",
     "/app/atendimento":           "none",
     "/app/atendimento-consulta":  "none",
     "/app/estoque":               "write",

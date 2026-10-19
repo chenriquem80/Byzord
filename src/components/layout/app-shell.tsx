@@ -17,6 +17,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { title: "Inicial", route: "/app", icon: "LayoutDashboard" },
+  { title: "Agenda", route: "/app/agenda", icon: "CalendarDays" },
   {
     title: "Atendimento",
     route: "/app/atendimento",
