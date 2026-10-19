@@ -1,6 +1,9 @@
 import { CalendarDays, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/database";
 
 export type AgendaEntry = {
   id: string;
@@ -8,9 +11,23 @@ export type AgendaEntry = {
   description: string;
   user_name: string | null;
   created_at: string;
+  store_id: string | null;
+  stores: { name: string } | null;
 };
 
-export const AGENDA_COLUMNS = "id, event_date, description, user_name, created_at";
+export const AGENDA_COLUMNS = "id, event_date, description, user_name, created_at, store_id, stores (name)";
+
+export type AgendaStore = { id: string; name: string };
+
+// Lista de unidades — carregada apenas para administradores, que acessam todas
+export function useAgendaStores(enabled: boolean): AgendaStore[] {
+  const [stores, setStores] = useState<AgendaStore[]>([]);
+  useEffect(() => {
+    if (!enabled || !supabase) return;
+    supabase.from("stores").select("id, name").order("name").then(({ data }) => setStores(data ?? []));
+  }, [enabled]);
+  return stores;
+}
 
 export function todayIso(): string {
   const d = new Date();
@@ -36,10 +53,12 @@ export function AgendaEntryItem({
   entry,
   onEdit,
   onDelete,
+  showStore = false,
 }: {
   entry: AgendaEntry;
   onEdit: (entry: AgendaEntry) => void;
   onDelete: (entry: AgendaEntry) => void;
+  showStore?: boolean;
 }) {
   return (
     <li className="rounded-2xl border border-border bg-white p-4">
@@ -48,6 +67,9 @@ export function AgendaEntryItem({
           <CalendarDays className="size-4 text-primary" />
           {formatIsoDate(entry.event_date)}
           <span className="font-normal capitalize text-slate-500">{weekdayLabel(entry.event_date)}</span>
+          {showStore && (
+            <Badge className="bg-primary/10 text-primary">{entry.stores?.name ?? "Sem unidade"}</Badge>
+          )}
         </div>
         <div className="flex shrink-0 gap-1">
           <Button size="sm" variant="ghost" onClick={() => onEdit(entry)} aria-label="Editar">

@@ -6,6 +6,7 @@ import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/database";
 import {
@@ -13,30 +14,35 @@ import {
   AgendaEntryItem,
   NoStoreNotice,
   formatIsoDate,
+  useAgendaStores,
   type AgendaEntry,
 } from "./agenda-shared";
 
 export function AgendaQueryPage() {
   const { user: authUser } = useAuth();
   const storeId = authUser?.storeId ?? null;
+  const isAdmin = authUser?.role === "ADMIN";
+  const stores = useAgendaStores(isAdmin);
   const navigate = useNavigate();
 
   const [text, setText] = useState("");
   const [date, setDate] = useState("");
+  const [storeFilter, setStoreFilter] = useState(""); // "" = todas (apenas administrador)
   const [entries, setEntries] = useState<AgendaEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSearch() {
     setError(null);
-    if (!supabase || !storeId) return;
+    if (!supabase || (!storeId && !isAdmin)) return;
     setLoading(true);
     let query = supabase
       .from("agenda")
       .select(AGENDA_COLUMNS)
-      .eq("store_id", storeId)
       .order("event_date", { ascending: false })
       .order("created_at", { ascending: false });
+    if (!isAdmin) query = query.eq("store_id", storeId);
+    else if (storeFilter) query = query.eq("store_id", storeFilter);
     const term = text.trim();
     // Escapa curingas do LIKE para buscar o texto literalmente
     if (term) query = query.ilike("description", `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
@@ -47,11 +53,12 @@ export function AgendaQueryPage() {
     setLoading(false);
   }
 
-  useEffect(() => { handleSearch(); }, [storeId]);
+  useEffect(() => { handleSearch(); }, [storeId, isAdmin]);
 
   function handleClear() {
     setText("");
     setDate("");
+    setStoreFilter("");
   }
 
   async function handleDelete(entry: AgendaEntry) {
@@ -62,15 +69,18 @@ export function AgendaQueryPage() {
     setEntries((prev) => prev.filter((e) => e.id !== entry.id));
   }
 
-  if (!storeId) {
+  if (!storeId && !isAdmin) {
     return <SectionCard title="Consulta da Agenda"><NoStoreNotice /></SectionCard>;
   }
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Consulta da Agenda" description={`Unidade: ${authUser?.storeName ?? ""}`}>
+      <SectionCard
+        title="Consulta da Agenda"
+        description={isAdmin ? "Administrador — acesso a todas as unidades" : `Unidade: ${authUser?.storeName ?? ""}`}
+      >
         <form
-          className="grid gap-4 md:grid-cols-[1fr_220px_auto] md:items-end"
+          className={`grid gap-4 md:items-end ${isAdmin ? "md:grid-cols-[1fr_200px_200px_auto]" : "md:grid-cols-[1fr_220px_auto]"}`}
           onSubmit={(e) => { e.preventDefault(); handleSearch(); }}
         >
           <FormField label="Texto na descrição">
@@ -79,6 +89,14 @@ export function AgendaQueryPage() {
           <FormField label="Data">
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </FormField>
+          {isAdmin && (
+            <FormField label="Unidade">
+              <Select value={storeFilter} onChange={(e) => setStoreFilter(e.target.value)}>
+                <option value="">Todas as unidades</option>
+                {stores.map((store) => <option key={store.id} value={store.id}>{store.name}</option>)}
+              </Select>
+            </FormField>
+          )}
           <div className="flex gap-2">
             <Button type="submit" disabled={loading}>
               <Search className="size-4" />
@@ -106,6 +124,7 @@ export function AgendaQueryPage() {
                 entry={entry}
                 onEdit={(e) => navigate("/app/agenda", { state: { editEntry: e } })}
                 onDelete={handleDelete}
+                showStore={isAdmin}
               />
             ))}
           </ul>

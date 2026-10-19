@@ -5,6 +5,7 @@ import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/database";
@@ -14,12 +15,15 @@ import {
   NoStoreNotice,
   formatIsoDate,
   todayIso,
+  useAgendaStores,
   type AgendaEntry,
 } from "./agenda-shared";
 
 export function AgendaPage() {
   const { user: authUser } = useAuth();
   const storeId = authUser?.storeId ?? null;
+  const isAdmin = authUser?.role === "ADMIN";
+  const stores = useAgendaStores(isAdmin);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -32,6 +36,12 @@ export function AgendaPage() {
   const [eventDate, setEventDate] = useState(todayIso());
   const [description, setDescription] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Unidade do registro: fixa na loja do usuário; administrador pode escolher
+  const [formStoreId, setFormStoreId] = useState(storeId ?? "");
+
+  useEffect(() => {
+    if (!formStoreId) setFormStoreId(storeId ?? stores[0]?.id ?? "");
+  }, [storeId, stores]);
 
   // Edição vinda da tela de Consulta
   useEffect(() => {
@@ -44,29 +54,33 @@ export function AgendaPage() {
 
   async function fetchEntries(date: string) {
     setLoading(true);
-    if (!supabase || !storeId || !date) { setEntries([]); setLoading(false); return; }
-    const { data, error: fetchErr } = await supabase
+    if (!supabase || (!storeId && !isAdmin) || !date) { setEntries([]); setLoading(false); return; }
+    let query = supabase
       .from("agenda")
       .select(AGENDA_COLUMNS)
-      .eq("store_id", storeId)
       .eq("event_date", date)
       .order("created_at", { ascending: true });
+    // Administrador vê todas as unidades
+    if (!isAdmin) query = query.eq("store_id", storeId);
+    const { data, error: fetchErr } = await query;
     if (fetchErr) setError(`Erro ao carregar agenda: ${fetchErr.message}`);
     setEntries(data ?? []);
     setLoading(false);
   }
 
-  useEffect(() => { fetchEntries(eventDate); }, [eventDate, storeId]);
+  useEffect(() => { fetchEntries(eventDate); }, [eventDate, storeId, isAdmin]);
 
   function resetForm() {
     setDescription("");
     setEditingId(null);
+    setFormStoreId(storeId ?? stores[0]?.id ?? "");
   }
 
   function startEdit(entry: AgendaEntry) {
     setEditingId(entry.id);
     setEventDate(entry.event_date);
     setDescription(entry.description);
+    if (entry.store_id) setFormStoreId(entry.store_id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -75,13 +89,13 @@ export function AgendaPage() {
     if (!eventDate) { setError("Informe a data."); return; }
     if (!description.trim()) { setError("Informe a descrição."); return; }
     if (!supabase) { setError("Banco de dados não configurado."); return; }
-    if (!storeId) { setError("Seu usuário não está vinculado a nenhuma unidade."); return; }
+    if (!formStoreId) { setError(isAdmin ? "Selecione a unidade." : "Seu usuário não está vinculado a nenhuma unidade."); return; }
 
     setSaving(true);
-    const payload = { event_date: eventDate, description: description.trim() };
+    const payload = { event_date: eventDate, description: description.trim(), store_id: formStoreId };
     const { error: saveErr } = editingId
       ? await supabase.from("agenda").update(payload).eq("id", editingId)
-      : await supabase.from("agenda").insert({ ...payload, store_id: storeId, user_name: authUser?.name ?? "" });
+      : await supabase.from("agenda").insert({ ...payload, user_name: authUser?.name ?? "" });
     setSaving(false);
 
     if (saveErr) { setError(`Erro ao salvar: ${saveErr.message}`); return; }
@@ -100,7 +114,7 @@ export function AgendaPage() {
     fetchEntries(eventDate);
   }
 
-  if (!storeId) {
+  if (!storeId && !isAdmin) {
     return <SectionCard title="Agenda"><NoStoreNotice /></SectionCard>;
   }
 
@@ -108,13 +122,22 @@ export function AgendaPage() {
     <div className="space-y-6">
       <SectionCard
         title={editingId ? "Editar registro" : "Agenda"}
-        description={`Unidade: ${authUser?.storeName ?? ""}`}
+        description={isAdmin ? "Administrador — acesso a todas as unidades" : `Unidade: ${authUser?.storeName ?? ""}`}
         action={savedMessage ? <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span> : null}
       >
         <div className="space-y-4">
-          <FormField label="Data" className="max-w-xs">
-            <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
-          </FormField>
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <FormField label="Data" className="sm:w-56">
+              <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+            </FormField>
+            {isAdmin && (
+              <FormField label="Unidade" className="sm:w-56">
+                <Select value={formStoreId} onChange={(e) => setFormStoreId(e.target.value)} placeholder="Selecione...">
+                  {stores.map((store) => <option key={store.id} value={store.id}>{store.name}</option>)}
+                </Select>
+              </FormField>
+            )}
+          </div>
           <FormField label="Descrição">
             <Textarea
               value={description}
@@ -146,7 +169,7 @@ export function AgendaPage() {
         ) : (
           <ul className="space-y-3">
             {entries.map((entry) => (
-              <AgendaEntryItem key={entry.id} entry={entry} onEdit={startEdit} onDelete={handleDelete} />
+              <AgendaEntryItem key={entry.id} entry={entry} onEdit={startEdit} onDelete={handleDelete} showStore={isAdmin} />
             ))}
           </ul>
         )}
