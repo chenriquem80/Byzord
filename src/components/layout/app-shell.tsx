@@ -17,7 +17,15 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { title: "Inicial", route: "/app", icon: "LayoutDashboard" },
-  { title: "Agenda", route: "/app/agenda", icon: "CalendarDays" },
+  {
+    title: "Agenda",
+    route: "/app/agenda",
+    icon: "CalendarDays",
+    children: [
+      { title: "Anotar", route: "/app/agenda", icon: "PlusCircle" },
+      { title: "Consulta", route: "/app/agenda-consulta", icon: "Search" },
+    ],
+  },
   {
     title: "Atendimento",
     route: "/app/atendimento",
@@ -51,6 +59,7 @@ const menuItems: MenuItem[] = [
 
 // Routes that belong to each group (for auto-expand on navigation)
 const groupChildRoutes: Record<string, string[]> = {
+  "/app/agenda": ["/app/agenda", "/app/agenda-consulta"],
   "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/pedido"],
   "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia", "/app/produtos", "/app/etiquetagem", "/app/reposicao"],
 };

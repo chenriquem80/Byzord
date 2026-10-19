@@ -1,5 +1,5 @@
-import { CalendarDays, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -8,33 +8,21 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/database";
-
-type AgendaEntry = {
-  id: string;
-  event_date: string;
-  description: string;
-  user_name: string | null;
-  created_at: string;
-};
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-// event_date vem como "YYYY-MM-DD"; formata sem passar por Date para evitar desvio de fuso
-function formatIsoDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
-
-function weekdayLabel(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat("pt-BR", { weekday: "long" }).format(new Date(y, m - 1, d));
-}
+import {
+  AGENDA_COLUMNS,
+  AgendaEntryItem,
+  NoStoreNotice,
+  formatIsoDate,
+  todayIso,
+  type AgendaEntry,
+} from "./agenda-shared";
 
 export function AgendaPage() {
   const { user: authUser } = useAuth();
+  const storeId = authUser?.storeId ?? null;
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [entries, setEntries] = useState<AgendaEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,25 +33,41 @@ export function AgendaPage() {
   const [description, setDescription] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  async function fetchEntries() {
+  // Edição vinda da tela de Consulta
+  useEffect(() => {
+    const entry = (location.state as { editEntry?: AgendaEntry } | null)?.editEntry;
+    if (entry) {
+      startEdit(entry);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state]);
+
+  async function fetchEntries(date: string) {
     setLoading(true);
-    if (!supabase) { setLoading(false); return; }
+    if (!supabase || !storeId || !date) { setEntries([]); setLoading(false); return; }
     const { data, error: fetchErr } = await supabase
       .from("agenda")
-      .select("id, event_date, description, user_name, created_at")
-      .order("event_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .select(AGENDA_COLUMNS)
+      .eq("store_id", storeId)
+      .eq("event_date", date)
+      .order("created_at", { ascending: true });
     if (fetchErr) setError(`Erro ao carregar agenda: ${fetchErr.message}`);
     setEntries(data ?? []);
     setLoading(false);
   }
 
-  useEffect(() => { fetchEntries(); }, []);
+  useEffect(() => { fetchEntries(eventDate); }, [eventDate, storeId]);
 
   function resetForm() {
-    setEventDate(todayIso());
     setDescription("");
     setEditingId(null);
+  }
+
+  function startEdit(entry: AgendaEntry) {
+    setEditingId(entry.id);
+    setEventDate(entry.event_date);
+    setDescription(entry.description);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleSave() {
@@ -71,26 +75,20 @@ export function AgendaPage() {
     if (!eventDate) { setError("Informe a data."); return; }
     if (!description.trim()) { setError("Informe a descrição."); return; }
     if (!supabase) { setError("Banco de dados não configurado."); return; }
+    if (!storeId) { setError("Seu usuário não está vinculado a nenhuma unidade."); return; }
 
     setSaving(true);
     const payload = { event_date: eventDate, description: description.trim() };
     const { error: saveErr } = editingId
       ? await supabase.from("agenda").update(payload).eq("id", editingId)
-      : await supabase.from("agenda").insert({ ...payload, user_name: authUser?.name ?? "" });
+      : await supabase.from("agenda").insert({ ...payload, store_id: storeId, user_name: authUser?.name ?? "" });
     setSaving(false);
 
     if (saveErr) { setError(`Erro ao salvar: ${saveErr.message}`); return; }
     resetForm();
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 3000);
-    fetchEntries();
-  }
-
-  function handleEdit(entry: AgendaEntry) {
-    setEditingId(entry.id);
-    setEventDate(entry.event_date);
-    setDescription(entry.description);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    fetchEntries(eventDate);
   }
 
   async function handleDelete(entry: AgendaEntry) {
@@ -99,14 +97,18 @@ export function AgendaPage() {
     const { error: delErr } = await supabase.from("agenda").delete().eq("id", entry.id);
     if (delErr) { setError(`Erro ao excluir: ${delErr.message}`); return; }
     if (editingId === entry.id) resetForm();
-    fetchEntries();
+    fetchEntries(eventDate);
+  }
+
+  if (!storeId) {
+    return <SectionCard title="Agenda"><NoStoreNotice /></SectionCard>;
   }
 
   return (
     <div className="space-y-6">
       <SectionCard
         title={editingId ? "Editar registro" : "Agenda"}
-        description="Registre compromissos e anotações por data."
+        description={`Unidade: ${authUser?.storeName ?? ""}`}
         action={savedMessage ? <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span> : null}
       >
         <div className="space-y-4">
@@ -134,41 +136,17 @@ export function AgendaPage() {
       </SectionCard>
 
       <SectionCard
-        title="Registros"
-        description={`${entries.length} registro${entries.length !== 1 ? "s" : ""} na agenda.`}
-        action={
-          <Button size="sm" variant="outline" onClick={fetchEntries} disabled={loading}>
-            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
-        }
+        title={`Registros de ${eventDate ? formatIsoDate(eventDate) : "-"}`}
+        description={`${entries.length} registro${entries.length !== 1 ? "s" : ""} nesta data.`}
       >
         {loading ? (
           <p className="text-sm text-slate-500">Carregando...</p>
         ) : entries.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum registro na agenda.</p>
+          <p className="text-sm text-slate-500">Nenhum registro nesta data.</p>
         ) : (
           <ul className="space-y-3">
             {entries.map((entry) => (
-              <li key={entry.id} className="rounded-2xl border border-border bg-white p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <CalendarDays className="size-4 text-primary" />
-                    {formatIsoDate(entry.event_date)}
-                    <span className="font-normal capitalize text-slate-500">{weekdayLabel(entry.event_date)}</span>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => handleEdit(entry)} aria-label="Editar">
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(entry)} aria-label="Excluir">
-                      <Trash2 className="size-4 text-danger" />
-                    </Button>
-                  </div>
-                </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{entry.description}</p>
-                {entry.user_name && <p className="mt-2 text-xs text-slate-400">Registrado por {entry.user_name}</p>}
-              </li>
+              <AgendaEntryItem key={entry.id} entry={entry} onEdit={startEdit} onDelete={handleDelete} />
             ))}
           </ul>
         )}

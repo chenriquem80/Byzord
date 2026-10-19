@@ -5,6 +5,7 @@ export type PagePermission = "write" | "read" | "none";
 export type AppPage =
   | "/app"
   | "/app/agenda"
+  | "/app/agenda-consulta"
   | "/app/atendimento"
   | "/app/atendimento-consulta"
   | "/app/estoque"
@@ -27,6 +28,7 @@ export type AppPage =
 export const PAGE_LABELS: Record<AppPage, string> = {
   "/app":                       "Dashboard",
   "/app/agenda":                "Agenda",
+  "/app/agenda-consulta":       "Consulta da Agenda",
   "/app/atendimento":           "Novo Atendimento",
   "/app/atendimento-consulta":  "Consulta de Atendimentos",
   "/app/estoque":               "Estoque",
@@ -53,6 +55,7 @@ export const ALL_PAGES = Object.keys(PAGE_LABELS) as AppPage[];
 export const SIDEBAR_PAGES: AppPage[] = [
   "/app",
   "/app/agenda",
+  "/app/agenda-consulta",
   "/app/atendimento",
   "/app/atendimento-consulta",
   "/app/orcamento",
@@ -75,6 +78,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   ADMIN: {
     "/app":                       "write",
     "/app/agenda":                "write",
+    "/app/agenda-consulta":       "write",
     "/app/atendimento":           "write",
     "/app/atendimento-consulta":  "write",
     "/app/estoque":               "write",
@@ -98,6 +102,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   GERENTE: {
     "/app":                       "write",
     "/app/agenda":                "write",
+    "/app/agenda-consulta":       "write",
     "/app/atendimento":           "write",
     "/app/atendimento-consulta":  "write",
     "/app/estoque":               "write",
@@ -121,6 +126,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   ATENDENTE: {
     "/app":                       "read",
     "/app/agenda":                "write",
+    "/app/agenda-consulta":       "write",
     "/app/atendimento":           "write",
     "/app/atendimento-consulta":  "write",
     "/app/estoque":               "none",
@@ -144,6 +150,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   ESTOQUISTA: {
     "/app":                       "read",
     "/app/agenda":                "write",
+    "/app/agenda-consulta":       "write",
     "/app/atendimento":           "none",
     "/app/atendimento-consulta":  "none",
     "/app/estoque":               "write",
