@@ -537,6 +537,8 @@ export function StockPage() {
       >
         {loading ? (
           <p className="py-8 text-center text-sm text-slate-500">Carregando estoque...</p>
+        ) : !glassType ? (
+          <p className="py-8 text-center text-sm text-slate-500">Selecione o tipo do item para ver o estoque.</p>
         ) : (
           <DataTable columns={columns} data={rows} />
         )}
