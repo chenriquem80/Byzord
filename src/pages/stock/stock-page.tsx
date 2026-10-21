@@ -6,6 +6,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatCurrency, formatMonthYear } from "@/lib/format";
@@ -74,6 +75,9 @@ interface ContextMenu {
   y: number;
   row: StockRow | null;
 }
+
+// Valor do select para buscar em todos os tipos ("" = tipo ainda não selecionado)
+const ALL_GLASS_TYPES = "__all__";
 
 export function StockPage() {
   const navigate = useNavigate();
@@ -301,7 +305,7 @@ export function StockPage() {
         const matchesQuery = query
           ? query.toLowerCase().split(/\s+/).filter(Boolean).every((term) => text.includes(term))
           : true;
-        const matchesGlassType = glassType ? product.glassType === glassType : true;
+        const matchesGlassType = glassType && glassType !== ALL_GLASS_TYPES ? product.glassType === glassType : true;
         return matchesQuery && matchesGlassType;
       })
       .flatMap((product) => {
@@ -498,19 +502,26 @@ export function StockPage() {
     <div className="space-y-6">
             <SectionCard
         title="Busca de Produto"
-        description="Filtre por nome, código ou ano para consultar o estoque em todas as lojas."
+        description="Selecione o tipo do item e depois filtre por nome, código ou ano para consultar o estoque em todas as lojas."
       >
-        <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Digite o nome do produto (ex: Parabrisa Gol)"
-          />
-          <Select value={glassType} onChange={(e) => setGlassType(e.target.value)} placeholder="Todos os itens">
-            {[...new Set(products.map((item) => item.glassType))].map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </Select>
+        <div className="space-y-4">
+          <FormField label="1. Tipo do item" className="md:max-w-xs">
+            <Select value={glassType} onChange={(e) => setGlassType(e.target.value)} placeholder="Selecione o tipo do item">
+              <option value={ALL_GLASS_TYPES}>Todos os itens</option>
+              {[...new Set(products.map((item) => item.glassType))].filter(Boolean).map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="2. Produto">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              disabled={!glassType}
+              placeholder={glassType ? "Digite o nome do produto (ex: Parabrisa Gol)" : "Selecione primeiro o tipo do item"}
+              className="disabled:cursor-not-allowed disabled:bg-slate-50"
+            />
+          </FormField>
         </div>
       </SectionCard>
 
