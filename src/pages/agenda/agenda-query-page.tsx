@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/database";
+import { usePermissions } from "@/hooks/use-permissions";
 import {
   AGENDA_COLUMNS,
   AgendaEntryItem,
@@ -24,6 +25,9 @@ export function AgendaQueryPage() {
   const isAdmin = authUser?.role === "ADMIN";
   const stores = useAgendaStores(isAdmin);
   const navigate = useNavigate();
+  const { readOnly, canEdit } = usePermissions();
+  // Editar abre a tela Anotar, então exige alteração nas duas abas
+  const canEditEntries = !readOnly && canEdit("/app/agenda");
 
   const [text, setText] = useState("");
   const [date, setDate] = useState("");
@@ -49,7 +53,7 @@ export function AgendaQueryPage() {
     if (date) query = query.eq("event_date", date);
     const { data, error: fetchErr } = await query;
     if (fetchErr) setError(`Erro ao consultar agenda: ${fetchErr.message}`);
-    setEntries(data ?? []);
+    setEntries((data ?? []) as unknown as AgendaEntry[]);
     setLoading(false);
   }
 
@@ -122,8 +126,8 @@ export function AgendaQueryPage() {
               <AgendaEntryItem
                 key={entry.id}
                 entry={entry}
-                onEdit={(e) => navigate("/app/agenda", { state: { editEntry: e } })}
-                onDelete={handleDelete}
+                onEdit={canEditEntries ? (e) => navigate("/app/agenda", { state: { editEntry: e } }) : undefined}
+                onDelete={readOnly ? undefined : handleDelete}
                 showStore={isAdmin}
               />
             ))}

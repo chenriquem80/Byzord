@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/database";
+import { usePermissions } from "@/hooks/use-permissions";
+import { ReadOnlyNotice } from "@/components/shared/read-only-notice";
 import {
   AGENDA_COLUMNS,
   AgendaEntryItem,
@@ -26,6 +28,7 @@ export function AgendaPage() {
   const stores = useAgendaStores(isAdmin);
   const location = useLocation();
   const navigate = useNavigate();
+  const { readOnly } = usePermissions();
 
   const [entries, setEntries] = useState<AgendaEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +49,7 @@ export function AgendaPage() {
   // Edição vinda da tela de Consulta
   useEffect(() => {
     const entry = (location.state as { editEntry?: AgendaEntry } | null)?.editEntry;
-    if (entry) {
+    if (entry && !readOnly) {
       startEdit(entry);
       navigate(location.pathname, { replace: true, state: null });
     }
@@ -64,7 +67,7 @@ export function AgendaPage() {
     if (!isAdmin) query = query.eq("store_id", storeId);
     const { data, error: fetchErr } = await query;
     if (fetchErr) setError(`Erro ao carregar agenda: ${fetchErr.message}`);
-    setEntries(data ?? []);
+    setEntries((data ?? []) as unknown as AgendaEntry[]);
     setLoading(false);
   }
 
@@ -126,6 +129,7 @@ export function AgendaPage() {
         action={savedMessage ? <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span> : null}
       >
         <div className="space-y-4">
+          {readOnly && <ReadOnlyNotice />}
           <div className="flex flex-col gap-4 sm:flex-row">
             <FormField label="Data" className="sm:w-56">
               <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
@@ -138,6 +142,7 @@ export function AgendaPage() {
               </FormField>
             )}
           </div>
+          {!readOnly && (<>
           <FormField label="Descrição">
             <Textarea
               value={description}
@@ -155,6 +160,7 @@ export function AgendaPage() {
               <Button variant="outline" onClick={resetForm} disabled={saving}>Cancelar</Button>
             )}
           </div>
+          </>)}
         </div>
       </SectionCard>
 
@@ -169,7 +175,7 @@ export function AgendaPage() {
         ) : (
           <ul className="space-y-3">
             {entries.map((entry) => (
-              <AgendaEntryItem key={entry.id} entry={entry} onEdit={startEdit} onDelete={handleDelete} showStore={isAdmin} />
+              <AgendaEntryItem key={entry.id} entry={entry} onEdit={readOnly ? undefined : startEdit} onDelete={readOnly ? undefined : handleDelete} showStore={isAdmin} />
             ))}
           </ul>
         )}

@@ -10,12 +10,12 @@ export function usePermissions() {
 
   function canEdit(page?: AppPage): boolean {
     if (!user) return false;
-    return canEditPage(user.role, page ?? currentPage);
+    return canEditPage(user, page ?? currentPage);
   }
 
   function canAccess(page?: AppPage): boolean {
     if (!user) return false;
-    return canAccessPage(user.role, page ?? currentPage);
+    return canAccessPage(user, page ?? currentPage);
   }
 
   const readOnly = !canEdit();

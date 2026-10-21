@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/database";
+import { usePermissions } from "@/hooks/use-permissions";
 
 type AttendanceRecord = {
   id: string;
@@ -52,6 +53,7 @@ function formatDateTime(iso: string) {
 }
 
 export function AttendanceQueryPage() {
+  const { readOnly } = usePermissions();
   const [plate, setPlate] = useState("");
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [searched, setSearched] = useState(false);
@@ -338,14 +340,14 @@ export function AttendanceQueryPage() {
                     <Eye className="size-3.5" />
                     Visualizar
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => openEdit(record)}>
+                  {!readOnly && (<Button size="sm" variant="outline" onClick={() => openEdit(record)}>
                     <Pencil className="size-3.5" />
                     Alterar
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
+                  </Button>)}
+                  {!readOnly && (<Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
                     <Trash2 className="size-3.5" />
                     Excluir
-                  </Button>
+                  </Button>)}
                 </div>
               </div>
             ))}
@@ -386,8 +388,8 @@ export function AttendanceQueryPage() {
                   )}
                   <div className="flex flex-row flex-wrap gap-2 md:shrink-0 md:flex-col">
                     <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}><Eye className="size-3.5" />Visualizar</Button>
-                    <Button size="sm" variant="outline" onClick={() => openEdit(record)}><Pencil className="size-3.5" />Alterar</Button>
-                    <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}><Trash2 className="size-3.5" />Excluir</Button>
+                    {!readOnly && (<Button size="sm" variant="outline" onClick={() => openEdit(record)}><Pencil className="size-3.5" />Alterar</Button>)}
+                    {!readOnly && (<Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}><Trash2 className="size-3.5" />Excluir</Button>)}
                   </div>
                 </div>
               ))}
@@ -432,14 +434,14 @@ export function AttendanceQueryPage() {
                         <Eye className="size-3.5" />
                         Visualizar
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => openEdit(record)}>
+                      {!readOnly && (<Button size="sm" variant="outline" onClick={() => openEdit(record)}>
                         <Pencil className="size-3.5" />
                         Alterar
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
+                      </Button>)}
+                      {!readOnly && (<Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
                         <Trash2 className="size-3.5" />
                         Excluir
-                      </Button>
+                      </Button>)}
                     </div>
                   </div>
 

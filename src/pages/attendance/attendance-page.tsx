@@ -8,6 +8,8 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { currentUser, attendanceServices } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
+import { usePermissions } from "@/hooks/use-permissions";
+import { ReadOnlyNotice } from "@/components/shared/read-only-notice";
 import type { ServiceOption } from "@/types/domain";
 
 function formatPlate(value: string) {
@@ -21,6 +23,7 @@ function formatPlate(value: string) {
 }
 
 export function AttendancePage() {
+  const { readOnly } = usePermissions();
   const [plate, setPlate] = useState("");
   const [services, setServices] = useState<ServiceOption[]>(attendanceServices);
   const [selectedServiceId, setSelectedServiceId] = useState("");
@@ -248,7 +251,7 @@ export function AttendancePage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-slate-700">Serviço a executar</p>
-                  {!showAddService && (
+                  {!showAddService && !readOnly && (
                     <button
                       type="button"
                       onClick={() => { setShowAddService(true); setNewServiceTitle(""); setNewServiceDescription(""); setAddServiceError(null); }}
@@ -425,6 +428,8 @@ export function AttendancePage() {
                     Novo atendimento
                   </Button>
                 </div>
+              ) : readOnly ? (
+                <ReadOnlyNotice />
               ) : (
                 <Button
                   size="lg"

@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { formatCurrency, formatMonthYear } from "@/lib/format";
 import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
+import { usePermissions } from "@/hooks/use-permissions";
 import type { Product } from "@/types/domain";
 
 
@@ -76,6 +77,7 @@ interface ContextMenu {
 
 export function StockPage() {
   const navigate = useNavigate();
+  const { readOnly } = usePermissions();
   const [query, setQuery] = useState("");
   const [glassType, setGlassType] = useState("");
   const [selectedCharGroup, setSelectedCharGroup] = useState<string | null>(null);
@@ -171,6 +173,7 @@ export function StockPage() {
 
   function handleContextMenu(e: React.MouseEvent, row: StockRow) {
     e.preventDefault();
+    if (readOnly) return;
     setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, row });
   }
 
@@ -393,9 +396,10 @@ export function StockPage() {
           <div className="text-center">
             <button
               type="button"
-              title="Clique para editar o lado"
+              title={readOnly ? undefined : "Clique para editar o lado"}
+              disabled={readOnly}
               onClick={() => setLadoDialog({ open: true, row: row.original, value: row.original.lado ?? "", saving: false })}
-              className="rounded px-1.5 py-0.5 font-semibold transition hover:bg-slate-100"
+              className="rounded px-1.5 py-0.5 font-semibold transition enabled:hover:bg-slate-100"
             >
               {row.original.lado ?? <span className="text-slate-300">—</span>}
             </button>
@@ -467,7 +471,7 @@ export function StockPage() {
       {
         id: "actions",
         header: "",
-        cell: ({ row }) => (
+        cell: ({ row }) => readOnly ? null : (
           <div className="flex gap-1.5">
             <button
               type="button"

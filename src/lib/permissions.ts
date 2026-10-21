@@ -1,4 +1,4 @@
-import type { UserRole } from "@/types/domain";
+import type { User, UserRole } from "@/types/domain";
 
 export type PagePermission = "write" | "read" | "none";
 
@@ -51,25 +51,32 @@ export const PAGE_LABELS: Record<AppPage, string> = {
 
 export const ALL_PAGES = Object.keys(PAGE_LABELS) as AppPage[];
 
-// Páginas exibidas na dialog de permissões — correspondem ao menu lateral
-export const SIDEBAR_PAGES: AppPage[] = [
-  "/app",
-  "/app/agenda",
-  "/app/agenda-consulta",
-  "/app/atendimento",
-  "/app/atendimento-consulta",
-  "/app/orcamento",
-  "/app/estoque",
-  "/app/entrada",
-  "/app/saida",
-  "/app/pedido",
-  "/app/etiquetagem",
-  "/app/reposicao",
-  "/app/produtos",
-  "/app/transferencia",
-  "/app/relatorios",
-  "/app/usuarios",
+// Páginas exibidas na dialog de permissões — agrupadas como no menu lateral
+export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label: string }[] }[] = [
+  { title: "Inicial", pages: [{ page: "/app", label: "Inicial" }] },
+  { title: "Agenda", pages: [
+    { page: "/app/agenda", label: "Anotar" },
+    { page: "/app/agenda-consulta", label: "Consulta" },
+  ] },
+  { title: "Atendimento", pages: [
+    { page: "/app/atendimento", label: "Novo atendimento" },
+    { page: "/app/atendimento-consulta", label: "Consulta" },
+  ] },
+  { title: "Orçamento", pages: [{ page: "/app/orcamento", label: "Orçamento" }] },
+  { title: "Estoque", pages: [
+    { page: "/app/estoque", label: "Consulta" },
+    { page: "/app/entrada", label: "Entrada" },
+    { page: "/app/saida", label: "Saída" },
+    { page: "/app/transferencia", label: "Transferir" },
+    { page: "/app/produtos", label: "Produtos" },
+    { page: "/app/etiquetagem", label: "Etiquetagem" },
+    { page: "/app/reposicao", label: "Reposição" },
+  ] },
+  { title: "Relatórios", pages: [{ page: "/app/relatorios", label: "Relatórios" }] },
+  { title: "Usuários", pages: [{ page: "/app/usuarios", label: "Usuários" }] },
 ];
+
+export const SIDEBAR_PAGES: AppPage[] = SIDEBAR_PAGE_GROUPS.flatMap((g) => g.pages.map((p) => p.page));
 
 export type RolePermissionMap = Record<AppPage, PagePermission>;
 
@@ -172,44 +179,25 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
   },
 };
 
-const STORAGE_KEY = "byzord_role_permissions";
-
-function loadOverrides(): Partial<Record<UserRole, Partial<RolePermissionMap>>> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
 export function getRolePermissions(role: UserRole): RolePermissionMap {
-  const overrides = loadOverrides();
-  return { ...DEFAULT_PERMISSIONS[role], ...(overrides[role] ?? {}) };
+  return { ...DEFAULT_PERMISSIONS[role] };
 }
 
-export function saveRolePermissions(role: UserRole, map: RolePermissionMap): void {
-  const overrides = loadOverrides();
-  overrides[role] = map;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+// Permissões efetivas do usuário: padrão do perfil + ajustes individuais salvos em profiles.permissions.
+// Administrador sempre tem acesso total (evita perder o acesso ao gerenciamento de usuários).
+export function getUserPermissions(user: Pick<User, "role" | "permissions">): RolePermissionMap {
+  if (user.role === "ADMIN") return getRolePermissions("ADMIN");
+  return { ...getRolePermissions(user.role), ...(user.permissions ?? {}) };
 }
 
-export function getPagePermission(role: UserRole, page: AppPage): PagePermission {
-  return getRolePermissions(role)[page] ?? "none";
+export function getPagePermission(user: Pick<User, "role" | "permissions">, page: AppPage): PagePermission {
+  return getUserPermissions(user)[page] ?? "none";
 }
 
-export function canAccessPage(role: UserRole, page: AppPage): boolean {
-  return getPagePermission(role, page) !== "none";
+export function canAccessPage(user: Pick<User, "role" | "permissions">, page: AppPage): boolean {
+  return getPagePermission(user, page) !== "none";
 }
 
-export function canEditPage(role: UserRole, page: AppPage): boolean {
-  return getPagePermission(role, page) === "write";
+export function canEditPage(user: Pick<User, "role" | "permissions">, page: AppPage): boolean {
+  return getPagePermission(user, page) === "write";
 }
-
-export function getAllowedRoles(page: AppPage): UserRole[] {
-  return (Object.keys(DEFAULT_PERMISSIONS) as UserRole[]).filter(
-    (role) => canAccessPage(role, page),
-  );
-}
-
-export const ROLE_PERMISSIONS = DEFAULT_PERMISSIONS;

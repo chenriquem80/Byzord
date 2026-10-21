@@ -5,13 +5,12 @@ import { getIcon } from "@/components/shared/icon-map";
 import { homeModules } from "@/data/mock-data";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
-import { UserRole } from "@/types/domain";
+import { canAccessPage, type AppPage } from "@/lib/permissions";
 
 interface MenuItem {
   title: string;
   route: string;
   icon: string;
-  allowedRoles?: UserRole[];
   children?: MenuItem[];
 }
 
@@ -30,18 +29,16 @@ const menuItems: MenuItem[] = [
     title: "Atendimento",
     route: "/app/atendimento",
     icon: "ClipboardList",
-    allowedRoles: ["ADMIN", "GERENTE", "ATENDENTE"],
     children: [
       { title: "Novo atendimento", route: "/app/atendimento", icon: "PlusCircle" },
       { title: "Consulta", route: "/app/atendimento-consulta", icon: "Search" },
     ],
   },
-  { title: "Orçamento", route: "/app/orcamento", icon: "Calculator", allowedRoles: ["ADMIN", "GERENTE", "ATENDENTE"] },
+  { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
   {
     title: "Estoque",
     route: "/app/estoque",
     icon: "Package",
-    allowedRoles: ["ADMIN", "GERENTE", "ESTOQUISTA"],
     children: [
       { title: "Consulta", route: "/app/estoque", icon: "Search" },
       { title: "Entrada", route: "/app/entrada", icon: "PackagePlus" },
@@ -52,8 +49,8 @@ const menuItems: MenuItem[] = [
       { title: "Reposição", route: "/app/reposicao", icon: "RefreshCcw" },
     ],
   },
-  { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3", allowedRoles: ["ADMIN", "GERENTE"] },
-  { title: "Usuários", route: "/app/usuarios", icon: "UserCog", allowedRoles: ["ADMIN"] },
+  { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3" },
+  { title: "Usuários", route: "/app/usuarios", icon: "UserCog" },
   { title: "Sair", route: "/login", icon: "LogOut" },
 ];
 
@@ -72,21 +69,11 @@ export function AppShell() {
   const navigate = useNavigate();
 
   const filteredMenuItems = useMemo(() => {
-    return menuItems.filter(item => {
-      if (item.allowedRoles && user && !item.allowedRoles.includes(user.role)) return false;
-      return true;
-    }).map(item => {
-      if (item.children) {
-        return {
-          ...item,
-          children: item.children.filter(child => {
-            if (child.allowedRoles && user && !child.allowedRoles.includes(user.role)) return false;
-            return true;
-          }),
-        };
-      }
-      return item;
-    });
+    // Mostra apenas as páginas liberadas nas permissões do usuário
+    const allowed = (route: string) => route === "/login" || (!!user && canAccessPage(user, route as AppPage));
+    return menuItems
+      .map(item => item.children ? { ...item, children: item.children.filter(child => allowed(child.route)) } : item)
+      .filter(item => item.children ? item.children.length > 0 : allowed(item.route));
   }, [user]);
 
   function toggleMenu(route: string) {

@@ -17,20 +17,22 @@ import {
 import { FormField } from "@/components/ui/form-field";
 import { User, UserRole } from "@/types/domain";
 import { useAuth } from "@/contexts/auth-context";
+import { usePermissions } from "@/hooks/use-permissions";
 import { stores as mockStores } from "@/data/mock-data";
 import {
   SIDEBAR_PAGES,
-  PAGE_LABELS,
+  SIDEBAR_PAGE_GROUPS,
   type AppPage,
   type PagePermission,
   type RolePermissionMap,
   getRolePermissions,
-  saveRolePermissions,
+  getUserPermissions,
 } from "@/lib/permissions";
 
 export function UserManagementPage() {
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === "ADMIN";
+  const { readOnly } = usePermissions();
 
   const [users, setUsers] = useState<User[]>([]);
   const [dbStores, setDbStores] = useState<{ id: string; name: string }[]>([]);
@@ -60,9 +62,11 @@ export function UserManagementPage() {
   const [editRoleValue, setEditRoleValue] = useState<UserRole>("ATENDENTE");
   const [isRoleSaving, setIsRoleSaving] = useState(false);
 
-  // Permissões
-  const [permissionsRole, setPermissionsRole] = useState<UserRole | null>(null);
+  // Permissões individuais do usuário
+  const [permissionsUser, setPermissionsUser] = useState<User | null>(null);
   const [permissionsMap, setPermissionsMap] = useState<RolePermissionMap | null>(null);
+  const [permissionsSaving, setPermissionsSaving] = useState(false);
+  const [permissionsError, setPermissionsError] = useState<string | null>(null);
 
   // Form states
   const [newName, setNewName] = useState("");
@@ -97,6 +101,7 @@ export function UserManagementPage() {
 
   function openCtxMenu(e: React.MouseEvent, user: User) {
     e.preventDefault();
+    if (readOnly) return;
     setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, user });
   }
 
@@ -161,6 +166,7 @@ export function UserManagementPage() {
                 allowCostView: profile?.allow_cost_view ?? false,
                 status: profile?.status ?? "ativo",
                 mustChangePassword: profile?.must_change_password ?? true,
+                permissions: profile?.permissions ?? null,
               };
             }),
           );
@@ -180,6 +186,7 @@ export function UserManagementPage() {
           allowCostView: item.allow_cost_view,
           status: item.status,
           mustChangePassword: item.must_change_password,
+          permissions: item.permissions ?? null,
         })));
       }
     } catch (err) {
@@ -308,19 +315,41 @@ export function UserManagementPage() {
   }
 
   function openPermissions(user: User) {
-    setPermissionsRole(user.role);
-    setPermissionsMap({ ...getRolePermissions(user.role) });
+    setPermissionsUser(user);
+    setPermissionsMap(getUserPermissions(user));
+    setPermissionsError(null);
+  }
+
+  function closePermissions() {
+    setPermissionsUser(null);
+    setPermissionsMap(null);
   }
 
   function handlePermissionChange(page: AppPage, value: PagePermission) {
     setPermissionsMap(prev => prev ? { ...prev, [page]: value } : prev);
   }
 
-  function savePermissions() {
-    if (!permissionsRole || !permissionsMap) return;
-    saveRolePermissions(permissionsRole, permissionsMap);
-    setPermissionsRole(null);
-    setPermissionsMap(null);
+  async function savePermissions() {
+    const client = supabaseAdmin ?? supabase;
+    if (!permissionsUser || !permissionsMap || !client) return;
+    // Grava só o que difere do padrão do perfil; sem diferenças, volta a seguir o perfil
+    const roleDefaults = getRolePermissions(permissionsUser.role);
+    const overrides: Partial<RolePermissionMap> = {};
+    for (const page of SIDEBAR_PAGES) {
+      if (permissionsMap[page] !== roleDefaults[page]) overrides[page] = permissionsMap[page];
+    }
+    setPermissionsSaving(true);
+    setPermissionsError(null);
+    const { data, error } = await client
+      .from("profiles")
+      .update({ permissions: Object.keys(overrides).length > 0 ? overrides : null })
+      .eq("id", permissionsUser.id)
+      .select("id");
+    setPermissionsSaving(false);
+    if (error) { setPermissionsError(`Erro ao salvar permissões: ${error.message}`); return; }
+    if (!data || data.length === 0) { setPermissionsError("Não foi possível salvar: sem permissão para alterar este perfil no banco."); return; }
+    closePermissions();
+    fetchUsers();
   }
 
   function openEditRole(user: User) {
@@ -350,7 +379,7 @@ export function UserManagementPage() {
   }
 
   const PERMISSION_OPTIONS: { value: PagePermission; label: string; color: string }[] = [
-    { value: "write", label: "✏️ Edição",      color: "text-emerald-700 bg-emerald-50" },
+    { value: "write", label: "✏️ Alteração",   color: "text-emerald-700 bg-emerald-50" },
     { value: "read",  label: "👁️ Consulta",    color: "text-blue-700 bg-blue-50" },
     { value: "none",  label: "🚫 Sem acesso",  color: "text-slate-500 bg-slate-100" },
   ];
@@ -399,7 +428,7 @@ export function UserManagementPage() {
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-2">
+                  <div className={readOnly ? "hidden" : "flex gap-2"}>
                     <button type="button" onClick={() => openEdit(u)} title="Editar usuário"
                       className="flex size-9 items-center justify-center rounded-lg border border-border text-slate-500 hover:border-primary hover:bg-primary/5 hover:text-primary transition-colors">
                       <Pencil className="size-4" />
@@ -435,7 +464,7 @@ export function UserManagementPage() {
       <SectionCard
         title="Gerenciamento de Usuários"
         description="Controle quem acessa o sistema, defina perfis e gerencie status."
-        action={
+        action={readOnly ? null :
           <Button onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="mr-2 size-4" />
             Novo Usuário
@@ -474,46 +503,75 @@ export function UserManagementPage() {
         </div>
       </SectionCard>
 
-      {/* Modal: Editar Permissões */}
-      <Dialog open={!!permissionsRole} onOpenChange={() => { setPermissionsRole(null); setPermissionsMap(null); }}>
-        <DialogContent className="max-w-lg">
+      {/* Modal: Editar Permissões do usuário */}
+      <Dialog open={!!permissionsUser} onOpenChange={closePermissions}>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Permissões — {permissionsRole}</DialogTitle>
+            <DialogTitle>Permissões — {permissionsUser?.name}</DialogTitle>
             <DialogDescription>
-              Defina o nível de acesso para cada página deste perfil.
+              Defina, para cada aba, se o usuário tem acesso para alteração, apenas consulta ou nenhum acesso.
+              Perfil base: <strong>{permissionsUser?.role}</strong>.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-2 space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-            {SIDEBAR_PAGES.map((page) => (
-              <div key={page} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-2">
-                <span className="text-sm font-medium text-slate-700">{PAGE_LABELS[page]}</span>
-                <div className="flex gap-1">
-                  {PERMISSION_OPTIONS.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => handlePermissionChange(page, opt.value)}
-                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
-                        permissionsMap?.[page] === opt.value
-                          ? opt.color + " ring-2 ring-offset-1 ring-current"
-                          : "bg-slate-50 text-slate-400 hover:bg-slate-100"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+          {permissionsUser?.role === "ADMIN" ? (
+            <p className="mt-2 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+              Administradores sempre têm acesso total a todas as abas.
+            </p>
+          ) : (
+            <div className="mt-2 max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+              {SIDEBAR_PAGE_GROUPS.map((group) => (
+                <div key={group.title}>
+                  {group.pages.length > 1 && (
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{group.title}</p>
+                  )}
+                  <div className="space-y-2">
+                    {group.pages.map(({ page, label }) => (
+                      <div key={page} className="flex flex-col gap-2 rounded-xl border border-slate-100 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="text-sm font-medium text-slate-700">{label}</span>
+                        <div className="flex gap-1">
+                          {PERMISSION_OPTIONS.map(opt => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => handlePermissionChange(page, opt.value)}
+                              className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                                permissionsMap?.[page] === opt.value
+                                  ? opt.color + " ring-2 ring-offset-1 ring-current"
+                                  : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          <div className="mt-4 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => { setPermissionsRole(null); setPermissionsMap(null); }}>
-              Cancelar
-            </Button>
-            <Button onClick={savePermissions}>
-              Salvar permissões
-            </Button>
+          {permissionsError && <p className="mt-3 text-sm text-danger">{permissionsError}</p>}
+
+          <div className="mt-4 flex flex-wrap justify-between gap-3">
+            {permissionsUser?.role !== "ADMIN" ? (
+              <Button
+                variant="ghost"
+                onClick={() => permissionsUser && setPermissionsMap(getRolePermissions(permissionsUser.role))}
+              >
+                Restaurar padrão do perfil
+              </Button>
+            ) : <span />}
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={closePermissions}>Cancelar</Button>
+              {permissionsUser?.role !== "ADMIN" && (
+                <Button onClick={savePermissions} disabled={permissionsSaving}>
+                  {permissionsSaving ? "Salvando..." : "Salvar permissões"}
+                </Button>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

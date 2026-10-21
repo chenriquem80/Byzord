@@ -1,13 +1,13 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
-import { UserRole } from "@/types/domain";
+import { SIDEBAR_PAGES, canAccessPage, type AppPage } from "@/lib/permissions";
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  allowedRoles?: UserRole[];
+  page?: AppPage;
 }
 
-export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
+export function AuthGuard({ children, page }: AuthGuardProps) {
   const { session, user, loading } = useAuth();
   const location = useLocation();
 
@@ -27,7 +27,12 @@ export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     return <Navigate to="/change-password" replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (page && user && !canAccessPage(user, page)) {
+    // Sem acesso à página inicial: leva para a primeira página liberada
+    if (page === "/app") {
+      const firstAllowed = SIDEBAR_PAGES.find((p) => p !== "/app" && canAccessPage(user, p));
+      if (firstAllowed) return <Navigate to={firstAllowed} replace />;
+    }
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
         <h1 className="text-4xl font-bold text-slate-900">Acesso negado</h1>

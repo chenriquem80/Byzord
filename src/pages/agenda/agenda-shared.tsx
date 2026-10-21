@@ -15,6 +15,7 @@ export type AgendaEntry = {
   stores: { name: string } | null;
 };
 
+// Supabase tipa a junção stores(name) como array, mas a relação é N:1 e retorna objeto
 export const AGENDA_COLUMNS = "id, event_date, description, user_name, created_at, store_id, stores (name)";
 
 export type AgendaStore = { id: string; name: string };
@@ -56,8 +57,8 @@ export function AgendaEntryItem({
   showStore = false,
 }: {
   entry: AgendaEntry;
-  onEdit: (entry: AgendaEntry) => void;
-  onDelete: (entry: AgendaEntry) => void;
+  onEdit?: (entry: AgendaEntry) => void;
+  onDelete?: (entry: AgendaEntry) => void;
   showStore?: boolean;
 }) {
   return (
@@ -72,12 +73,16 @@ export function AgendaEntryItem({
           )}
         </div>
         <div className="flex shrink-0 gap-1">
-          <Button size="sm" variant="ghost" onClick={() => onEdit(entry)} aria-label="Editar">
-            <Pencil className="size-4" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => onDelete(entry)} aria-label="Excluir">
-            <Trash2 className="size-4 text-danger" />
-          </Button>
+          {onEdit && (
+            <Button size="sm" variant="ghost" onClick={() => onEdit(entry)} aria-label="Editar">
+              <Pencil className="size-4" />
+            </Button>
+          )}
+          {onDelete && (
+            <Button size="sm" variant="ghost" onClick={() => onDelete(entry)} aria-label="Excluir">
+              <Trash2 className="size-4 text-danger" />
+            </Button>
+          )}
         </div>
       </div>
       <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{entry.description}</p>

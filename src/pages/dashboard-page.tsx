@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getIcon } from "@/components/shared/icon-map";
 import { supabase } from "@/lib/database";
+import { useAuth } from "@/contexts/auth-context";
+import { canAccessPage, type AppPage } from "@/lib/permissions";
 
 const mobileNavItems = [
   { title: "Novo Atendimento", route: "/app/atendimento", icon: "ClipboardList", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
@@ -51,6 +53,7 @@ function isTodayLocal(dateStr: string): boolean {
 }
 
 export function DashboardPage() {
+  const { user } = useAuth();
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(true);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
@@ -116,7 +119,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       {/* Atalhos de navegação — apenas mobile */}
       <div className="grid w-full grid-cols-2 gap-2 lg:hidden">
-        {mobileNavItems.map((item) => {
+        {mobileNavItems.filter((item) => user && canAccessPage(user, item.route as AppPage)).map((item) => {
           const Icon = getIcon(item.icon);
           return (
             <Link

@@ -34,6 +34,8 @@ export interface User {
   storeName: string;
   allowCostView: boolean;
   mustChangePassword?: boolean;
+  // Ajustes individuais de acesso por página (sobrepõem o padrão do perfil)
+  permissions?: Partial<Record<string, "write" | "read" | "none">> | null;
 }
 
 export interface VehicleCompatibility {

@@ -73,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           storeName: data.stores?.name ?? "Sem loja",
           allowCostView: data.allow_cost_view,
           mustChangePassword: data.must_change_password,
+          permissions: data.permissions ?? null,
         });
       }
     } catch (error) {

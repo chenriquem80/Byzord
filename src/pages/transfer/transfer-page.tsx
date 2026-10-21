@@ -8,12 +8,15 @@ import { Select } from "@/components/ui/select";
 import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/database";
+import { usePermissions } from "@/hooks/use-permissions";
+import { ReadOnlyNotice } from "@/components/shared/read-only-notice";
 import type { Product } from "@/types/domain";
 
 type Manufacturer = Product["manufacturers"][0];
 
 export function TransferPage() {
   const { user: authUser } = useAuth();
+  const { readOnly } = usePermissions();
   const [query, setQuery] = useState("");
   const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -424,10 +427,14 @@ export function TransferPage() {
                 <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</p>
               )}
 
-              <Button size="lg" className="w-full md:w-auto" onClick={handleTransfer} disabled={saving}>
-                <ArrowLeftRight className="size-4" />
-                {saving ? "Transferindo..." : "Confirmar Transferência"}
-              </Button>
+              {readOnly ? (
+                <ReadOnlyNotice />
+              ) : (
+                <Button size="lg" className="w-full md:w-auto" onClick={handleTransfer} disabled={saving}>
+                  <ArrowLeftRight className="size-4" />
+                  {saving ? "Transferindo..." : "Confirmar Transferência"}
+                </Button>
+              )}
             </>
           )}
         </div>
