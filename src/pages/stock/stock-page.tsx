@@ -13,6 +13,8 @@ import { formatCurrency, formatMonthYear } from "@/lib/format";
 import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useAuth } from "@/contexts/auth-context";
+import { canWriteStore } from "@/lib/permissions";
 import type { Product } from "@/types/domain";
 
 
@@ -82,6 +84,7 @@ const ALL_GLASS_TYPES = "__all__";
 export function StockPage() {
   const navigate = useNavigate();
   const { readOnly } = usePermissions();
+  const { user: authUser } = useAuth();
   const [query, setQuery] = useState("");
   const [glassType, setGlassType] = useState("");
   const [selectedCharGroup, setSelectedCharGroup] = useState<string | null>(null);
@@ -139,8 +142,14 @@ export function StockPage() {
     open: false, row: null, deleting: false,
   });
 
+  // Excluir o produto apaga o estoque de todas as lojas: não-administrador só exclui
+  // quando não há saldo em loja que não seja a dele
+  const deleteBlocked = !!deleteDialog.row && deleteDialog.row.product.manufacturers.some((m) =>
+    m.inventories.some((i) => i.stock > 0 && !canWriteStore(authUser, i.storeId)),
+  );
+
   async function handleDeleteProduct() {
-    if (!supabase || !deleteDialog.row) return;
+    if (!supabase || !deleteDialog.row || deleteBlocked) return;
     setDeleteDialog((d) => ({ ...d, deleting: true }));
     const productId = deleteDialog.row.product.id;
     const mfIds = deleteDialog.row.product.manufacturers.map((m) => m.id);
@@ -751,6 +760,11 @@ export function StockPage() {
               <strong>{deleteDialog.row?.productName}</strong> será excluído permanentemente, incluindo todos os registros de estoque e fabricantes. Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
+          {deleteBlocked && (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Este produto tem saldo em outra loja. Apenas um administrador pode excluí-lo.
+            </p>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" size="sm" onClick={() => setDeleteDialog((d) => ({ ...d, open: false }))}>
               <X className="size-3.5" /> Cancelar
@@ -759,7 +773,7 @@ export function StockPage() {
               size="sm"
               className="bg-red-600 hover:bg-red-700 text-white"
               onClick={handleDeleteProduct}
-              disabled={deleteDialog.deleting}
+              disabled={deleteDialog.deleting || deleteBlocked}
             >
               <Trash2 className="size-3.5" /> {deleteDialog.deleting ? "Excluindo..." : "Excluir"}
             </Button>

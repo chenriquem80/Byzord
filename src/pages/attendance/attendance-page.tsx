@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { currentUser, attendanceServices } from "@/data/mock-data";
+import { attendanceServices } from "@/data/mock-data";
+import { useAuth } from "@/contexts/auth-context";
+import { canWriteStore } from "@/lib/permissions";
 import { supabase } from "@/lib/database";
 import { usePermissions } from "@/hooks/use-permissions";
 import { ReadOnlyNotice } from "@/components/shared/read-only-notice";
@@ -24,6 +26,10 @@ function formatPlate(value: string) {
 
 export function AttendancePage() {
   const { readOnly } = usePermissions();
+  const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === "ADMIN";
+  // Não-administrador registra atendimentos e serviços apenas na própria loja
+  const ownStoreId = !isAdmin ? authUser?.storeId ?? "" : "";
   const [plate, setPlate] = useState("");
   const [services, setServices] = useState<ServiceOption[]>(attendanceServices);
   const [selectedServiceId, setSelectedServiceId] = useState("");
@@ -75,7 +81,9 @@ export function AttendancePage() {
       }
       if (stData && stData.length > 0) {
         setDbStores(stData);
-        setSelectedAttendanceStoreId(stData[0].id);
+        const ownInList = ownStoreId && stData.some((st: any) => st.id === ownStoreId);
+        setSelectedAttendanceStoreId(ownInList ? ownStoreId : stData[0].id);
+        if (ownInList) setNewServiceStoreId(ownStoreId);
       }
     }
     load();
@@ -86,6 +94,9 @@ export function AttendancePage() {
     setSaveError(null);
     try {
       if (supabase) {
+        if (!canWriteStore(authUser, selectedAttendanceStoreId)) {
+          throw new Error("Você só pode registrar atendimentos na loja em que está cadastrado.");
+        }
         const service = services.find((s) => s.id === selectedServiceId);
         const store = dbStores.find((s) => s.id === selectedAttendanceStoreId);
 
@@ -178,7 +189,7 @@ export function AttendancePage() {
       setSelectedServiceId(id);
       setNewServiceTitle("");
       setNewServiceDescription("");
-      setNewServiceStoreId("");
+      setNewServiceStoreId(ownStoreId);
       setShowAddService(false);
     } catch (err) {
       console.error("Erro ao adicionar serviço:", err);
@@ -207,7 +218,7 @@ export function AttendancePage() {
               <div className="flex flex-col gap-3 rounded-3xl bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
                 <Badge className="w-fit gap-2 bg-white text-primary">
                   <ShieldCheck className="size-4" />
-                  {currentUser.name}
+                  {authUser?.name ?? ""}
                 </Badge>
                 <Badge className="w-fit gap-2 bg-white text-slate-700">
                   <CalendarClock className="size-4" />
@@ -221,6 +232,7 @@ export function AttendancePage() {
                 <Select
                   value={selectedAttendanceStoreId}
                   onChange={(e) => setSelectedAttendanceStoreId(e.target.value)}
+                  disabled={!isAdmin}
                 >
                   {dbStores.length > 0 ? (
                     dbStores.map((store) => (
@@ -285,8 +297,9 @@ export function AttendancePage() {
                     <Select
                       value={newServiceStoreId}
                       onChange={(e) => setNewServiceStoreId(e.target.value)}
+                      disabled={!isAdmin}
                     >
-                      <option value="">Todas as lojas</option>
+                      {isAdmin && <option value="">Todas as lojas</option>}
                       {dbStores.map((store) => (
                         <option key={store.id} value={store.id}>{store.name}</option>
                       ))}

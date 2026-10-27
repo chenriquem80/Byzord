@@ -9,6 +9,7 @@ import { products as mockProducts, stores as mockStores } from "@/data/mock-data
 import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/database";
 import { usePermissions } from "@/hooks/use-permissions";
+import { canWriteStore } from "@/lib/permissions";
 import { ReadOnlyNotice } from "@/components/shared/read-only-notice";
 import type { Product } from "@/types/domain";
 
@@ -17,6 +18,7 @@ type Manufacturer = Product["manufacturers"][0];
 export function TransferPage() {
   const { user: authUser } = useAuth();
   const { readOnly } = usePermissions();
+  const isAdmin = authUser?.role === "ADMIN";
   const [query, setQuery] = useState("");
   const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -48,9 +50,11 @@ export function TransferPage() {
     if (stores.length > 0) {
       setAllStores(stores);
       // Usa a loja do funcionário logado como origem; senão primeira da lista
+      // Não-administrador: origem sempre a própria loja
       setFromStoreId((prev) => {
-        if (prev) return prev;
         const userStore = authUser?.storeId && stores.some((s: any) => s.id === authUser.storeId);
+        if (userStore && authUser?.role !== "ADMIN") return authUser!.storeId!;
+        if (prev && stores.some((s: any) => s.id === prev)) return prev;
         return userStore ? authUser!.storeId! : stores[0].id;
       });
     }
@@ -171,6 +175,11 @@ export function TransferPage() {
     const qty = Number(quantity);
     if (!selectedProduct || !selectedManufacturer) {
       setErrorMessage("Selecione um produto.");
+      return;
+    }
+    // Só transfere a partir da própria loja (administrador: qualquer origem)
+    if (!canWriteStore(authUser, fromStoreId)) {
+      setErrorMessage("Você só pode transferir itens a partir da loja em que está cadastrado.");
       return;
     }
     if (!qty || qty <= 0) {
@@ -383,7 +392,7 @@ export function TransferPage() {
               {/* Configuração da transferência */}
               <div className="grid gap-4 md:grid-cols-3">
                 <FormField label="Origem">
-                  <Select value={fromStoreId} onChange={(e) => setFromStoreId(e.target.value)}>
+                  <Select value={fromStoreId} onChange={(e) => setFromStoreId(e.target.value)} disabled={!isAdmin}>
                     {allStores.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}

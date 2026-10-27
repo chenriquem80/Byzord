@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
+import { canWriteStore } from "@/lib/permissions";
 import { useForm } from "react-hook-form";
 import type { FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -111,6 +112,9 @@ function buildFormValues(p: Product, mfId?: string | null, storeId?: string | nu
 export function ProductsPage() {
   const { readOnly } = usePermissions();
   const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === "ADMIN";
+  // Loja do usuário (não-administrador edita estoque apenas dela)
+  const ownStoreId = !isAdmin ? authUser?.storeId ?? null : null;
 
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("id");
@@ -185,8 +189,9 @@ export function ProductsPage() {
       }
       if (storesData && storesData.length > 0) {
         setDbStores(storesData);
-        setSelectedStoreId((prev) => prev || storesData[0].id);
-        setNewProductStoreId((prev) => prev || storesData[0].id);
+        const ownInList = ownStoreId && storesData.some((st: any) => st.id === ownStoreId) ? ownStoreId : null;
+        setSelectedStoreId((prev) => ownInList ?? (prev || storesData[0].id));
+        setNewProductStoreId((prev) => ownInList ?? (prev || storesData[0].id));
       }
       if (vehiclesData) {
         const dbAutomakers = vehiclesData.map((r: any) => r.automaker).filter(Boolean);
@@ -297,9 +302,12 @@ export function ProductsPage() {
         );
 
         // Inicializa a loja selecionada com a primeira loja disponível
-        const firstInv = product.manufacturers.find((m) => m.id === manufacturerId)?.inventories[0]
-          ?? product.manufacturers[0]?.inventories[0];
-        if (firstInv?.storeId) setSelectedStoreId(firstInv.storeId);
+        const mfInvs = product.manufacturers.find((m) => m.id === manufacturerId)?.inventories
+          ?? product.manufacturers[0]?.inventories ?? [];
+        // Não-administrador abre já no estoque da própria loja
+        const firstInv = ownStoreId ? mfInvs.find((i) => i.storeId === ownStoreId) : mfInvs[0];
+        if (ownStoreId) setSelectedStoreId(ownStoreId);
+        else if (firstInv?.storeId) setSelectedStoreId(firstInv.storeId);
         setInvLocation(firstInv?.location ?? "");
         setInvQuantity(Math.max(0, firstInv?.stock ?? 0));
         setInvMinimum(Math.max(0, firstInv?.minQuantity ?? 0));
@@ -543,7 +551,7 @@ export function ProductsPage() {
 
           // Atualiza estoque da loja selecionada usando manufacturer_id + store_id como filtro
           const storeId = selectedStoreId || dbStores[0]?.id;
-          if (storeId && activeMfId) {
+          if (storeId && activeMfId && canWriteStore(authUser, storeId)) {
             // Tenta UPDATE; se não afetar nenhuma linha, faz INSERT
             const { data: updated, error: upErr } = await supabase
               .from("product_store_inventory")
@@ -590,7 +598,8 @@ export function ProductsPage() {
 
           const productDbId = inserted.id;
           const activeStores = dbStores.length > 0 ? dbStores : stores;
-          const targetStoreId = newProductStoreId || activeStores[0]?.id;
+          // Estoque inicial vai para a loja do usuário (administrador escolhe)
+          const targetStoreId = ownStoreId ?? (newProductStoreId || activeStores[0]?.id);
 
           try {
             const { data: mf, error: mfError } = await supabase
@@ -873,11 +882,14 @@ export function ProductsPage() {
               // Exibe apenas o estoque do fabricante ativo para consistência com o formulário
               const inv = activeMf?.inventories.find((i) => i.storeId === store.id);
               const isSelected = selectedStoreId === store.id;
+              const canEditStore = canWriteStore(authUser, store.id);
 
               return (
                 <button
                   type="button"
                   key={store.id}
+                  disabled={!canEditStore}
+                  title={canEditStore ? undefined : "Somente consulta — estoque de outra loja"}
                   onClick={() => {
                     setSelectedStoreId(store.id);
                     setInvLocation(inv?.location ?? "");
@@ -897,6 +909,11 @@ export function ProductsPage() {
                     {isSelected && (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                         Editando
+                      </span>
+                    )}
+                    {!canEditStore && (
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500">
+                        Somente consulta
                       </span>
                     )}
                   </div>
@@ -930,8 +947,9 @@ export function ProductsPage() {
           <div className="mb-4">
             <FormField label="Adicionar estoque em">
               <Select
-                value={newProductStoreId}
+                value={ownStoreId ?? newProductStoreId}
                 onChange={(e) => setNewProductStoreId(e.target.value)}
+                disabled={!isAdmin}
               >
                 {(dbStores.length > 0 ? dbStores : stores).map((store: any) => (
                   <option key={store.id} value={store.id}>{store.name}</option>

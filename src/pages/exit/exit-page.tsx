@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePermissions } from "@/hooks/use-permissions";
+import { canWriteStore } from "@/lib/permissions";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, X } from "lucide-react";
@@ -42,6 +43,7 @@ type SaleFormValues = {
 export function ExitPage() {
   const { readOnly } = usePermissions();
   const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === "ADMIN";
   const form = useForm<SaleFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(saleSchema) as any,
@@ -228,6 +230,10 @@ export function ExitPage() {
   async function onSubmit(values: SaleFormValues) {
     if (!supabase || !selectedInventory) return;
     setSaveError(null);
+    if (!canWriteStore(authUser, values.storeId)) {
+      setSaveError("Você só pode registrar saídas na loja em que está cadastrado.");
+      return;
+    }
     const qty = Number(values.quantity);
     const newStock = (selectedInventory.stock ?? 0) - qty;
     if (newStock < 0) {
@@ -482,9 +488,11 @@ export function ExitPage() {
           {/* Linha 1: Loja | Produto */}
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             <FormField label="Loja" error={form.formState.errors.storeId?.message}>
+              {/* Saída só na loja do usuário; administrador escolhe qualquer loja */}
               <Select
                 value={form.watch("storeId")}
                 onChange={(e) => form.setValue("storeId", e.target.value)}
+                disabled={!isAdmin}
               >
                 {allStores.map((item) => (
                   <option key={item.id} value={item.id}>{item.name}</option>

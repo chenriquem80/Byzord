@@ -9,10 +9,13 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/database";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useAuth } from "@/contexts/auth-context";
+import { canWriteStore } from "@/lib/permissions";
 
 type AttendanceRecord = {
   id: string;
   plate: string;
+  store_id: string | null;
   store_name: string | null;
   service_title: string | null;
   billing_type: string | null;
@@ -54,6 +57,9 @@ function formatDateTime(iso: string) {
 
 export function AttendanceQueryPage() {
   const { readOnly } = usePermissions();
+  const { user: authUser } = useAuth();
+  // Consulta de todas as lojas; alteração/exclusão só da própria loja (administrador: todas)
+  const canChange = (record: AttendanceRecord) => !readOnly && canWriteStore(authUser, record.store_id);
   const [plate, setPlate] = useState("");
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [searched, setSearched] = useState(false);
@@ -151,7 +157,7 @@ export function AttendanceQueryPage() {
   }
 
   async function handleDelete() {
-    if (!deleteRecord || !supabase) return;
+    if (!deleteRecord || !supabase || !canChange(deleteRecord)) return;
     setDeleting(true);
     const { error, count } = await supabase
       .from("pending_attendances")
@@ -206,7 +212,7 @@ export function AttendanceQueryPage() {
   }
 
   async function handleSaveEdit() {
-    if (!editRecord || !supabase) return;
+    if (!editRecord || !supabase || !canChange(editRecord)) return;
     setSaving(true);
     setSaveError(null);
     const photoUrl = newPhotoUrl ?? editRecord.vehicle_photo_url;
@@ -340,11 +346,11 @@ export function AttendanceQueryPage() {
                     <Eye className="size-3.5" />
                     Visualizar
                   </Button>
-                  {!readOnly && (<Button size="sm" variant="outline" onClick={() => openEdit(record)}>
+                  {canChange(record) && (<Button size="sm" variant="outline" onClick={() => openEdit(record)}>
                     <Pencil className="size-3.5" />
                     Alterar
                   </Button>)}
-                  {!readOnly && (<Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
+                  {canChange(record) && (<Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
                     <Trash2 className="size-3.5" />
                     Excluir
                   </Button>)}
@@ -388,8 +394,8 @@ export function AttendanceQueryPage() {
                   )}
                   <div className="flex flex-row flex-wrap gap-2 md:shrink-0 md:flex-col">
                     <Button size="sm" variant="outline" onClick={() => setViewRecord(record)}><Eye className="size-3.5" />Visualizar</Button>
-                    {!readOnly && (<Button size="sm" variant="outline" onClick={() => openEdit(record)}><Pencil className="size-3.5" />Alterar</Button>)}
-                    {!readOnly && (<Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}><Trash2 className="size-3.5" />Excluir</Button>)}
+                    {canChange(record) && (<Button size="sm" variant="outline" onClick={() => openEdit(record)}><Pencil className="size-3.5" />Alterar</Button>)}
+                    {canChange(record) && (<Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}><Trash2 className="size-3.5" />Excluir</Button>)}
                   </div>
                 </div>
               ))}
@@ -434,11 +440,11 @@ export function AttendanceQueryPage() {
                         <Eye className="size-3.5" />
                         Visualizar
                       </Button>
-                      {!readOnly && (<Button size="sm" variant="outline" onClick={() => openEdit(record)}>
+                      {canChange(record) && (<Button size="sm" variant="outline" onClick={() => openEdit(record)}>
                         <Pencil className="size-3.5" />
                         Alterar
                       </Button>)}
-                      {!readOnly && (<Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
+                      {canChange(record) && (<Button size="sm" variant="outline" className="text-rose-600 hover:border-rose-300 hover:text-rose-700" onClick={() => setDeleteRecord(record)}>
                         <Trash2 className="size-3.5" />
                         Excluir
                       </Button>)}

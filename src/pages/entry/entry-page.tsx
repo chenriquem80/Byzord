@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
+import { canWriteStore } from "@/lib/permissions";
 import { Camera, Check, Plus, X } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { LabelCard } from "@/components/shared/label-card";
@@ -33,6 +34,7 @@ type EntryItem = {
 export function EntryPage() {
   const { readOnly } = usePermissions();
   const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === "ADMIN";
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [stores, setStores] = useState(mockStores);
@@ -314,7 +316,7 @@ export function EntryPage() {
         if (!isDifferentMf) {
           for (const store of stores) {
             const qty = Number(item.quantities[store.id] ?? 0);
-            if (qty <= 0) continue;
+            if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
             await upsertInventory(item.mf.id, store.id, qty);
           }
           await supabase.from("product_manufacturers")
@@ -326,7 +328,7 @@ export function EntryPage() {
           if (existingMf) {
             for (const store of stores) {
               const qty = Number(item.quantities[store.id] ?? 0);
-              if (qty <= 0) continue;
+              if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
               await upsertInventory(existingMf.id, store.id, qty);
             }
             await supabase.from("product_manufacturers")
@@ -349,7 +351,7 @@ export function EntryPage() {
 
             for (const store of stores) {
               const qty = Number(item.quantities[store.id] ?? 0);
-              if (qty <= 0) continue;
+              if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
               await upsertInventory(newMfData.id, store.id, qty);
             }
           }
@@ -360,7 +362,7 @@ export function EntryPage() {
         const mfName = selectedManufacturer || item.mf.manufacturer;
         for (const store of stores) {
           const qty = Number(item.quantities[store.id] ?? 0);
-          if (qty <= 0) continue;
+          if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
           const noteParts = [
             ladoValue ? `Lado: ${ladoValue}` : null,
             specialCond ? `Condição: ${specialCond}` : null,
@@ -574,8 +576,9 @@ export function EntryPage() {
 
                     {/* Linha 2: Loja | Condição especial | Número da NF */}
                     <FormField label="Loja">
-                      <Select value={selectedStoreId} onChange={(e) => setSelectedStoreId(e.target.value)}>
-                        <option value="all">Todas as lojas</option>
+                      {/* Entrada só na loja do usuário; administrador escolhe qualquer loja */}
+                      <Select value={selectedStoreId} onChange={(e) => setSelectedStoreId(e.target.value)} disabled={!isAdmin}>
+                        {isAdmin && <option value="all">Todas as lojas</option>}
                         {stores.map((s: any) => (
                           <option key={s.id} value={s.id}>{s.name}</option>
                         ))}

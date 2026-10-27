@@ -217,3 +217,11 @@ export function canAccessPage(user: Pick<User, "role" | "permissions">, page: Ap
 export function canEditPage(user: Pick<User, "role" | "permissions">, page: AppPage): boolean {
   return getPagePermission(user, page) === "write";
 }
+
+// Escrita por unidade: cada usuário altera apenas os dados da loja em que está cadastrado
+// (consulta de todas as lojas é livre). Administrador altera qualquer loja.
+export function canWriteStore(user: Pick<User, "role" | "storeId"> | null | undefined, storeId: string | null | undefined): boolean {
+  if (!user) return false;
+  if (user.role === "ADMIN") return true;
+  return !!storeId && user.storeId === storeId;
+}
