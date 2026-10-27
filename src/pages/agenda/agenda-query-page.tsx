@@ -15,6 +15,7 @@ import {
   AgendaEntryItem,
   NoStoreNotice,
   formatIsoDate,
+  todayIso,
   useAgendaStores,
   type AgendaEntry,
 } from "./agenda-shared";
@@ -30,7 +31,9 @@ export function AgendaQueryPage() {
   const canEditEntries = !readOnly && canEdit("/app/agenda");
 
   const [text, setText] = useState("");
-  const [date, setDate] = useState("");
+  // Abre sempre com a agenda do dia
+  const [date, setDate] = useState(todayIso());
+  const [searchedDate, setSearchedDate] = useState(todayIso());
   const [storeFilter, setStoreFilter] = useState(""); // "" = todas (apenas administrador)
   const [entries, setEntries] = useState<AgendaEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,6 +57,7 @@ export function AgendaQueryPage() {
     const { data, error: fetchErr } = await query;
     if (fetchErr) setError(`Erro ao consultar agenda: ${fetchErr.message}`);
     setEntries((data ?? []) as unknown as AgendaEntry[]);
+    setSearchedDate(date);
     setLoading(false);
   }
 
@@ -61,7 +65,7 @@ export function AgendaQueryPage() {
 
   function handleClear() {
     setText("");
-    setDate("");
+    setDate(todayIso());
     setStoreFilter("");
   }
 
@@ -71,6 +75,39 @@ export function AgendaQueryPage() {
     const { error: delErr } = await supabase.from("agenda").delete().eq("id", entry.id);
     if (delErr) { setError(`Erro ao excluir: ${delErr.message}`); return; }
     setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+  }
+
+  // Administrador vendo todas as unidades: resultados separados por unidade
+  const groupByStore = isAdmin && !storeFilter;
+  const storeGroups: { id: string; name: string; items: AgendaEntry[] }[] = [];
+  if (groupByStore) {
+    // Todas as unidades aparecem (mesmo sem registros); depois, unidades só presentes nos registros
+    for (const store of stores) storeGroups.push({ id: store.id, name: store.name, items: [] });
+    for (const entry of entries) {
+      const id = entry.store_id ?? "_none";
+      let group = storeGroups.find((g) => g.id === id);
+      if (!group) {
+        group = { id, name: entry.stores?.name ?? "Sem unidade", items: [] };
+        storeGroups.push(group);
+      }
+      group.items.push(entry);
+    }
+  }
+
+  function renderEntries(list: AgendaEntry[], showStore: boolean) {
+    return (
+      <ul className="space-y-3">
+        {list.map((entry) => (
+          <AgendaEntryItem
+            key={entry.id}
+            entry={entry}
+            onEdit={canEditEntries ? (e) => navigate("/app/agenda", { state: { editEntry: e } }) : undefined}
+            onDelete={readOnly ? undefined : handleDelete}
+            showStore={showStore}
+          />
+        ))}
+      </ul>
+    );
   }
 
   if (!storeId && !isAdmin) {
@@ -113,25 +150,31 @@ export function AgendaQueryPage() {
       </SectionCard>
 
       <SectionCard
-        title="Resultados"
+        title={searchedDate ? `Agenda de ${formatIsoDate(searchedDate)}` : "Resultados"}
         description={`${entries.length} registro${entries.length !== 1 ? "s" : ""} encontrado${entries.length !== 1 ? "s" : ""}.`}
       >
         {loading ? (
           <p className="text-sm text-slate-500">Buscando...</p>
+        ) : groupByStore ? (
+          <div className="space-y-6">
+            {storeGroups.map((group) => (
+              <section key={group.id} className="rounded-2xl border border-border bg-slate-50/60 p-4">
+                <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
+                  {group.name}
+                  <span className="text-sm font-normal text-slate-500">
+                    — {group.items.length} registro{group.items.length !== 1 ? "s" : ""}
+                  </span>
+                </h3>
+                {group.items.length === 0
+                  ? <p className="text-sm text-slate-500">Nenhum registro.</p>
+                  : renderEntries(group.items, false)}
+              </section>
+            ))}
+          </div>
         ) : entries.length === 0 ? (
           <p className="text-sm text-slate-500">Nenhum registro encontrado.</p>
         ) : (
-          <ul className="space-y-3">
-            {entries.map((entry) => (
-              <AgendaEntryItem
-                key={entry.id}
-                entry={entry}
-                onEdit={canEditEntries ? (e) => navigate("/app/agenda", { state: { editEntry: e } }) : undefined}
-                onDelete={readOnly ? undefined : handleDelete}
-                showStore={isAdmin}
-              />
-            ))}
-          </ul>
+          renderEntries(entries, isAdmin)
         )}
       </SectionCard>
     </div>
