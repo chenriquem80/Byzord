@@ -14,6 +14,7 @@ import {
   FileText,
   Package,
   PackagePlus,
+  Paintbrush,
   QrCode,
   RefreshCcw,
   Search,
@@ -22,6 +23,7 @@ import {
   Truck,
   Users,
   UserCog,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,6 +51,8 @@ const icons: Record<string, LucideIcon> = {
   BarChart3,
   Settings,
   UserCog,
+  Paintbrush,
+  Wrench,
 };
 
 export function getIcon(name: string) {

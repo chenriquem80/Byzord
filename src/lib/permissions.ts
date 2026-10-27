@@ -12,6 +12,7 @@ export type AppPage =
   | "/app/entrada"
   | "/app/saida"
   | "/app/orcamento"
+  | "/app/pintura"
   | "/app/pedido"
   | "/app/etiquetagem"
   | "/app/reposicao"
@@ -35,6 +36,7 @@ export const PAGE_LABELS: Record<AppPage, string> = {
   "/app/entrada":               "Entrada",
   "/app/saida":                 "Saída",
   "/app/orcamento":             "Orçamento",
+  "/app/pintura":               "Pintura",
   "/app/pedido":                "Pedido",
   "/app/etiquetagem":           "Etiquetagem",
   "/app/reposicao":             "Reposição",
@@ -62,7 +64,6 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
     { page: "/app/atendimento", label: "Novo atendimento" },
     { page: "/app/atendimento-consulta", label: "Consulta" },
   ] },
-  { title: "Orçamento", pages: [{ page: "/app/orcamento", label: "Orçamento" }] },
   { title: "Estoque", pages: [
     { page: "/app/estoque", label: "Consulta" },
     { page: "/app/entrada", label: "Entrada" },
@@ -71,6 +72,10 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
     { page: "/app/produtos", label: "Produtos" },
     { page: "/app/etiquetagem", label: "Etiquetagem" },
     { page: "/app/reposicao", label: "Reposição" },
+  ] },
+  { title: "Funções", pages: [
+    { page: "/app/pintura", label: "Pintura" },
+    { page: "/app/orcamento", label: "Orçamento" },
   ] },
   { title: "Relatórios", pages: [{ page: "/app/relatorios", label: "Relatórios" }] },
   { title: "Usuários", pages: [{ page: "/app/usuarios", label: "Usuários" }] },
@@ -92,6 +97,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/entrada":               "write",
     "/app/saida":                 "write",
     "/app/orcamento":             "write",
+    "/app/pintura":               "write",
     "/app/pedido":                "write",
     "/app/etiquetagem":           "write",
     "/app/reposicao":             "write",
@@ -116,6 +122,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/entrada":               "write",
     "/app/saida":                 "write",
     "/app/orcamento":             "write",
+    "/app/pintura":               "write",
     "/app/pedido":                "write",
     "/app/etiquetagem":           "write",
     "/app/reposicao":             "write",
@@ -140,6 +147,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/entrada":               "none",
     "/app/saida":                 "none",
     "/app/orcamento":             "read",
+    "/app/pintura":               "read",
     "/app/pedido":                "none",
     "/app/etiquetagem":           "none",
     "/app/reposicao":             "none",
@@ -164,6 +172,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/entrada":               "write",
     "/app/saida":                 "write",
     "/app/orcamento":             "none",
+    "/app/pintura":               "none",
     "/app/pedido":                "none",
     "/app/etiquetagem":           "write",
     "/app/reposicao":             "write",
