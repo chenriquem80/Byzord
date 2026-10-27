@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/database";
+import { useAuth } from "@/contexts/auth-context";
 
 
 type StoreRow = { id: string; name: string };
@@ -728,9 +729,13 @@ function ItemChangeReport() {
 // ── Página principal ─────────────────────────────────────────────────────────
 
 export function ReportsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+
   return (
     <div className="space-y-6">
-      <StockByStoreReport />
+      {/* Estoque atual por loja: exclusivo para administradores */}
+      {isAdmin && <StockByStoreReport />}
       <MovementByStoreReport />
       <UserActionReport />
       <ItemChangeReport />
