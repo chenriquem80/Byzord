@@ -34,6 +34,7 @@ const menuItems: MenuItem[] = [
       { title: "Consulta", route: "/app/atendimento-consulta", icon: "Search" },
     ],
   },
+  { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
   {
     title: "Estoque",
     route: "/app/estoque",
@@ -54,7 +55,7 @@ const menuItems: MenuItem[] = [
     icon: "Wrench",
     children: [
       { title: "Pintura", route: "/app/pintura", icon: "Paintbrush" },
-      { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
+      { title: "Imprimir orçamento", route: "/app/imprimir-orcamento", icon: "Printer" },
     ],
   },
   { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3" },
@@ -66,7 +67,7 @@ const menuItems: MenuItem[] = [
 const groupChildRoutes: Record<string, string[]> = {
   "/app/agenda": ["/app/agenda", "/app/agenda-consulta"],
   "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/pedido"],
-  "/app/funcoes": ["/app/pintura", "/app/orcamento"],
+  "/app/funcoes": ["/app/pintura", "/app/imprimir-orcamento"],
   "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia", "/app/produtos", "/app/etiquetagem", "/app/reposicao"],
 };
 

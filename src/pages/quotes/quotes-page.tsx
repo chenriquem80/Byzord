@@ -7,7 +7,6 @@ import { products as mockProducts } from "@/data/mock-data";
 import { formatCurrency } from "@/lib/format";
 import { MarketPriceComparison } from "@/components/shared/market-price-comparison";
 import { supabase } from "@/lib/database";
-import { QuoteDocument } from "./quote-document";
 import type { Product } from "@/types/domain";
 import { Search, Calculator, Eye, EyeOff, X } from "lucide-react";
 
@@ -16,16 +15,6 @@ function normalize(s: string) {
 }
 
 export function QuotesPage() {
-  return (
-    <div className="space-y-6">
-      <QuoteDocument />
-      <PriceComparison />
-    </div>
-  );
-}
-
-// Comparação de preços com marketplaces
-function PriceComparison() {
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [glassTypeFilter, setGlassTypeFilter] = useState<string>("");

@@ -15,6 +15,7 @@ import {
   Package,
   PackagePlus,
   Paintbrush,
+  Printer,
   QrCode,
   RefreshCcw,
   Search,
@@ -52,6 +53,7 @@ const icons: Record<string, LucideIcon> = {
   Settings,
   UserCog,
   Paintbrush,
+  Printer,
   Wrench,
 };
 
