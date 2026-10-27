@@ -62,6 +62,8 @@ interface StockRow {
   store2Quantity: number;
   store1Special: number;
   store2Special: number;
+  store1Location: string;
+  store2Location: string;
   totalQuantity: number;
   productName: string;
   code: string;
@@ -337,6 +339,9 @@ export function StockPage() {
             const store2Quantity = regularInvs.filter((i) => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
             const store1Special  = specialInvs.filter((i)  => i.storeId === stores[0]?.id).reduce((s, i) => s + i.stock, 0);
             const store2Special  = specialInvs.filter((i)  => i.storeId === stores[1]?.id).reduce((s, i) => s + i.stock, 0);
+            // Localização por loja (sem repetir quando houver mais de um registro)
+            const locationOf = (storeId?: string) =>
+              [...new Set(invs.filter((i) => i.storeId === storeId).map((i) => (i.location ?? "").trim()).filter(Boolean))].join(", ");
 
             return {
               product,
@@ -347,6 +352,8 @@ export function StockPage() {
               store2Quantity,
               store1Special,
               store2Special,
+              store1Location: locationOf(stores[0]?.id),
+              store2Location: locationOf(stores[1]?.id),
               totalQuantity: store1Quantity + store2Quantity,
               productName: product.name,
               code: product.barcode,
@@ -461,6 +468,20 @@ export function StockPage() {
         accessorKey: "lastPurchaseDate",
         header: "Última compra",
         cell: ({ row }) => formatMonthYear(row.original.lastPurchaseDate),
+      },
+      {
+        id: "location",
+        header: "Localização",
+        cell: ({ row }) => {
+          const { store1Location, store2Location } = row.original;
+          if (!store1Location && !store2Location) return <span className="text-slate-300">—</span>;
+          return (
+            <div className="space-y-0.5 text-xs text-slate-600">
+              {store1Location && <div>{stores[0]?.code ?? "L1"}: <span className="font-semibold">{store1Location}</span></div>}
+              {store2Location && <div>{stores[1]?.code ?? "L2"}: <span className="font-semibold">{store2Location}</span></div>}
+            </div>
+          );
+        },
       },
       {
         id: "photos",
