@@ -47,6 +47,7 @@ export type LabelData = {
   lado?: string | null;
   glassType?: string;
   manufacturer?: string;
+  location?: string;
   purchaseSummary?: string;
 };
 
@@ -86,6 +87,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     ${label.feature ? `<p>${up(label.feature)}</p>` : ""}
     ${label.glassType ? `<p>${up(label.glassType)}${label.lado ? ` - ${up(label.lado)}` : ""}</p>` : ""}
     ${label.manufacturer ? `<p>${up(label.manufacturer)}</p>` : ""}
+    ${label.location ? `<p style="font-size:12pt;color:#475569;">${up(label.location)}</p>` : ""}
   </div>
   ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${up(label.purchaseSummary)}\\00\\${n2}</div>` : ""}
   ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
@@ -115,6 +117,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
           {label.feature && <p>{up(label.feature)}</p>}
           {label.glassType && <p>{up(label.glassType)}{label.lado ? ` - ${up(label.lado)}` : ""}</p>}
           {label.manufacturer && <p>{up(label.manufacturer)}</p>}
+          {label.location && <p className="text-[13px] text-slate-500">{up(label.location)}</p>}
         </div>
         {label.purchaseSummary && (
           <div className="mt-2 font-mono text-[11px]">
