@@ -13,7 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { products, stores } from "@/data/mock-data";
 import { useAuth } from "@/contexts/auth-context";
-import { formatCurrency, formatMonthYear, formatPercentage } from "@/lib/format";
+import { formatCurrency, formatMonthYear } from "@/lib/format";
 import { ImagePlus, Pencil, Trash2, X } from "lucide-react";
 import { ContextMenuDropdown } from "@/components/shared/context-menu-dropdown";
 import { supabase } from "@/lib/database";
@@ -102,11 +102,16 @@ function buildFormValues(p: Product, mfId?: string | null, storeId?: string | nu
     minimum: inventory?.minQuantity ?? 0,
     cost: mf?.cost ?? 0,
     price: mf?.price ?? 0,
-    lastPurchaseDate: mf?.lastPurchaseDate ?? "",
+    lastPurchaseDate: (mf?.lastPurchaseDate ?? "").slice(0, 7), // campo é mês/ano (AAAA-MM)
     lastSupplier: mf?.supplier ?? "",
     status: p.status,
     notes: p.notes,
   };
+}
+
+// Campo mês/ano (AAAA-MM) → data gravada no banco como dia 1º do mês
+function monthToDate(value: string | undefined): string | null {
+  return value ? `${value.slice(0, 7)}-01` : null;
 }
 
 export function ProductsPage() {
@@ -339,9 +344,6 @@ export function ProductsPage() {
     fetchProduct();
   }, [productId, manufacturerId]);
 
-  const watchedCost = form.watch("cost");
-  const watchedPrice = form.watch("price");
-  const margin = watchedCost ? ((watchedPrice - watchedCost) / watchedCost) * 100 : 0;
 
   const fieldLabels: Partial<Record<keyof ProductFormValues, string>> = {
     name: "Nome do produto",
@@ -353,7 +355,7 @@ export function ProductsPage() {
     manufacturer: "Fabricante",
     cost: "Preço de custo",
     price: "Preço de venda",
-    lastPurchaseDate: "Última data de compra",
+    lastPurchaseDate: "Última compra (mês/ano)",
     lastSupplier: "Fornecedor",
   };
 
@@ -542,7 +544,7 @@ export function ProductsPage() {
                 manufacturer: values.manufacturer?.trim() || undefined,
                 cost: Number(values.cost),
                 price: Number(values.price),
-                last_purchase_date: values.lastPurchaseDate || null,
+                last_purchase_date: monthToDate(values.lastPurchaseDate),
                 supplier: values.lastSupplier,
               })
               .eq("id", activeMfId);
@@ -609,7 +611,7 @@ export function ProductsPage() {
                 manufacturer: values.manufacturer,
                 cost: Number(values.cost),
                 price: Number(values.price),
-                last_purchase_date: values.lastPurchaseDate || null,
+                last_purchase_date: monthToDate(values.lastPurchaseDate),
                 supplier: values.lastSupplier,
               })
               .select("id")
@@ -981,20 +983,17 @@ export function ProductsPage() {
       {/* Preço */}
       <SectionCard
         title="Preço"
-        description="Custos, preço de venda, margem e histórico de compra."
+        description="Custos, preço de venda e histórico de compra."
       >
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <FormField label="Preço de custo" error={form.formState.errors.cost?.message}>
             <Input type="number" step="0.01" {...form.register("cost")} />
           </FormField>
           <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
             <Input type="number" step="0.01" {...form.register("price")} />
           </FormField>
-          <FormField label="Margem automática">
-            <Input value={formatPercentage(margin)} disabled />
-          </FormField>
-          <FormField label="Última data de compra" error={form.formState.errors.lastPurchaseDate?.message}>
-            <Input type="date" {...form.register("lastPurchaseDate")} />
+          <FormField label="Última compra (mês/ano)" error={form.formState.errors.lastPurchaseDate?.message}>
+            <Input type="month" {...form.register("lastPurchaseDate")} />
           </FormField>
           <FormField label="Fornecedor" error={form.formState.errors.lastSupplier?.message}>
             <ContextMenuDropdown
