@@ -12,7 +12,8 @@ const COMPANY = {
   name: "Byzord comércio de vidros automotivos",
   cnpj: "CNPJ: 09.270.241/0001-25",
   email: "E-mail: cibele_byzord@hotmail.com",
-  address: ["Av. José Humberto Gomes Filho, 1825, Campo alegre, 12412-390.", "Pindamonhangaba/SP", "(12)3648.9126"],
+  address: ["Av. José Humberto Gomes Filho, 1825, Campo alegre, 12412-390.", "Pindamonhangaba/SP"],
+  phone: "(12)3648.9126",
 };
 
 const DEFAULT_BODY = "Veículo:            Placa: \n\nItem avariado: \n\n\nValor: R$ ";
@@ -77,6 +78,8 @@ export function QuoteDocument() {
   }, [body]);
 
   const dateLine = `${city}, ${formatLongDate(date)}.`;
+  // Rodapé: endereço e, na última linha, o usuário que emitiu antes do telefone da loja
+  const footerLines = [...COMPANY.address, [user?.name, COMPANY.phone].filter(Boolean).join(" - ")];
   const validityLine = `*ORÇAMENTO VÁLIDO ATÉ ${validDays} DIA${validDays !== 1 ? "S" : ""}`;
 
   function buildPdf(): jsPDF {
@@ -123,7 +126,7 @@ export function QuoteDocument() {
     doc.setFont("times", "normal");
     doc.setFontSize(9);
     doc.setTextColor(110);
-    COMPANY.address.forEach((line, i) => doc.text(line, pageW / 2, 276 + i * 4.5, { align: "center" }));
+    footerLines.forEach((line, i) => doc.text(line, pageW / 2, 276 + i * 4.5, { align: "center" }));
 
     return doc;
   }
@@ -215,7 +218,7 @@ export function QuoteDocument() {
           <p className="relative mt-[60px] text-[20px] font-bold">{validityLine}</p>
 
           <div className="relative mt-auto pt-[40px] text-center text-[12px] leading-tight text-slate-500">
-            {COMPANY.address.map((line) => <p key={line}>{line}</p>)}
+            {footerLines.map((line) => <p key={line}>{line}</p>)}
           </div>
         </div>
       </div>
