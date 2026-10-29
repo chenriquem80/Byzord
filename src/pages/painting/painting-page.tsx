@@ -13,8 +13,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/lib/database";
 import { PAINT_LABEL_GUIDES, findGuideByMake } from "./paint-label-guide";
 
-const CARAPI_TOKEN = import.meta.env.VITE_CARAPI_TOKEN as string | undefined;
-const CARAPI_URL = "https://carapi.app/api/exterior-colors/v2";
+const CARAPI_PROXY = "/api/carapi-colors";
 
 type CarapiColor = {
   name: string;
@@ -73,9 +72,9 @@ export function PaintingPage() {
     if (guide) setGuideBrand(guide.brand);
   }, [form.make]);
 
-  // Busca cores na carapi.app quando make/model/year estão disponíveis
+  // Busca cores via proxy /api/carapi-colors quando make/model/year estão disponíveis
   useEffect(() => {
-    if (!searched || !CARAPI_TOKEN || !form.make || !form.model || !form.modelYear) {
+    if (!searched || !form.make || !form.model || !form.modelYear) {
       setCarapiColors([]);
       return;
     }
@@ -83,9 +82,7 @@ export function PaintingPage() {
     setCarapiError(null);
     setCarapiLoading(true);
     const params = new URLSearchParams({ year: form.modelYear, make: form.make, model: form.model });
-    fetch(`${CARAPI_URL}?${params}`, {
-      headers: { Authorization: `Bearer ${CARAPI_TOKEN}` },
-    })
+    fetch(`${CARAPI_PROXY}?${params}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -93,7 +90,7 @@ export function PaintingPage() {
       .then((data) => {
         const list: CarapiColor[] = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
         setCarapiColors(list);
-        if (list.length === 0) setCarapiError("Nenhuma cor encontrada para este veículo na carapi.app.");
+        if (list.length === 0) setCarapiError("Nenhuma cor encontrada para este veículo.");
       })
       .catch((err) => setCarapiError(`Erro ao buscar cores: ${err.message}`))
       .finally(() => setCarapiLoading(false));
@@ -230,9 +227,6 @@ export function PaintingPage() {
           title="Cores disponíveis"
           description={`${form.modelYear} ${form.make} ${form.model}`}
         >
-          {!CARAPI_TOKEN && (
-            <p className="text-sm text-amber-600">Token da carapi.app não configurado. Adicione VITE_CARAPI_TOKEN no ambiente.</p>
-          )}
           {carapiLoading && <p className="text-sm text-slate-500">Buscando cores na carapi.app...</p>}
           {carapiError && <p className="text-sm text-danger">{carapiError}</p>}
           {carapiColors.length > 0 && (
