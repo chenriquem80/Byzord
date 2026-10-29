@@ -29,6 +29,7 @@ type EntryItem = {
   product: Product;
   mf: Manufacturer;
   quantities: Record<string, string>;
+  cost: number;
 };
 
 export function EntryPage() {
@@ -182,7 +183,7 @@ export function EntryPage() {
       glassType: lastItem.product.glassType,
       lado: ladoValue ?? lastItem.product.lado ?? null,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
-      purchaseSummary: `${lastItem.mf.cost} - ${dateLabel}`,
+      purchaseSummary: `${lastItem.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
     };
   }, [lastItem, selectedManufacturer, isLadoD, isLadoE]);
@@ -227,8 +228,14 @@ export function EntryPage() {
     const key = `${row.product.id}-${row.mf.id}-${Date.now()}`;
     const quantities: Record<string, string> = {};
     stores.forEach((store) => { quantities[store.id] = "0"; });
-    setEntryItems((prev) => [...prev, { key, product: row.product, mf: row.mf, quantities }]);
+    setEntryItems((prev) => [...prev, { key, product: row.product, mf: row.mf, quantities, cost: row.mf.cost ?? 0 }]);
     setTimeout(() => entryListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
+
+  function updateItemCost(key: string, value: string) {
+    setEntryItems((prev) =>
+      prev.map((item) => item.key === key ? { ...item, cost: parseFloat(value) || 0 } : item)
+    );
   }
 
   function updateItemQuantity(key: string, storeId: string, value: string) {
@@ -340,7 +347,7 @@ export function EntryPage() {
               .insert({
                 product_id: item.product.id,
                 manufacturer: selectedManufacturer,
-                cost: item.mf.cost,
+                cost: item.cost,
                 price: item.mf.price,
                 supplier: selectedSupplier,
                 last_purchase_date: purchaseDate || null,
@@ -711,8 +718,14 @@ export function EntryPage() {
                                   />
                                 </div>
                                 <div>
-                                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Custo</p>
-                                  <Input disabled value={formatCurrency(item.mf.cost)} />
+                                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Custo (R$)</p>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.cost}
+                                    onChange={(e) => updateItemCost(item.key, e.target.value)}
+                                  />
                                 </div>
                               </div>
                             );
