@@ -231,7 +231,7 @@ export function UserManagementPage() {
         if (authError) throw authError;
         if (!authData.user) throw new Error("Usuário não foi criado.");
 
-        const { error: profileError } = await supabase.from("profiles").insert({
+        const { error: profileError } = await supabase.from("profiles").upsert({
           id: authData.user.id,
           name: newName,
           email: internalEmail,
@@ -240,7 +240,7 @@ export function UserManagementPage() {
           allow_cost_view: newRole === "ADMIN" || newRole === "GERENTE",
           status: "ativo",
           must_change_password: false,
-        });
+        }, { onConflict: "id" });
         if (profileError) throw profileError;
       } else {
         const tempClient = (await import("@supabase/supabase-js")).createClient(
@@ -256,7 +256,7 @@ export function UserManagementPage() {
         if (authError) throw authError;
         if (!authData.user) throw new Error("Usuário não foi criado.");
 
-        const { error: profileError } = await supabase.from("profiles").insert({
+        const { error: profileError } = await supabase.from("profiles").upsert({
           id: authData.user.id,
           name: newName,
           email: internalEmail,
@@ -265,7 +265,7 @@ export function UserManagementPage() {
           allow_cost_view: newRole === "ADMIN" || newRole === "GERENTE",
           status: "ativo",
           must_change_password: false,
-        });
+        }, { onConflict: "id" });
         if (profileError) throw profileError;
       }
 
