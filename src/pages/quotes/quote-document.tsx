@@ -76,6 +76,7 @@ export function QuoteDocument() {
   const [date, setDate] = useState(todayIso());
   const [validDays, setValidDays] = useState(7);
   const [agendaSaved, setAgendaSaved] = useState(false);
+  const [agendaError, setAgendaError] = useState<string | null>(null);
   const images = useLogoImages();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -85,30 +86,25 @@ export function QuoteDocument() {
     return match ? match[1].replace(/[\s-]/g, "").toUpperCase() : "";
   }
 
-  // Extrai veículo do texto (linha após "Veículo:")
-  function extractVehicle(text: string): string {
-    const match = text.match(/ve[íi]culo\s*:\s*([^\n]+)/i);
-    return match ? match[1].trim() : "";
-  }
-
   async function saveToAgenda() {
     if (!supabase || !user) return;
+    setAgendaError(null);
     const plate = extractPlate(body);
-    const vehicle = extractVehicle(body);
-    const obs = `Orçamento${vehicle ? ` — ${vehicle}` : ""}${body ? `\n\n${body.slice(0, 300)}` : ""}`;
-    try {
-      await supabase.from("pending_attendances").insert({
-        plate: plate || null,
-        store_id: user.storeId ?? null,
-        store_name: user.storeName ?? null,
-        service_title: "Orçamento",
-        observations: obs,
-      });
-      setAgendaSaved(true);
-      setTimeout(() => setAgendaSaved(false), 4000);
-    } catch (err) {
-      console.warn("Não foi possível salvar na agenda:", err);
+    const { data, error } = await supabase.from("pending_attendances").insert({
+      plate: plate || null,
+      store_id: user.storeId ?? null,
+      store_name: user.storeName ?? null,
+      service_title: "Orçamento",
+      observations: body.trim(),
+    }).select("id").single();
+    if (error) {
+      setAgendaError(`Erro ao salvar na agenda: ${error.message}`);
+      console.error("saveToAgenda:", error);
+      return;
     }
+    console.log("Agenda salva:", data?.id);
+    setAgendaSaved(true);
+    setTimeout(() => setAgendaSaved(false), 5000);
   }
 
   useEffect(() => { setCity(defaultCity); }, [defaultCity]);
@@ -217,6 +213,9 @@ export function QuoteDocument() {
     >
       {agendaSaved && (
         <p className="mb-3 rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-700 font-medium">✓ Registrado na agenda do dia</p>
+      )}
+      {agendaError && (
+        <p className="mb-3 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{agendaError}</p>
       )}
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <FormField label="Cidade">
