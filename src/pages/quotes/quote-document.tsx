@@ -9,12 +9,20 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
 
-const COMPANY = {
+const COMPANY_PINDA = {
   name: "Byzord comércio de vidros automotivos",
   cnpj: "CNPJ: 09.270.241/0001-25",
   email: "E-mail: cibele_byzord@hotmail.com",
   address: ["Av. José Humberto Gomes Filho, 1825, Campo alegre, 12412-390.", "Pindamonhangaba/SP"],
   phone: "(12)3648.9126",
+};
+
+const COMPANY_TAUBATE = {
+  name: "Auto Vitrais e Acessórios Byzord Ltda EPP",
+  cnpj: "CNPJ: 74.650.276/0001-51",
+  email: "I.E.: 688.120.457.111",
+  address: ["Pq. Dr. Barbosa de Oliveira, nº 10 – Centro", "Taubaté – SP – CEP  12020-190"],
+  phone: "(12) 3621-8300 - Fax: (12) 36323194  WHATS.(12)974031718",
 };
 
 const DEFAULT_BODY = "Veículo:            Placa: \n\nItem avariado: \n\n\nValor: R$ ";
@@ -59,7 +67,9 @@ function useLogoImages() {
 
 export function QuoteDocument() {
   const { user } = useAuth();
-  const defaultCity = user?.storeName?.toLowerCase().includes("taubat") ? "Taubaté" : "Pindamonhangaba";
+  const isTaubate = user?.storeName?.toLowerCase().includes("taubat") ?? false;
+  const COMPANY = isTaubate ? COMPANY_TAUBATE : COMPANY_PINDA;
+  const defaultCity = isTaubate ? "Taubaté" : "Pindamonhangaba";
 
   const [body, setBody] = useState(DEFAULT_BODY);
   const [city, setCity] = useState(defaultCity);
