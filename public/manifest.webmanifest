@@ -1,0 +1,17 @@
+{
+  "name": "Byzord Auto Vitrais",
+  "short_name": "Byzord",
+  "description": "Sistema de gestão Byzord Auto Vitrais",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
