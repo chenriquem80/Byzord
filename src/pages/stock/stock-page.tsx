@@ -569,8 +569,40 @@ export function StockPage() {
           <p className="py-8 text-center text-sm text-slate-500">Carregando estoque...</p>
         ) : !glassType ? (
           <p className="py-8 text-center text-sm text-slate-500">Selecione o tipo do item para ver o estoque.</p>
+        ) : rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-500">Nenhum produto encontrado.</p>
         ) : (
-          <DataTable columns={columns} data={rows} />
+          <>
+            {/* Lista compacta — apenas mobile */}
+            <div className="space-y-2 lg:hidden">
+              {rows.map((row, i) => {
+                const showLado = !/parabrisa|vigia/i.test(row.product.glassType);
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">{row.productName}</p>
+                      <p className="text-xs text-slate-500">
+                        {row.characteristic}
+                        {showLado && row.lado ? ` · ${row.lado}` : ""}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right text-xs text-slate-600">
+                      <p>{stores[0]?.code ?? "L1"}: <span className="font-bold text-slate-900">{row.store1Quantity}</span></p>
+                      {stores[1] && <p>{stores[1]?.code ?? "L2"}: <span className="font-bold text-slate-900">{row.store2Quantity}</span></p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Tabela completa — apenas desktop */}
+            <div className="hidden lg:block">
+              <DataTable columns={columns} data={rows} />
+            </div>
+          </>
         )}
       </SectionCard>
 
