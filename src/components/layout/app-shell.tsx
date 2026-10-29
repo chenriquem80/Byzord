@@ -21,7 +21,7 @@ const menuItems: MenuItem[] = [
     route: "/app/agenda",
     icon: "CalendarDays",
     children: [
-      { title: "Anotar", route: "/app/agenda", icon: "PlusCircle" },
+      { title: "Registro", route: "/app/agenda", icon: "PlusCircle" },
       { title: "Consulta", route: "/app/agenda-consulta", icon: "Search" },
     ],
   },

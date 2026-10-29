@@ -59,7 +59,7 @@ export const ALL_PAGES = Object.keys(PAGE_LABELS) as AppPage[];
 export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label: string }[] }[] = [
   { title: "Inicial", pages: [{ page: "/app", label: "Inicial" }] },
   { title: "Agenda", pages: [
-    { page: "/app/agenda", label: "Anotar" },
+    { page: "/app/agenda", label: "Registro" },
     { page: "/app/agenda-consulta", label: "Consulta" },
   ] },
   { title: "Atendimento", pages: [
