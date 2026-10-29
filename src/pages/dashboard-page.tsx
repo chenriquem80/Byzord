@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getIcon } from "@/components/shared/icon-map";
 import { supabase } from "@/lib/database";
 import { useAuth } from "@/contexts/auth-context";
 import { canAccessPage, type AppPage } from "@/lib/permissions";
@@ -119,21 +118,15 @@ export function DashboardPage() {
     <div className="space-y-6">
       {/* Atalhos de navegação — apenas mobile */}
       <div className="grid w-full grid-cols-2 gap-2 lg:hidden">
-        {mobileNavItems.filter((item) => user && canAccessPage(user, item.route as AppPage)).map((item) => {
-          const Icon = getIcon(item.icon);
-          return (
-            <Link
-              key={item.route}
-              to={item.route}
-              className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl border p-3 ${item.bg} ${item.border} transition active:opacity-75`}
-            >
-              <div className="shrink-0 rounded-xl bg-white/60 p-2">
-                <Icon className={`size-5 ${item.text}`} />
-              </div>
-              <span className={`min-w-0 text-sm font-semibold leading-tight ${item.text}`}>{item.title}</span>
-            </Link>
-          );
-        })}
+        {mobileNavItems.filter((item) => user && canAccessPage(user, item.route as AppPage)).map((item) => (
+          <Link
+            key={item.route}
+            to={item.route}
+            className={`flex min-w-0 items-center justify-center overflow-hidden rounded-2xl border p-4 ${item.bg} ${item.border} transition active:opacity-75`}
+          >
+            <span className={`min-w-0 text-center text-sm font-semibold leading-tight ${item.text}`}>{item.title}</span>
+          </Link>
+        ))}
       </div>
 
       {/* Resumo por loja */}
