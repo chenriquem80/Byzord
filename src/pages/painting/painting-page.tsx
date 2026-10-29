@@ -83,11 +83,9 @@ export function PaintingPage() {
     setCarapiLoading(true);
     const params = new URLSearchParams({ year: form.modelYear, make: form.make, model: form.model });
     fetch(`${CARAPI_PROXY}?${params}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
+      .then((r) => r.json())
       .then((data) => {
+        if (data?.error) throw new Error(`${data.error}${data.detail ? ` — ${data.detail}` : ""}`);
         const list: CarapiColor[] = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
         setCarapiColors(list);
         if (list.length === 0) setCarapiError("Nenhuma cor encontrada para este veículo.");
