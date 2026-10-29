@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, MapPin, Palette, Search } from "lucide-react";
+import { MapPin, Palette, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ReadOnlyNotice } from "@/components/shared/read-only-notice";
@@ -13,11 +13,6 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/lib/database";
 import { PAINT_LABEL_GUIDES, findGuideByMake } from "./paint-label-guide";
 
-// NHTSA vPIC — DecodeVinValues: decodificação do chassi (VIN) em formato plano.
-// API pública, gratuita, sem chave e com CORS liberado. Não informa cor/código de tinta.
-const VPIC_URL = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues";
-
-// carapi.app — cores exteriores por ano/marca/modelo.
 const CARAPI_TOKEN = import.meta.env.VITE_CARAPI_TOKEN as string | undefined;
 const CARAPI_URL = "https://carapi.app/api/exterior-colors/v2";
 
@@ -27,8 +22,6 @@ type CarapiColor = {
   rgb_value?: string;
   generic_color?: { name: string };
 };
-
-type VinResult = Record<string, string>;
 
 type VehiclePaint = {
   id: string;
@@ -44,86 +37,43 @@ type VehiclePaint = {
   updated_at: string;
 };
 
-type PaintForm = {
-  plate: string;
-  vin: string;
-  make: string;
-  model: string;
-  modelYear: string;
-  paintCode: string;
-  colorName: string;
-  notes: string;
-};
+type SearchForm = { make: string; model: string; modelYear: string; plate: string };
+type PaintForm = { plate: string; make: string; model: string; modelYear: string; paintCode: string; colorName: string; notes: string };
 
-const EMPTY_FORM: PaintForm = { plate: "", vin: "", make: "", model: "", modelYear: "", paintCode: "", colorName: "", notes: "" };
+const EMPTY_SEARCH: SearchForm = { make: "", model: "", modelYear: "", plate: "" };
+const EMPTY_PAINT: PaintForm = { plate: "", make: "", model: "", modelYear: "", paintCode: "", colorName: "", notes: "" };
 
-// Campos do chassi exibidos, na ordem, com rótulo em português
-const VIN_FIELDS: { label: string; value: (r: VinResult) => string }[] = [
-  { label: "Marca", value: (r) => r.Make },
-  { label: "Modelo", value: (r) => r.Model },
-  { label: "Ano do modelo", value: (r) => r.ModelYear },
-  { label: "Versão", value: (r) => [r.Trim, r.Series].filter(Boolean).join(" / ") },
-  { label: "Carroceria", value: (r) => r.BodyClass },
-  { label: "Tipo de veículo", value: (r) => r.VehicleType },
-  { label: "Portas", value: (r) => r.Doors },
-  {
-    label: "Motor",
-    value: (r) => [
-      r.DisplacementL ? `${Number(r.DisplacementL).toFixed(1)} L` : "",
-      r.EngineCylinders ? `${r.EngineCylinders} cilindros` : "",
-      r.EngineHP ? `${r.EngineHP} hp` : "",
-    ].filter(Boolean).join(" · "),
-  },
-  { label: "Combustível", value: (r) => r.FuelTypePrimary },
-  { label: "Fabricante", value: (r) => r.Manufacturer },
-  { label: "Fabricado em", value: (r) => [r.PlantCity, r.PlantState, r.PlantCountry].filter(Boolean).join(", ") },
-];
-
-// VIN: 17 caracteres, sem I, O e Q
-function cleanVin(value: string): string {
-  return value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, "").slice(0, 17);
-}
-
-// Placa: 7 caracteres, sem traço (ABC1234 ou Mercosul ABC1D23)
-function cleanPlate(value: string): string {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
-}
-
-function capitalize(value: string): string {
-  return value.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+function cleanPlate(v: string) {
+  return v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
 }
 
 export function PaintingPage() {
   const { user: authUser } = useAuth();
   const { readOnly } = usePermissions();
 
-  const [searchPlate, setSearchPlate] = useState("");
-  const [searchVin, setSearchVin] = useState("");
+  const [search, setSearch] = useState<SearchForm>(EMPTY_SEARCH);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
   const [saved, setSaved] = useState<VehiclePaint | null>(null);
-  const [vinResult, setVinResult] = useState<VinResult | null>(null);
-
-  const [form, setForm] = useState<PaintForm>(EMPTY_FORM);
+  const [form, setForm] = useState<PaintForm>(EMPTY_PAINT);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState(false);
-
-  const [guideBrand, setGuideBrand] = useState("");
 
   const [carapiColors, setCarapiColors] = useState<CarapiColor[]>([]);
   const [carapiLoading, setCarapiLoading] = useState(false);
   const [carapiError, setCarapiError] = useState<string | null>(null);
 
-  // Guia acompanha a marca informada/decodificada
+  const [guideBrand, setGuideBrand] = useState("");
+
   useEffect(() => {
     const guide = findGuideByMake(form.make);
     if (guide) setGuideBrand(guide.brand);
   }, [form.make]);
 
-  // carapi.app: busca cores quando make/model/year estão disponíveis
+  // Busca cores na carapi.app quando make/model/year estão disponíveis
   useEffect(() => {
     if (!searched || !CARAPI_TOKEN || !form.make || !form.model || !form.modelYear) {
       setCarapiColors([]);
@@ -149,57 +99,47 @@ export function PaintingPage() {
       .finally(() => setCarapiLoading(false));
   }, [searched, form.make, form.model, form.modelYear]);
 
-  function setField<K extends keyof PaintForm>(key: K, value: PaintForm[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  function setSearchField<K extends keyof SearchForm>(key: K, value: string) {
+    setSearch((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function decodeVin(vin: string): Promise<VinResult | null> {
-    const res = await fetch(`${VPIC_URL}/${vin}?format=json`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return data.Results?.[0] ?? null;
+  function setField<K extends keyof PaintForm>(key: K, value: string) {
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   async function handleSearch() {
     setSearchError(null);
     setSaveError(null);
-    const plate = searchPlate;
-    const vin = searchVin;
-    if (plate.length !== 7 && vin.length !== 17) {
-      setSearchError("Informe a placa (7 caracteres) ou o chassi (17 caracteres).");
+    if (!search.make.trim() || !search.model.trim() || !search.modelYear.trim()) {
+      setSearchError("Preencha Marca, Modelo e Ano para buscar.");
       return;
     }
     setSearching(true);
     let found: VehiclePaint | null = null;
-    let decoded: VinResult | null = null;
     try {
       if (supabase) {
-        const filters = [plate.length === 7 && `plate.eq.${plate}`, vin.length === 17 && `vin.eq.${vin}`].filter(Boolean).join(",");
-        const { data, error } = await supabase
+        let query = supabase
           .from("vehicle_paints")
           .select("*")
-          .or(filters)
+          .ilike("make", search.make.trim())
+          .ilike("model", search.model.trim())
+          .eq("model_year", search.modelYear.trim())
           .order("updated_at", { ascending: false })
           .limit(1);
+        if (search.plate.length === 7) query = query.eq("plate", search.plate);
+        const { data, error } = await query;
         if (error) throw new Error(`banco de dados: ${error.message}`);
         found = (data?.[0] as VehiclePaint) ?? null;
-      }
-      const vinToDecode = vin.length === 17 ? vin : found?.vin ?? "";
-      if (vinToDecode.length === 17) {
-        try { decoded = await decodeVin(vinToDecode); } catch { decoded = null; }
       }
     } catch (err: any) {
       setSearchError(`Erro na consulta: ${err.message ?? err}`);
     }
-
     setSaved(found);
-    setVinResult(decoded);
     setForm({
-      plate: found?.plate ?? plate,
-      vin: found?.vin ?? vin,
-      make: found?.make ?? (decoded?.Make ? capitalize(decoded.Make) : ""),
-      model: found?.model ?? decoded?.Model ?? "",
-      modelYear: found?.model_year ?? decoded?.ModelYear ?? "",
+      plate: found?.plate ?? search.plate,
+      make: found?.make ?? search.make.trim(),
+      model: found?.model ?? search.model.trim(),
+      modelYear: found?.model_year ?? search.modelYear.trim(),
       paintCode: found?.paint_code ?? "",
       colorName: found?.color_name ?? "",
       notes: found?.notes ?? "",
@@ -209,26 +149,26 @@ export function PaintingPage() {
   }
 
   function handleNew() {
-    setSearchPlate("");
-    setSearchVin("");
+    setSearch(EMPTY_SEARCH);
     setSaved(null);
-    setVinResult(null);
-    setForm(EMPTY_FORM);
+    setForm(EMPTY_PAINT);
     setSearched(false);
     setSearchError(null);
     setSaveError(null);
+    setCarapiColors([]);
+    setCarapiError(null);
   }
 
   async function handleSave() {
     setSaveError(null);
     if (!form.paintCode.trim()) { setSaveError("Informe o código da tinta."); return; }
-    if (form.plate.length !== 7 && form.vin.length !== 17) { setSaveError("Informe a placa ou o chassi do veículo."); return; }
+    if (!form.make.trim() || !form.model.trim() || !form.modelYear.trim()) { setSaveError("Informe marca, modelo e ano."); return; }
     if (!supabase) { setSaveError("Banco de dados não configurado."); return; }
 
     setSaving(true);
     const payload = {
       plate: form.plate || null,
-      vin: form.vin || null,
+      vin: null,
       make: form.make.trim() || null,
       model: form.model.trim() || null,
       model_year: form.modelYear.trim() || null,
@@ -249,34 +189,29 @@ export function PaintingPage() {
   }
 
   const guide = PAINT_LABEL_GUIDES.find((g) => g.brand === guideBrand);
-  const vinRows = vinResult ? VIN_FIELDS.map((f) => ({ label: f.label, value: f.value(vinResult) ?? "" })).filter((f) => f.value.trim()) : [];
-  const vinClean = vinResult?.ErrorCode === "0";
 
   return (
     <div className="space-y-6">
+      {/* Busca */}
       <SectionCard
         title="Pintura — Código da tinta"
-        description="Busque o veículo pela placa ou chassi para ver ou registrar o código da tinta."
+        description="Informe a marca, modelo e ano para buscar as cores disponíveis."
       >
         <form
-          className="grid gap-4 md:grid-cols-[200px_1fr_auto] md:items-start"
+          className="grid gap-4 md:grid-cols-[1fr_1fr_140px_180px_auto] md:items-start"
           onSubmit={(e) => { e.preventDefault(); handleSearch(); }}
         >
-          <FormField label="Placa">
-            <Input
-              value={searchPlate}
-              onChange={(e) => setSearchPlate(cleanPlate(e.target.value))}
-              placeholder="ABC1D23"
-              className="font-mono tracking-wider"
-            />
+          <FormField label="Marca">
+            <Input value={search.make} onChange={(e) => setSearchField("make", e.target.value)} placeholder="Ex.: Toyota" />
           </FormField>
-          <FormField label="Chassi (VIN)" hint={`${searchVin.length}/17 caracteres`}>
-            <Input
-              value={searchVin}
-              onChange={(e) => setSearchVin(cleanVin(e.target.value))}
-              placeholder="Ex.: 9BWAH5BZ8ST646030"
-              className="font-mono tracking-wider"
-            />
+          <FormField label="Modelo">
+            <Input value={search.model} onChange={(e) => setSearchField("model", e.target.value)} placeholder="Ex.: Corolla" />
+          </FormField>
+          <FormField label="Ano">
+            <Input value={search.modelYear} onChange={(e) => setSearchField("modelYear", e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="Ex.: 2022" />
+          </FormField>
+          <FormField label="Placa (opcional)">
+            <Input value={search.plate} onChange={(e) => setSearchField("plate", cleanPlate(e.target.value))} placeholder="ABC1D23" className="font-mono" />
           </FormField>
           <div className="flex gap-2 md:mt-7">
             <Button type="submit" disabled={searching}>
@@ -289,77 +224,16 @@ export function PaintingPage() {
         {searchError && <p className="mt-2 text-sm text-danger">{searchError}</p>}
       </SectionCard>
 
+      {/* Cores da carapi.app */}
       {searched && (
         <SectionCard
-          title={saved ? "Código da tinta cadastrado" : "Registrar código da tinta"}
-          description={saved
-            ? `Atualizado por ${saved.user_name || "—"} em ${new Date(saved.updated_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`
-            : "Nenhum código registrado para este veículo. Leia a etiqueta do carro e registre abaixo."}
-          action={savedMessage ? <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span> : null}
+          title="Cores disponíveis"
+          description={`${form.modelYear} ${form.make} ${form.model}`}
         >
-          {saved && (
-            <div className="mb-5 flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
-              <Palette className="size-8 shrink-0 text-emerald-600" />
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Código da tinta</p>
-                <p className="font-mono text-3xl font-bold tracking-wider text-emerald-900">{saved.paint_code}</p>
-                {saved.color_name && <p className="text-sm text-emerald-800">{saved.color_name}</p>}
-              </div>
-            </div>
+          {!CARAPI_TOKEN && (
+            <p className="text-sm text-amber-600">Token da carapi.app não configurado. Adicione VITE_CARAPI_TOKEN no ambiente.</p>
           )}
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <FormField label="Placa">
-              <Input value={form.plate} onChange={(e) => setField("plate", cleanPlate(e.target.value))} className="font-mono" disabled={readOnly} />
-            </FormField>
-            <FormField label="Chassi (VIN)" className="md:col-span-2">
-              <Input value={form.vin} onChange={(e) => setField("vin", cleanVin(e.target.value))} className="font-mono" disabled={readOnly} />
-            </FormField>
-            <FormField label="Marca">
-              <Input value={form.make} onChange={(e) => setField("make", e.target.value)} disabled={readOnly} />
-            </FormField>
-            <FormField label="Modelo">
-              <Input value={form.model} onChange={(e) => setField("model", e.target.value)} disabled={readOnly} />
-            </FormField>
-            <FormField label="Ano">
-              <Input value={form.modelYear} onChange={(e) => setField("modelYear", e.target.value.replace(/\D/g, "").slice(0, 4))} disabled={readOnly} />
-            </FormField>
-            <FormField label="Código da tinta *">
-              <Input
-                value={form.paintCode}
-                onChange={(e) => setField("paintCode", e.target.value.toUpperCase())}
-                placeholder="Ex.: LB9A"
-                className="font-mono text-base font-semibold tracking-wider"
-                disabled={readOnly}
-              />
-            </FormField>
-            <FormField label="Nome da cor" className="md:col-span-2">
-              <Input value={form.colorName} onChange={(e) => setField("colorName", e.target.value)} placeholder="Ex.: Branco Cristal" disabled={readOnly} />
-            </FormField>
-            <FormField label="Observações" className="md:col-span-3">
-              <Textarea value={form.notes} onChange={(e) => setField("notes", e.target.value)} className="min-h-20" disabled={readOnly} />
-            </FormField>
-          </div>
-
-          {saveError && <p className="mt-3 text-sm text-danger">{saveError}</p>}
-          <div className="mt-4">
-            {readOnly ? (
-              <ReadOnlyNotice />
-            ) : (
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Salvando..." : saved ? "Salvar alterações" : "Salvar código"}
-              </Button>
-            )}
-          </div>
-        </SectionCard>
-      )}
-
-      {searched && CARAPI_TOKEN && (form.make || form.model) && (
-        <SectionCard
-          title="Cores disponíveis (carapi.app)"
-          description={form.make && form.model && form.modelYear ? `${form.modelYear} ${form.make} ${form.model}` : "Preencha marca, modelo e ano para buscar."}
-        >
-          {carapiLoading && <p className="text-sm text-slate-500">Buscando cores...</p>}
+          {carapiLoading && <p className="text-sm text-slate-500">Buscando cores na carapi.app...</p>}
           {carapiError && <p className="text-sm text-danger">{carapiError}</p>}
           {carapiColors.length > 0 && (
             <ul className="grid gap-2 sm:grid-cols-2">
@@ -389,10 +263,76 @@ export function PaintingPage() {
               ))}
             </ul>
           )}
-          <p className="mt-3 text-xs text-slate-400">Clique em uma cor para preencher o código automaticamente.</p>
+          {carapiColors.length > 0 && (
+            <p className="mt-3 text-xs text-slate-400">Clique em uma cor para preencher o código automaticamente.</p>
+          )}
         </SectionCard>
       )}
 
+      {/* Registro do código */}
+      {searched && (
+        <SectionCard
+          title={saved ? "Código da tinta cadastrado" : "Registrar código da tinta"}
+          description={saved
+            ? `Atualizado por ${saved.user_name || "—"} em ${new Date(saved.updated_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`
+            : "Selecione uma cor acima ou informe o código manualmente."}
+          action={savedMessage ? <span className="text-sm font-medium text-emerald-600">Salvo com sucesso!</span> : null}
+        >
+          {saved && (
+            <div className="mb-5 flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+              <Palette className="size-8 shrink-0 text-emerald-600" />
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Código da tinta</p>
+                <p className="font-mono text-3xl font-bold tracking-wider text-emerald-900">{saved.paint_code}</p>
+                {saved.color_name && <p className="text-sm text-emerald-800">{saved.color_name}</p>}
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <FormField label="Marca">
+              <Input value={form.make} onChange={(e) => setField("make", e.target.value)} disabled={readOnly} />
+            </FormField>
+            <FormField label="Modelo">
+              <Input value={form.model} onChange={(e) => setField("model", e.target.value)} disabled={readOnly} />
+            </FormField>
+            <FormField label="Ano">
+              <Input value={form.modelYear} onChange={(e) => setField("modelYear", e.target.value.replace(/\D/g, "").slice(0, 4))} disabled={readOnly} />
+            </FormField>
+            <FormField label="Placa">
+              <Input value={form.plate} onChange={(e) => setField("plate", cleanPlate(e.target.value))} className="font-mono" disabled={readOnly} />
+            </FormField>
+            <FormField label="Código da tinta *">
+              <Input
+                value={form.paintCode}
+                onChange={(e) => setField("paintCode", e.target.value.toUpperCase())}
+                placeholder="Ex.: LB9A"
+                className="font-mono text-base font-semibold tracking-wider"
+                disabled={readOnly}
+              />
+            </FormField>
+            <FormField label="Nome da cor">
+              <Input value={form.colorName} onChange={(e) => setField("colorName", e.target.value)} placeholder="Ex.: Branco Cristal" disabled={readOnly} />
+            </FormField>
+            <FormField label="Observações" className="md:col-span-3">
+              <Textarea value={form.notes} onChange={(e) => setField("notes", e.target.value)} className="min-h-20" disabled={readOnly} />
+            </FormField>
+          </div>
+
+          {saveError && <p className="mt-3 text-sm text-danger">{saveError}</p>}
+          <div className="mt-4">
+            {readOnly ? (
+              <ReadOnlyNotice />
+            ) : (
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? "Salvando..." : saved ? "Salvar alterações" : "Salvar código"}
+              </Button>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Guia de localização da etiqueta */}
       <SectionCard
         title="Onde encontrar o código da tinta"
         description="A etiqueta fica no próprio veículo. Os locais podem variar conforme modelo e ano."
@@ -420,30 +360,6 @@ export function PaintingPage() {
           <p className="mt-3 text-sm text-slate-500">Selecione a marca para ver onde fica a etiqueta.</p>
         )}
       </SectionCard>
-
-      {vinResult && (
-        <SectionCard title="Dados do chassi (NHTSA)" description="Base americana — para veículos nacionais costuma trazer só a marca e o ano.">
-          <div className={`mb-4 flex items-start gap-2 rounded-xl px-4 py-3 text-sm ${vinClean ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
-            {vinClean ? <CheckCircle2 className="mt-0.5 size-4 shrink-0" /> : <AlertTriangle className="mt-0.5 size-4 shrink-0" />}
-            <div>
-              <p className="font-semibold">{vinClean ? "Chassi decodificado com sucesso." : "Decodificação parcial ou não reconhecida."}</p>
-              {!vinClean && vinResult.ErrorText && <p className="mt-1 text-xs opacity-80">NHTSA: {vinResult.ErrorText}</p>}
-            </div>
-          </div>
-          {vinRows.length === 0 ? (
-            <p className="text-sm text-slate-500">A NHTSA não possui dados para este chassi.</p>
-          ) : (
-            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-              {vinRows.map((row) => (
-                <div key={row.label} className="border-b border-slate-100 pb-2">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{row.label}</dt>
-                  <dd className="mt-0.5 text-sm font-semibold text-slate-900">{row.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </SectionCard>
-      )}
     </div>
   );
 }
