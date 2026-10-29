@@ -80,22 +80,14 @@ export function QuoteDocument() {
   const images = useLogoImages();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
-  // Extrai placa do texto do orçamento (formato: "Placa: ABC-1234" ou "Placa: ABC1D23")
-  function extractPlate(text: string): string {
-    const match = text.match(/placa\s*:\s*([A-Za-z]{3}[\s-]?[A-Za-z0-9]{4})/i);
-    return match ? match[1].replace(/[\s-]/g, "").toUpperCase() : "";
-  }
-
   async function saveToAgenda() {
     if (!supabase || !user) return;
     setAgendaError(null);
-    const plate = extractPlate(body);
-    const { data, error } = await supabase.from("pending_attendances").insert({
-      plate: plate || "",
+    const { data, error } = await supabase.from("agenda").insert({
+      event_date: todayIso(),
+      description: body.trim(),
       store_id: user.storeId ?? null,
-      store_name: user.storeName ?? null,
-      service_title: "Orçamento",
-      observations: body.trim(),
+      user_name: user.name ?? "",
     }).select("id").single();
     if (error) {
       setAgendaError(`Erro ao salvar na agenda: ${error.message}`);
