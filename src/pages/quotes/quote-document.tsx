@@ -91,7 +91,7 @@ export function QuoteDocument() {
     setAgendaError(null);
     const plate = extractPlate(body);
     const { data, error } = await supabase.from("pending_attendances").insert({
-      plate: plate || null,
+      plate: plate || "",
       store_id: user.storeId ?? null,
       store_name: user.storeName ?? null,
       service_title: "Orçamento",
