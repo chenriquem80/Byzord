@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FileDown, Printer, RotateCcw } from "lucide-react";
 import jsPDF from "jspdf";
+import { supabase } from "@/lib/database";
 
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -64,8 +65,41 @@ export function QuoteDocument() {
   const [city, setCity] = useState(defaultCity);
   const [date, setDate] = useState(todayIso());
   const [validDays, setValidDays] = useState(7);
+  const [agendaSaved, setAgendaSaved] = useState(false);
   const images = useLogoImages();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // Extrai placa do texto do orçamento (formato: "Placa: ABC-1234" ou "Placa: ABC1D23")
+  function extractPlate(text: string): string {
+    const match = text.match(/placa\s*:\s*([A-Za-z]{3}[\s-]?[A-Za-z0-9]{4})/i);
+    return match ? match[1].replace(/[\s-]/g, "").toUpperCase() : "";
+  }
+
+  // Extrai veículo do texto (linha após "Veículo:")
+  function extractVehicle(text: string): string {
+    const match = text.match(/ve[íi]culo\s*:\s*([^\n]+)/i);
+    return match ? match[1].trim() : "";
+  }
+
+  async function saveToAgenda() {
+    if (!supabase || !user) return;
+    const plate = extractPlate(body);
+    const vehicle = extractVehicle(body);
+    const obs = `Orçamento${vehicle ? ` — ${vehicle}` : ""}${body ? `\n\n${body.slice(0, 300)}` : ""}`;
+    try {
+      await supabase.from("pending_attendances").insert({
+        plate: plate || null,
+        store_id: user.storeId ?? null,
+        store_name: user.storeName ?? null,
+        service_title: "Orçamento",
+        observations: obs,
+      });
+      setAgendaSaved(true);
+      setTimeout(() => setAgendaSaved(false), 4000);
+    } catch (err) {
+      console.warn("Não foi possível salvar na agenda:", err);
+    }
+  }
 
   useEffect(() => { setCity(defaultCity); }, [defaultCity]);
 
@@ -133,12 +167,14 @@ export function QuoteDocument() {
 
   function handleExportPdf() {
     buildPdf().save(`orcamento-${date}.pdf`);
+    saveToAgenda();
   }
 
   function handlePrint() {
     const doc = buildPdf();
     doc.autoPrint();
     window.open(doc.output("bloburl"), "_blank");
+    saveToAgenda();
   }
 
   function handleReset() {
@@ -169,6 +205,9 @@ export function QuoteDocument() {
         </div>
       }
     >
+      {agendaSaved && (
+        <p className="mb-3 rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-700 font-medium">✓ Registrado na agenda do dia</p>
+      )}
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <FormField label="Cidade">
           <Input value={city} onChange={(e) => setCity(e.target.value)} />
