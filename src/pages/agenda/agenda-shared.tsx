@@ -85,7 +85,7 @@ export function AgendaEntryItem({
           )}
         </div>
       </div>
-      <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{entry.description}</p>
+      <p className="mt-2 whitespace-pre-wrap text-sm uppercase text-slate-700">{entry.description}</p>
       <p className="mt-2 text-xs text-slate-400">
         Registrado{entry.user_name ? ` por ${entry.user_name}` : ""} em {formatDateTime(entry.created_at)}
       </p>

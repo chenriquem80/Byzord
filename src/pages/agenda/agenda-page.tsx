@@ -146,9 +146,9 @@ export function AgendaPage() {
           <FormField label="Descrição">
             <Textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value.toUpperCase())}
               placeholder="Descreva o compromisso ou anotação..."
-              className="min-h-48"
+              className="min-h-48 uppercase"
             />
           </FormField>
           {error && <p className="text-sm text-danger">{error}</p>}
