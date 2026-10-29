@@ -17,6 +17,17 @@ import { PAINT_LABEL_GUIDES, findGuideByMake } from "./paint-label-guide";
 // API pública, gratuita, sem chave e com CORS liberado. Não informa cor/código de tinta.
 const VPIC_URL = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues";
 
+// carapi.app — cores exteriores por ano/marca/modelo.
+const CARAPI_TOKEN = import.meta.env.VITE_CARAPI_TOKEN as string | undefined;
+const CARAPI_URL = "https://carapi.app/api/exterior-colors/v2";
+
+type CarapiColor = {
+  name: string;
+  color_code: string;
+  rgb_value?: string;
+  generic_color?: { name: string };
+};
+
 type VinResult = Record<string, string>;
 
 type VehiclePaint = {
@@ -102,11 +113,41 @@ export function PaintingPage() {
 
   const [guideBrand, setGuideBrand] = useState("");
 
+  const [carapiColors, setCarapiColors] = useState<CarapiColor[]>([]);
+  const [carapiLoading, setCarapiLoading] = useState(false);
+  const [carapiError, setCarapiError] = useState<string | null>(null);
+
   // Guia acompanha a marca informada/decodificada
   useEffect(() => {
     const guide = findGuideByMake(form.make);
     if (guide) setGuideBrand(guide.brand);
   }, [form.make]);
+
+  // carapi.app: busca cores quando make/model/year estão disponíveis
+  useEffect(() => {
+    if (!searched || !CARAPI_TOKEN || !form.make || !form.model || !form.modelYear) {
+      setCarapiColors([]);
+      return;
+    }
+    setCarapiColors([]);
+    setCarapiError(null);
+    setCarapiLoading(true);
+    const params = new URLSearchParams({ year: form.modelYear, make: form.make, model: form.model });
+    fetch(`${CARAPI_URL}?${params}`, {
+      headers: { Authorization: `Bearer ${CARAPI_TOKEN}` },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => {
+        const list: CarapiColor[] = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        setCarapiColors(list);
+        if (list.length === 0) setCarapiError("Nenhuma cor encontrada para este veículo na carapi.app.");
+      })
+      .catch((err) => setCarapiError(`Erro ao buscar cores: ${err.message}`))
+      .finally(() => setCarapiLoading(false));
+  }, [searched, form.make, form.model, form.modelYear]);
 
   function setField<K extends keyof PaintForm>(key: K, value: PaintForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -310,6 +351,45 @@ export function PaintingPage() {
               </Button>
             )}
           </div>
+        </SectionCard>
+      )}
+
+      {searched && CARAPI_TOKEN && (form.make || form.model) && (
+        <SectionCard
+          title="Cores disponíveis (carapi.app)"
+          description={form.make && form.model && form.modelYear ? `${form.modelYear} ${form.make} ${form.model}` : "Preencha marca, modelo e ano para buscar."}
+        >
+          {carapiLoading && <p className="text-sm text-slate-500">Buscando cores...</p>}
+          {carapiError && <p className="text-sm text-danger">{carapiError}</p>}
+          {carapiColors.length > 0 && (
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {carapiColors.map((c, i) => (
+                <li key={i}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-xl border border-border bg-white px-4 py-3 text-left text-sm shadow-sm transition hover:border-primary hover:bg-primary/5"
+                    onClick={() => {
+                      setField("paintCode", c.color_code);
+                      setField("colorName", c.name);
+                    }}
+                  >
+                    {c.rgb_value && (
+                      <span
+                        className="size-6 shrink-0 rounded-full border border-slate-200"
+                        style={{ backgroundColor: `#${c.rgb_value}` }}
+                      />
+                    )}
+                    <span>
+                      <span className="font-mono font-semibold">{c.color_code}</span>
+                      <span className="ml-2 text-slate-600">{c.name}</span>
+                      {c.generic_color?.name && <span className="ml-1 text-xs text-slate-400">({c.generic_color.name})</span>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-xs text-slate-400">Clique em uma cor para preencher o código automaticamente.</p>
         </SectionCard>
       )}
 
