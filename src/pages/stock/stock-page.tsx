@@ -314,7 +314,10 @@ export function StockPage() {
           .map((item) => `${item.automaker} ${item.model} ${item.generation} ${item.version}`)
           .join(" ")}`.toLowerCase();
         const matchesQuery = query
-          ? query.toLowerCase().split(/\s+/).filter(Boolean).every((term) => text.includes(term))
+          ? query.toLowerCase().split(/\s+/).filter(Boolean).every((term) => {
+              const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              return new RegExp(`\\b${escaped}`).test(text);
+            })
           : true;
         const matchesGlassType = glassType && glassType !== ALL_GLASS_TYPES ? product.glassType === glassType : true;
         return matchesQuery && matchesGlassType;
