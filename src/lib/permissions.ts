@@ -25,6 +25,7 @@ export type AppPage =
   | "/app/configuracoes"
   | "/app/transferencia"
   | "/app/registro"
+  | "/app/encomenda"
   | "/app/usuarios";
 
 export const PAGE_LABELS: Record<AppPage, string> = {
@@ -50,6 +51,7 @@ export const PAGE_LABELS: Record<AppPage, string> = {
   "/app/configuracoes":         "Configurações",
   "/app/transferencia":         "Transferência",
   "/app/registro":              "Registro",
+  "/app/encomenda":             "Encomenda de Peça",
   "/app/usuarios":              "Usuários",
 };
 
@@ -113,6 +115,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/configuracoes":         "write",
     "/app/transferencia":         "write",
     "/app/registro":              "write",
+    "/app/encomenda":             "write",
     "/app/usuarios":              "write",
   },
   // Acesso total, exceto cadastro de usuários
@@ -139,6 +142,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/configuracoes":         "write",
     "/app/transferencia":         "write",
     "/app/registro":              "write",
+    "/app/encomenda":             "write",
     "/app/usuarios":              "none",
   },
   // Atendimento (write) + Orçamento (somente leitura) + Clientes (leitura)
@@ -165,6 +169,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/configuracoes":         "none",
     "/app/transferencia":         "none",
     "/app/registro":              "none",
+    "/app/encomenda":             "write",
     "/app/usuarios":              "none",
   },
   // Área de estoque completa (write), sem acesso a atendimento/orçamento
@@ -191,6 +196,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/configuracoes":         "none",
     "/app/transferencia":         "write",
     "/app/registro":              "read",
+    "/app/encomenda":             "write",
     "/app/usuarios":              "none",
   },
 };

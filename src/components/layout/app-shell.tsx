@@ -56,6 +56,7 @@ const menuItems: MenuItem[] = [
     children: [
       { title: "Pintura", route: "/app/pintura", icon: "Paintbrush" },
       { title: "Imprimir orçamento", route: "/app/imprimir-orcamento", icon: "Printer" },
+      { title: "Encomenda de Peça", route: "/app/encomenda", icon: "PackageSearch" },
     ],
   },
   { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3" },
@@ -67,7 +68,7 @@ const menuItems: MenuItem[] = [
 const groupChildRoutes: Record<string, string[]> = {
   "/app/agenda": ["/app/agenda", "/app/agenda-consulta"],
   "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/pedido"],
-  "/app/funcoes": ["/app/pintura", "/app/imprimir-orcamento"],
+  "/app/funcoes": ["/app/pintura", "/app/imprimir-orcamento", "/app/encomenda"],
   "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia", "/app/produtos", "/app/etiquetagem", "/app/reposicao"],
 };
 

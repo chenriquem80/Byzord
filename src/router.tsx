@@ -30,6 +30,7 @@ const ChangePasswordPage = lazy(() => import("@/pages/change-password-page").the
 const UserManagementPage = lazy(() => import("@/pages/settings/user-management-page").then((module) => ({ default: module.UserManagementPage })));
 const TransferPage = lazy(() => import("@/pages/transfer/transfer-page").then((module) => ({ default: module.TransferPage })));
 const RegisterPage = lazy(() => import("@/pages/register-page").then((module) => ({ default: module.RegisterPage })));
+const PartOrdersPage = lazy(() => import("@/pages/part-orders/part-orders-page").then((module) => ({ default: module.PartOrdersPage })));
 
 function withSuspense(component: ReactNode) {
   return (
@@ -166,6 +167,7 @@ export const router = createBrowserRouter([
       { path: "configuracoes",element: withSuspense(<AuthGuard page="/app/configuracoes"><SettingsPage /></AuthGuard>) },
       { path: "usuarios",    element: withSuspense(<AuthGuard page="/app/usuarios"><UserManagementPage /></AuthGuard>) },
       { path: "transferencia",element: withSuspense(<AuthGuard page="/app/transferencia"><TransferPage /></AuthGuard>) },
+      { path: "encomenda",   element: withSuspense(<AuthGuard page="/app/encomenda"><PartOrdersPage /></AuthGuard>) },
     ],
   },
   {
