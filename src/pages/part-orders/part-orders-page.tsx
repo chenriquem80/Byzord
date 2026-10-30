@@ -20,7 +20,6 @@ type PartOrder = {
   store_id: string | null;
   user_name: string | null;
   created_at: string;
-  stores: { name: string } | null;
 };
 
 type Store = { id: string; name: string };
@@ -75,13 +74,13 @@ export function PartOrdersPage() {
     if (!supabase || (!storeId && !isAdmin)) { setOrders([]); setLoading(false); return; }
     let query = supabase
       .from("part_orders")
-      .select("id, order_date, arrival_date, description, store_id, user_name, created_at, stores(name)")
+      .select("id, order_date, arrival_date, description, store_id, user_name, created_at")
       .order("order_date", { ascending: false })
       .order("created_at", { ascending: false });
     if (!isAdmin) query = query.eq("store_id", storeId);
     const { data, error: fetchErr } = await query;
     if (fetchErr) setError(`Erro ao carregar: ${fetchErr.message}`);
-    setOrders((data ?? []) as unknown as PartOrder[]);
+    setOrders((data ?? []) as PartOrder[]);
     setLoading(false);
   }
 
@@ -218,9 +217,9 @@ export function PartOrdersPage() {
                         Previsão: {formatDate(order.arrival_date)}
                       </span>
                     )}
-                    {isAdmin && order.stores?.name && (
+                    {isAdmin && order.store_id && (
                       <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                        {order.stores.name}
+                        {stores.find((s) => s.id === order.store_id)?.name ?? order.store_id}
                       </span>
                     )}
                   </div>
