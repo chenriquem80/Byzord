@@ -192,6 +192,7 @@ function SidebarContent({
   filteredMenuItems: MenuItem[];
   handleLogout: () => void;
 }) {
+  const { user } = useAuth();
   return (
     <div className="flex h-full flex-col">
       <div className="rounded-[28px] bg-white p-5 shadow-panel">
@@ -200,6 +201,9 @@ function SidebarContent({
           alt="Byzord Auto Vitrais"
           className="mx-auto w-full max-w-[220px] object-contain"
         />
+        {user?.name && (
+          <p className="mt-3 text-center text-xs text-slate-400">{user.name}</p>
+        )}
       </div>
 
       <nav className="mt-8 flex-1 space-y-2">
