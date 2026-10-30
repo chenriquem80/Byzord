@@ -116,6 +116,9 @@ export function StockPage() {
     items: { condition: string; storeName: string; stock: number }[];
   }>({ open: false, productName: "", manufacturer: "", items: [] });
 
+  // Dialog de detalhes mobile
+  const [mobileDetail, setMobileDetail] = useState<StockRow | null>(null);
+
   // Dialog de edição de lado do inventário
   const [ladoDialog, setLadoDialog] = useState<{
     open: boolean;
@@ -581,9 +584,11 @@ export function StockPage() {
               {rows.map((row, i) => {
                 const showLado = !/parabrisa|vigia/i.test(row.product.glassType);
                 return (
-                  <div
+                  <button
                     key={i}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3"
+                    type="button"
+                    onClick={() => setMobileDetail(row)}
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3 text-left transition active:bg-slate-50"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-slate-900">{row.productName}</p>
@@ -591,12 +596,13 @@ export function StockPage() {
                         {row.characteristic}
                         {showLado && row.lado ? ` · ${row.lado}` : ""}
                       </p>
+                      <p className="text-xs text-slate-400">{row.manufacturer}</p>
                     </div>
                     <div className="shrink-0 text-right text-xs text-slate-600">
                       <p>{stores[0]?.code ?? "L1"}: <span className="font-bold text-slate-900">{row.store1Quantity}</span></p>
                       {stores[1] && <p>{stores[1]?.code ?? "L2"}: <span className="font-bold text-slate-900">{row.store2Quantity}</span></p>}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -805,6 +811,58 @@ export function StockPage() {
             </div>
           </div>
         </DialogContent>
+      </Dialog>
+
+      {/* Dialog de detalhes mobile */}
+      <Dialog open={!!mobileDetail} onOpenChange={(open) => !open && setMobileDetail(null)}>
+        {mobileDetail && (() => {
+          const row = mobileDetail;
+          const showLado = !/parabrisa|vigia/i.test(row.product.glassType);
+          const mf = row.product.manufacturers.find((m) => m.id === row.manufacturerId);
+          return (
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>{row.productName}</DialogTitle>
+                <DialogDescription>
+                  {row.characteristic}{showLado && row.lado ? ` · Lado ${row.lado}` : ""} · {row.manufacturer}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-2 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {(mf?.inventories ?? []).map((inv) => (
+                    <div key={inv.id} className="rounded-xl border border-border bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{inv.storeName}</p>
+                      <p className="mt-1 text-2xl font-bold text-slate-900">{inv.stock} <span className="text-sm font-normal text-slate-400">un.</span></p>
+                      {inv.location && <p className="mt-1 text-xs text-slate-500">{inv.location}</p>}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-xl border border-border bg-white p-3">
+                    <p className="text-xs text-slate-400">Preço compra</p>
+                    <p className="font-semibold text-slate-900">{formatCurrency(row.cost)}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-white p-3">
+                    <p className="text-xs text-slate-400">Última compra</p>
+                    <p className="font-semibold text-slate-900">{formatMonthYear(row.lastPurchaseDate) || "—"}</p>
+                  </div>
+                </div>
+                {row.product.compatibilities.length > 0 && (
+                  <div className="rounded-xl border border-border bg-white p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Veículos compatíveis</p>
+                    <ul className="space-y-1">
+                      {row.product.compatibilities.map((c) => (
+                        <li key={c.id} className="text-xs text-slate-700">
+                          {c.automaker} {c.model}{c.generation ? ` · ${c.generation}` : ""}{(c.startYear || c.endYear) ? ` · ${c.startYear}/${c.endYear}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          );
+        })()}
       </Dialog>
 
       {/* Dialog de exclusão de produto */}
