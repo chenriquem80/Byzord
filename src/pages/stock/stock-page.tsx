@@ -833,7 +833,7 @@ export function StockPage() {
                     <div key={inv.id} className="rounded-xl border border-border bg-slate-50 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{inv.storeName}</p>
                       <p className="mt-1 text-2xl font-bold text-slate-900">{inv.stock} <span className="text-sm font-normal text-slate-400">un.</span></p>
-                      {inv.location && <p className="mt-1 text-xs text-slate-500">{inv.location}</p>}
+                      {inv.location && <p className="mt-1 text-xs text-slate-500"><span className="text-slate-400">Loc: </span>{inv.location}</p>}
                     </div>
                   ))}
                 </div>
