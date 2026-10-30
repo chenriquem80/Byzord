@@ -123,6 +123,17 @@ export function PartOrdersPage() {
       : await supabase.from("part_orders").insert({ ...payload, user_name: authUser?.name ?? "" });
     setSaving(false);
     if (saveErr) { setError(`Erro ao salvar: ${saveErr.message}`); return; }
+
+    if (!editingId) {
+      const arrivalLine = arrivalDate ? `\nPrevisão de chegada: ${formatDate(arrivalDate)}` : "";
+      await supabase.from("agenda").insert({
+        event_date: orderDate,
+        description: `**** ENCOMENDA ****\n${description.trim()}${arrivalLine}`,
+        store_id: formStoreId,
+        user_name: authUser?.name ?? "",
+      });
+    }
+
     resetForm();
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 3000);
