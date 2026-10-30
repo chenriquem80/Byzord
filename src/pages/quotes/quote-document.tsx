@@ -85,7 +85,7 @@ export function QuoteDocument() {
     setAgendaError(null);
     const { data, error } = await supabase.from("agenda").insert({
       event_date: todayIso(),
-      description: body.trim(),
+      description: `**** ORÇAMENTO ****\n${body.trim()}`,
       store_id: user.storeId ?? null,
       user_name: user.name ?? "",
     }).select("id").single();
