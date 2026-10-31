@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BookmarkPlus, FileDown, MessageCircle, Printer, RotateCcw } from "lucide-react";
+import { BookmarkPlus, FileDown, MessageCircle, Mic, MicOff, Printer, RotateCcw } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import jsPDF from "jspdf";
 import { supabase } from "@/lib/database";
@@ -84,8 +84,36 @@ export function QuoteDocument() {
   const [validDays, setValidDays] = useState(7);
   const [agendaSaved, setAgendaSaved] = useState(false);
   const [agendaError, setAgendaError] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
   const images = useLogoImages();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  function toggleMic() {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("Reconhecimento de voz não suportado neste navegador."); return; }
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "pt-BR";
+    rec.interimResults = false;
+    rec.continuous = true;
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results as SpeechRecognitionResultList)
+        .slice(e.resultIndex)
+        .map((r: any) => r[0].transcript)
+        .join(" ");
+      setBody((prev) => prev + (prev.endsWith(" ") || prev.endsWith("\n") ? "" : " ") + transcript);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
+    recognitionRef.current = rec;
+    setListening(true);
+  }
 
   async function saveToAgenda() {
     if (!supabase || !user) return;
@@ -199,25 +227,25 @@ export function QuoteDocument() {
     <SectionCard
       title="Modelo de Orçamento"
       action={
-        <div className="flex flex-nowrap gap-2">
-          <Button variant="outline" size="sm" onClick={handleReset}>
+        <div className="flex flex-nowrap gap-1.5">
+          <Button variant="outline" size="sm" onClick={handleReset} aria-label="Limpar">
             <RotateCcw className="size-4" />
-            Limpar
+            <span className="hidden sm:inline">Limpar</span>
           </Button>
           <Button variant="outline" size="sm" onClick={saveToAgenda} aria-label="Salvar na agenda">
             <BookmarkPlus className="size-4" />
-            Salvar
+            <span className="hidden sm:inline">Salvar</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={handlePrint} disabled={!images}>
+          <Button variant="outline" size="sm" onClick={handlePrint} disabled={!images} aria-label="Imprimir A4">
             <Printer className="size-4" />
-            Imprimir (A4)
+            <span className="hidden sm:inline">Imprimir</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={handleWhatsApp} className="border-green-500 text-green-600 hover:bg-green-50" aria-label="Enviar pelo WhatsApp">
+          <Button variant="outline" size="sm" onClick={handleWhatsApp} className="border-green-500 text-green-600 hover:bg-green-50" aria-label="WhatsApp">
             <MessageCircle className="size-4" />
           </Button>
-          <Button size="sm" onClick={handleExportPdf} disabled={!images}>
+          <Button size="sm" onClick={handleExportPdf} disabled={!images} aria-label="Exportar PDF">
             <FileDown className="size-4" />
-            Exportar PDF
+            <span className="hidden sm:inline">PDF</span>
           </Button>
         </div>
       }
@@ -228,8 +256,8 @@ export function QuoteDocument() {
       {agendaError && (
         <p className="mb-3 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{agendaError}</p>
       )}
-      <div className="mb-4 grid gap-4 sm:grid-cols-3">
-        <FormField label="Cidade">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <FormField label="Cidade" className="col-span-2 sm:col-span-1">
           <Input value={city} onChange={(e) => setCity(e.target.value)} />
         </FormField>
         <FormField label="Data">
@@ -238,6 +266,24 @@ export function QuoteDocument() {
         <FormField label="Validade (dias)">
           <Input type="number" min={1} value={validDays} onChange={(e) => setValidDays(Math.max(1, Number(e.target.value) || 1))} />
         </FormField>
+      </div>
+
+      {/* Microfone */}
+      <div className="mb-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={toggleMic}
+          aria-label={listening ? "Parar gravação" : "Ditar texto"}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+            listening
+              ? "animate-pulse bg-rose-500 text-white shadow-lg"
+              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+          }`}
+        >
+          {listening ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+          {listening ? "Parar" : "Ditar"}
+        </button>
+        {listening && <span className="text-xs text-rose-500">Ouvindo... fale o texto do orçamento</span>}
       </div>
 
       {/* Pré-visualização da folha A4 (794 x 1123 px ≈ 210 x 297 mm) */}
