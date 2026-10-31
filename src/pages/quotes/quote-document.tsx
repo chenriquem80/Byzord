@@ -73,7 +73,12 @@ export function QuoteDocument() {
   const defaultCity = isTaubate ? "Taubaté" : "Pindamonhangaba";
 
   const location = useLocation();
-  const [body, setBody] = useState(() => (location.state as { body?: string } | null)?.body ?? DEFAULT_BODY);
+  const [body, setBody] = useState(DEFAULT_BODY);
+
+  useEffect(() => {
+    const stateBody = (location.state as { body?: string } | null)?.body;
+    if (stateBody) setBody(stateBody);
+  }, [location.key]);
   const [city, setCity] = useState(defaultCity);
   const [date, setDate] = useState(todayIso());
   const [validDays, setValidDays] = useState(7);
