@@ -191,7 +191,6 @@ export function QuoteDocument() {
   return (
     <SectionCard
       title="Modelo de Orçamento"
-      description="Edite o texto direto na folha e depois imprima em A4 ou exporte em PDF para enviar ao cliente."
       action={
         <div className="flex flex-nowrap gap-2">
           <Button variant="outline" size="sm" onClick={handleReset}>
