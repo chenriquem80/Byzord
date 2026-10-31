@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FileDown, Printer, RotateCcw } from "lucide-react";
+import { FileDown, MessageCircle, Printer, RotateCcw } from "lucide-react";
 import jsPDF from "jspdf";
 import { supabase } from "@/lib/database";
 
@@ -175,6 +175,12 @@ export function QuoteDocument() {
     saveToAgenda();
   }
 
+  function handleWhatsApp() {
+    const text = [COMPANY.name, "", body.trim(), "", dateLine, validityLine].join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    saveToAgenda();
+  }
+
   function handleReset() {
     setBody(DEFAULT_BODY);
     setDate(todayIso());
@@ -195,6 +201,10 @@ export function QuoteDocument() {
           <Button variant="outline" size="sm" onClick={handlePrint} disabled={!images}>
             <Printer className="size-4" />
             Imprimir (A4)
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleWhatsApp} className="border-green-500 text-green-600 hover:bg-green-50">
+            <MessageCircle className="size-4" />
+            WhatsApp
           </Button>
           <Button size="sm" onClick={handleExportPdf} disabled={!images}>
             <FileDown className="size-4" />
