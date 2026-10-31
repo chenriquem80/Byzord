@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Mic, MicOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { SectionCard } from "@/components/shared/section-card";
@@ -39,6 +40,31 @@ export function AgendaPage() {
   const [eventDate, setEventDate] = useState(todayIso());
   const [description, setDescription] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  function toggleMic() {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("Reconhecimento de voz não suportado neste navegador."); return; }
+    if (listening) { recognitionRef.current?.stop(); setListening(false); return; }
+    const rec = new SR();
+    rec.lang = "pt-BR";
+    rec.interimResults = false;
+    rec.continuous = true;
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results as SpeechRecognitionResultList)
+        .slice(e.resultIndex)
+        .map((r: any) => r[0].transcript)
+        .join(" ")
+        .toUpperCase();
+      setDescription((prev) => prev + (prev.endsWith(" ") || prev.endsWith("\n") || prev === "" ? "" : " ") + transcript);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
+    recognitionRef.current = rec;
+    setListening(true);
+  }
   // Unidade do registro: fixa na loja do usuário; administrador pode escolher
   const [formStoreId, setFormStoreId] = useState(storeId ?? "");
 
@@ -157,6 +183,22 @@ export function AgendaPage() {
             )}
           </div>
           {!readOnly && (<>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleMic}
+              aria-label={listening ? "Parar gravação" : "Ditar texto"}
+              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                listening
+                  ? "animate-pulse bg-rose-500 text-white shadow-lg"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {listening ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+              {listening ? "Parar" : "Ditar"}
+            </button>
+            {listening && <span className="text-xs text-rose-500">Ouvindo...</span>}
+          </div>
           <FormField label="Descrição">
             <Textarea
               value={description}
