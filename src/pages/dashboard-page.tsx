@@ -1,4 +1,4 @@
-import { AlertTriangle, PackageMinus, PackagePlus, RefreshCw } from "lucide-react";
+import { PackageMinus, PackagePlus, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -30,15 +30,6 @@ type StockMovement = {
   created_at: string;
 };
 
-type LowStockItem = {
-  id: string;
-  product_name: string;
-  store_name: string;
-  manufacturer: string;
-  stock: number;
-  min_quantity: number;
-};
-
 type DbStore = { id: string; name: string; city: string };
 
 function isTodayLocal(dateStr: string): boolean {
@@ -55,9 +46,9 @@ export function DashboardPage() {
   const { user } = useAuth();
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(true);
-  const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
-  const [loadingLowStock, setLoadingLowStock] = useState(true);
   const [dbStores, setDbStores] = useState<DbStore[]>([]);
+  const [agendaItems, setAgendaItems] = useState<{ id: string; description: string; user_name: string | null }[]>([]);
+  const [loadingAgenda, setLoadingAgenda] = useState(true);
 
   async function fetchMovements() {
     setLoadingMovements(true);
@@ -77,37 +68,33 @@ export function DashboardPage() {
     setLoadingMovements(false);
   }
 
-  async function fetchLowStock() {
-    setLoadingLowStock(true);
-    if (!supabase) { setLoadingLowStock(false); return; }
-    const [{ data: storesData }, { data }] = await Promise.all([
-      supabase.from("stores").select("id, name, city"),
-      supabase
-        .from("product_store_inventory")
-        .select("id, stock, min_quantity, store_id, product_manufacturers(manufacturer, products(name)), stores(name)")
-        .gt("min_quantity", 0),
-    ]);
-    if (storesData) setDbStores(storesData);
-    const mapped: LowStockItem[] = (data ?? [])
-      .filter((row: any) => (row.stock ?? 0) < (row.min_quantity ?? 0))
-      .map((row: any) => ({
-        id: row.id,
-        product_name: row.product_manufacturers?.products?.name ?? "—",
-        store_name: row.stores?.name ?? "—",
-        manufacturer: row.product_manufacturers?.manufacturer ?? "—",
-        stock: row.stock ?? 0,
-        min_quantity: row.min_quantity ?? 0,
-      }));
-    setLowStock(mapped);
-    setLoadingLowStock(false);
+  async function fetchStores() {
+    if (!supabase) return;
+    const { data } = await supabase.from("stores").select("id, name, city");
+    if (data) setDbStores(data);
   }
 
-  function refresh() { fetchMovements(); fetchLowStock(); }
+  async function fetchAgenda() {
+    setLoadingAgenda(true);
+    if (!supabase) { setLoadingAgenda(false); return; }
+    const today = new Date();
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const { data } = await supabase
+      .from("agenda")
+      .select("id, description, user_name")
+      .eq("event_date", iso)
+      .order("created_at", { ascending: false });
+    setAgendaItems(data ?? []);
+    setLoadingAgenda(false);
+  }
+
+  function refresh() { fetchMovements(); fetchAgenda(); }
 
   useEffect(() => {
     fetchMovements();
-    fetchLowStock();
-    const interval = setInterval(() => { fetchMovements(); fetchLowStock(); }, 60_000);
+    fetchStores();
+    fetchAgenda();
+    const interval = setInterval(() => { fetchMovements(); fetchAgenda(); }, 60_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -135,8 +122,8 @@ export function DashboardPage() {
           title="Resumo por loja"
           description="Visual rápido para comparar o saldo operacional entre as unidades."
           action={
-            <Button size="sm" variant="outline" onClick={refresh} disabled={loadingMovements || loadingLowStock}>
-              <RefreshCw className={`size-3.5 ${(loadingMovements || loadingLowStock) ? "animate-spin" : ""}`} />
+            <Button size="sm" variant="outline" onClick={refresh} disabled={loadingMovements}>
+              <RefreshCw className={`size-3.5 ${loadingMovements ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
           }
@@ -145,12 +132,11 @@ export function DashboardPage() {
             {dbStores.map((store) => {
               const entryCount = entries.filter((m) => m.store_name === store.name).length;
               const exitCount  = exits.filter((m) => m.store_name === store.name).length;
-              const lowCount   = lowStock.filter((item) => item.store_name === store.name).length;
               return (
                 <div key={store.id} className="rounded-2xl border border-border bg-white p-5">
                   <p className="text-lg font-semibold text-slate-900">{store.name}</p>
                   <p className="mt-1 text-sm text-slate-500">{(store as any).city ?? ""}</p>
-                  <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="mt-4 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl bg-violet-50 p-4">
                       <p className="text-xs uppercase tracking-[0.12em] text-violet-600">Entradas hoje</p>
                       <p className="mt-2 text-2xl font-bold text-violet-700">{entryCount}</p>
@@ -158,10 +144,6 @@ export function DashboardPage() {
                     <div className="rounded-2xl bg-amber-50 p-4">
                       <p className="text-xs uppercase tracking-[0.12em] text-amber-600">Saídas hoje</p>
                       <p className="mt-2 text-2xl font-bold text-amber-700">{exitCount}</p>
-                    </div>
-                    <div className={`rounded-2xl p-4 ${lowCount > 0 ? "bg-rose-50" : "bg-slate-50"}`}>
-                      <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Abaixo mínimo</p>
-                      <p className={`mt-2 text-2xl font-bold ${lowCount > 0 ? "text-rose-600" : "text-slate-900"}`}>{lowCount}</p>
                     </div>
                   </div>
                 </div>
@@ -224,35 +206,29 @@ export function DashboardPage() {
           </div>
         </SectionCard>
 
-        {/* Estoque abaixo do mínimo */}
+        {/* Agenda do dia */}
         <SectionCard
-          title="Estoque abaixo do mínimo"
-          description="Itens com quantidade atual menor que o mínimo indicado."
+          title="Agenda do dia"
+          description={`${agendaItems.length} registro${agendaItems.length !== 1 ? "s" : ""} hoje.`}
           action={
-            <Button size="sm" variant="outline" onClick={fetchLowStock} disabled={loadingLowStock}>
-              <RefreshCw className={`size-3.5 ${loadingLowStock ? "animate-spin" : ""}`} />
+            <Button size="sm" variant="outline" onClick={fetchAgenda} disabled={loadingAgenda}>
+              <RefreshCw className={`size-3.5 ${loadingAgenda ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
           }
         >
           <div className="space-y-3">
-            {loadingLowStock ? (
+            {loadingAgenda ? (
               <p className="py-6 text-center text-sm text-slate-400">Carregando...</p>
-            ) : lowStock.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400">Nenhum item abaixo do mínimo.</p>
+            ) : agendaItems.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">Nenhum registro na agenda hoje.</p>
             ) : (
-              lowStock.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-900">{item.product_name}</p>
-                      <p className="mt-0.5 text-sm text-slate-600">{item.store_name} • {item.manufacturer}</p>
-                    </div>
-                    <Badge className="shrink-0 bg-rose-100 text-rose-700">
-                      <AlertTriangle className="mr-1 size-3.5" />
-                      {item.stock}/{item.min_quantity} un.
-                    </Badge>
-                  </div>
+              agendaItems.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-border bg-white p-4">
+                  <p className="whitespace-pre-wrap text-sm text-slate-800">{item.description}</p>
+                  {item.user_name && (
+                    <p className="mt-2 text-xs text-slate-400">{item.user_name}</p>
+                  )}
                 </div>
               ))
             )}
