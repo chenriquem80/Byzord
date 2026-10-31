@@ -119,6 +119,7 @@ export function LabelsPage() {
         lado: invLado,
         glassType: product.glassType,
         manufacturer: mf.manufacturer,
+        supplier: mf.supplier ?? "",
         location: (mf.inventories[0] as any)?.location ?? "",
         purchaseSummary: dateLabel ? `${mf.cost} - ${dateLabel}` : "",
       };
