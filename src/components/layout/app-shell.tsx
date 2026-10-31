@@ -28,16 +28,6 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-    title: "Atendimento",
-    route: "/app/atendimento",
-    icon: "ClipboardList",
-    children: [
-      { title: "Novo atendimento", route: "/app/atendimento", icon: "PlusCircle" },
-      { title: "Consulta", route: "/app/atendimento-consulta", icon: "Search" },
-    ],
-  },
-  { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
-  {
     title: "Estoque",
     route: "/app/estoque",
     icon: "Package",
@@ -51,6 +41,16 @@ const menuItems: MenuItem[] = [
       { title: "Reposição", route: "/app/reposicao", icon: "RefreshCcw" },
     ],
   },
+  {
+    title: "Atendimento",
+    route: "/app/atendimento",
+    icon: "ClipboardList",
+    children: [
+      { title: "Novo atendimento", route: "/app/atendimento", icon: "PlusCircle" },
+      { title: "Consulta", route: "/app/atendimento-consulta", icon: "Search" },
+    ],
+  },
+  { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
   {
     title: "Funções",
     route: "/app/funcoes",
