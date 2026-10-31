@@ -84,8 +84,20 @@ export function QuoteDocument() {
   const [validDays, setValidDays] = useState(7);
   const [agendaSaved, setAgendaSaved] = useState(false);
   const [agendaError, setAgendaError] = useState<string | null>(null);
+  const [mobileEditOpen, setMobileEditOpen] = useState(false);
+  const [mobileEditDraft, setMobileEditDraft] = useState("");
   const images = useLogoImages();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  function openMobileEdit() {
+    setMobileEditDraft(body);
+    setMobileEditOpen(true);
+  }
+
+  function confirmMobileEdit() {
+    setBody(mobileEditDraft);
+    setMobileEditOpen(false);
+  }
 
   async function saveToAgenda() {
     if (!supabase || !user) return;
@@ -240,8 +252,21 @@ export function QuoteDocument() {
         </FormField>
       </div>
 
-      {/* Pré-visualização da folha A4 (794 x 1123 px ≈ 210 x 297 mm) */}
-      <div className="overflow-x-auto rounded-2xl bg-slate-100 p-4">
+      {/* Mobile: card clicável para editar o corpo */}
+      <div className="sm:hidden">
+        <p className="mb-1 text-xs font-medium text-slate-500">Conteúdo do orçamento</p>
+        <button
+          type="button"
+          onClick={openMobileEdit}
+          className="w-full rounded-xl border-2 border-dashed border-slate-300 bg-white p-4 text-left text-sm leading-relaxed text-slate-700 whitespace-pre-wrap min-h-[160px] transition hover:border-primary/50 hover:bg-slate-50"
+        >
+          {body || <span className="text-slate-400">Toque aqui para digitar o orçamento...</span>}
+        </button>
+        <p className="mt-1 text-xs text-slate-400">Toque no campo acima para editar.</p>
+      </div>
+
+      {/* Desktop: pré-visualização da folha A4 */}
+      <div className="hidden sm:block overflow-x-auto rounded-2xl bg-slate-100 p-4">
         <div
           className="relative mx-auto flex flex-col bg-white px-[83px] pb-[40px] pt-[38px] shadow-md"
           style={{ width: 794, minHeight: 1123, fontFamily: '"Times New Roman", Times, serif' }}
@@ -281,7 +306,37 @@ export function QuoteDocument() {
           </div>
         </div>
       </div>
-      <p className="mt-2 text-xs text-slate-400">Clique no texto da folha para editar.</p>
+      <p className="mt-2 hidden sm:block text-xs text-slate-400">Clique no texto da folha para editar.</p>
+
+      {/* Modal de edição mobile */}
+      {mobileEditOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white sm:hidden">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setMobileEditOpen(false)}
+              className="text-sm font-medium text-slate-500 px-2 py-1"
+            >
+              Cancelar
+            </button>
+            <h2 className="text-sm font-semibold text-slate-800">Editar orçamento</h2>
+            <button
+              type="button"
+              onClick={confirmMobileEdit}
+              className="text-sm font-semibold text-primary px-2 py-1"
+            >
+              Confirmar
+            </button>
+          </div>
+          <textarea
+            autoFocus
+            value={mobileEditDraft}
+            onChange={(e) => setMobileEditDraft(e.target.value)}
+            className="flex-1 p-4 text-base leading-relaxed resize-none outline-none text-slate-800"
+            placeholder="Veículo:            Placa: ..."
+          />
+        </div>
+      )}
     </SectionCard>
   );
 }
