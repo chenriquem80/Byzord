@@ -99,7 +99,12 @@ export function AgendaQueryPage() {
       const body = entry.description.replace(/^\*\*\*\* ORÇAMENTO \*\*\*\*\n?/, "");
       navigate("/app/imprimir-orcamento", { state: { body } });
     } else if (entry.description.startsWith("**** ENCOMENDA ****")) {
-      navigate("/app/encomenda");
+      const lines = entry.description.replace(/^\*\*\*\* ENCOMENDA \*\*\*\*\n?/, "").split("\n");
+      const arrivalLine = lines.find((l) => l.startsWith("Previsão de chegada:"));
+      const descText = lines.filter((l) => !l.startsWith("Previsão de chegada:")).join("\n").trim();
+      const arrivalBR = arrivalLine?.replace("Previsão de chegada: ", "").trim() ?? "";
+      const arrivalIso = arrivalBR ? arrivalBR.split("/").reverse().join("-") : "";
+      navigate("/app/encomenda", { state: { editDescription: descText, editArrivalDate: arrivalIso, editOrderDate: entry.event_date } });
     } else {
       navigate("/app/agenda", { state: { editEntry: entry } });
     }

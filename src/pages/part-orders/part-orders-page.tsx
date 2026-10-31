@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { SectionCard } from "@/components/shared/section-card";
 import { ReadOnlyNotice } from "@/components/shared/read-only-notice";
@@ -44,6 +45,8 @@ export function PartOrdersPage() {
   const storeId = authUser?.storeId ?? null;
   const isAdmin = authUser?.role === "ADMIN";
   const { readOnly } = usePermissions();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [stores, setStores] = useState<Store[]>([]);
   const [orders, setOrders] = useState<PartOrder[]>([]);
@@ -85,6 +88,23 @@ export function PartOrdersPage() {
   }
 
   useEffect(() => { fetchOrders(); }, [storeId, isAdmin]);
+
+  // Quando vier da agenda, pré-preenche o formulário com o registro correspondente
+  useEffect(() => {
+    const state = location.state as { editDescription?: string; editArrivalDate?: string; editOrderDate?: string } | null;
+    if (!state?.editDescription) return;
+    navigate(location.pathname, { replace: true, state: null });
+    // Tenta encontrar o registro pelo texto da descrição
+    if (orders.length > 0) {
+      const match = orders.find((o) => o.description.trim() === state.editDescription!.trim());
+      if (match) { startEdit(match); return; }
+    }
+    // Não encontrou — pré-preenche o formulário como novo mas com os dados
+    setDescription(state.editDescription);
+    if (state.editArrivalDate) setArrivalDate(state.editArrivalDate);
+    if (state.editOrderDate) setOrderDate(state.editOrderDate);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [location.key, orders]);
 
   function resetForm() {
     setDescription("");
