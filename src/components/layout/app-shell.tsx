@@ -38,7 +38,6 @@ const menuItems: MenuItem[] = [
       { title: "Transferir", route: "/app/transferencia", icon: "ArrowLeftRight" },
       { title: "Produtos", route: "/app/produtos", icon: "Boxes" },
       { title: "Etiquetagem", route: "/app/etiquetagem", icon: "QrCode" },
-      { title: "Reposição", route: "/app/reposicao", icon: "RefreshCcw" },
     ],
   },
   {
