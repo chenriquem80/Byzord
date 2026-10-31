@@ -62,6 +62,7 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
   { title: "Inicial", pages: [{ page: "/app", label: "Inicial" }] },
   { title: "Agenda", pages: [
     { page: "/app/agenda", label: "Registro" },
+    { page: "/app/encomenda", label: "Encomenda de Peça" },
     { page: "/app/agenda-consulta", label: "Consulta" },
   ] },
   { title: "Atendimento", pages: [
@@ -81,7 +82,6 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
   { title: "Funções", pages: [
     { page: "/app/pintura", label: "Pintura" },
     { page: "/app/imprimir-orcamento", label: "Imprimir orçamento" },
-    { page: "/app/encomenda", label: "Encomenda de Peça" },
   ] },
   { title: "Relatórios", pages: [{ page: "/app/relatorios", label: "Relatórios" }] },
   { title: "Usuários", pages: [{ page: "/app/usuarios", label: "Usuários" }] },
