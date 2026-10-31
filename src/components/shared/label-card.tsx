@@ -87,8 +87,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     ${label.yearRange ? `<p>${up(label.yearRange)}</p>` : ""}
     ${label.feature ? `<p>${up(label.feature)}</p>` : ""}
     ${label.glassType ? `<p>${up(label.glassType)}${label.lado ? ` - ${up(label.lado)}` : ""}${label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>` : ""}
-    ${label.supplier ? `<p style="font-size:12pt;color:#475569;">${up(label.supplier)}</p>` : ""}
-    ${label.location ? `<p style="font-size:12pt;color:#475569;">${up(label.location)}</p>` : ""}
+    ${(label.supplier || label.location) ? `<p style="font-size:12pt;color:#475569;">${[up(label.supplier), up(label.location)].filter(Boolean).join(" / ")}</p>` : ""}
   </div>
   ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${up(label.purchaseSummary)}\\00\\${n2}</div>` : ""}
   ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
@@ -117,8 +116,11 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
           {label.yearRange && <p>{up(label.yearRange)}</p>}
           {label.feature && <p>{up(label.feature)}</p>}
           {label.glassType && <p>{up(label.glassType)}{label.lado ? ` - ${up(label.lado)}` : ""}{label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>}
-          {label.supplier && <p className="text-[13px] text-slate-500">{up(label.supplier)}</p>}
-          {label.location && <p className="text-[13px] text-slate-500">{up(label.location)}</p>}
+          {(label.supplier || label.location) && (
+            <p className="text-[13px] text-slate-500">
+              {[up(label.supplier), up(label.location)].filter(Boolean).join(" / ")}
+            </p>
+          )}
         </div>
         {label.purchaseSummary && (
           <div className="mt-2 font-mono text-[11px]">
