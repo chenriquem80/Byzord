@@ -734,11 +734,11 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Estoque atual por loja: exclusivo para administradores */}
-      {isAdmin && <StockByStoreReport />}
       <MovementByStoreReport />
       <UserActionReport />
       <ItemChangeReport />
+      {/* Estoque atual por loja: exclusivo para administradores */}
+      {isAdmin && <StockByStoreReport />}
     </div>
   );
 }
