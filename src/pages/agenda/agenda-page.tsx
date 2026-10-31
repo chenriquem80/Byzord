@@ -80,6 +80,15 @@ export function AgendaPage() {
   }
 
   function startEdit(entry: AgendaEntry) {
+    if (entry.description.startsWith("**** ORÇAMENTO ****")) {
+      const body = entry.description.replace(/^\*\*\*\* ORÇAMENTO \*\*\*\*\n?/, "");
+      navigate("/app/imprimir-orcamento", { state: { body } });
+      return;
+    }
+    if (entry.description.startsWith("**** ENCOMENDA ****")) {
+      navigate("/app/encomenda");
+      return;
+    }
     setEditingId(entry.id);
     setEventDate(entry.event_date);
     setDescription(entry.description);

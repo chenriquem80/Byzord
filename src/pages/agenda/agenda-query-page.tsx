@@ -94,6 +94,17 @@ export function AgendaQueryPage() {
     }
   }
 
+  function handleEdit(entry: AgendaEntry) {
+    if (entry.description.startsWith("**** ORÇAMENTO ****")) {
+      const body = entry.description.replace(/^\*\*\*\* ORÇAMENTO \*\*\*\*\n?/, "");
+      navigate("/app/imprimir-orcamento", { state: { body } });
+    } else if (entry.description.startsWith("**** ENCOMENDA ****")) {
+      navigate("/app/encomenda");
+    } else {
+      navigate("/app/agenda", { state: { editEntry: entry } });
+    }
+  }
+
   function renderEntries(list: AgendaEntry[], showStore: boolean) {
     return (
       <ul className="space-y-3">
@@ -101,7 +112,7 @@ export function AgendaQueryPage() {
           <AgendaEntryItem
             key={entry.id}
             entry={entry}
-            onEdit={canEditEntries ? (e) => navigate("/app/agenda", { state: { editEntry: e } }) : undefined}
+            onEdit={canEditEntries ? handleEdit : undefined}
             onDelete={readOnly ? undefined : handleDelete}
             showStore={showStore}
           />

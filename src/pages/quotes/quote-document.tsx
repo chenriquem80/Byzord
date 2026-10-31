@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { BookmarkPlus, FileDown, MessageCircle, Printer, RotateCcw } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import jsPDF from "jspdf";
 import { supabase } from "@/lib/database";
 
@@ -71,7 +72,8 @@ export function QuoteDocument() {
   const COMPANY = isTaubate ? COMPANY_TAUBATE : COMPANY_PINDA;
   const defaultCity = isTaubate ? "Taubaté" : "Pindamonhangaba";
 
-  const [body, setBody] = useState(DEFAULT_BODY);
+  const location = useLocation();
+  const [body, setBody] = useState(() => (location.state as { body?: string } | null)?.body ?? DEFAULT_BODY);
   const [city, setCity] = useState(defaultCity);
   const [date, setDate] = useState(todayIso());
   const [validDays, setValidDays] = useState(7);
