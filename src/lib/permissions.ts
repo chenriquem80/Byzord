@@ -80,9 +80,6 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
     { page: "/app/etiquetagem", label: "Etiquetagem" },
     { page: "/app/reposicao", label: "Reposição" },
   ] },
-  { title: "Funções", pages: [
-    { page: "/app/pintura", label: "Pintura" },
-  ] },
   { title: "Relatórios", pages: [{ page: "/app/relatorios", label: "Relatórios" }] },
   { title: "Usuários", pages: [{ page: "/app/usuarios", label: "Usuários" }] },
 ];

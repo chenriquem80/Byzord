@@ -14,7 +14,6 @@ const ExitPage = lazy(() => import("@/pages/exit/exit-page").then((module) => ({
 const EntryPage = lazy(() => import("@/pages/entry/entry-page").then((module) => ({ default: module.EntryPage })));
 const RecordsPage = lazy(() => import("@/pages/records/records-page").then((module) => ({ default: module.RecordsPage })));
 const OrdersPage = lazy(() => import("@/pages/orders/orders-page").then((module) => ({ default: module.OrdersPage })));
-const PaintingPage = lazy(() => import("@/pages/painting/painting-page").then((module) => ({ default: module.PaintingPage })));
 const QuotePrintPage = lazy(() => import("@/pages/quotes/quote-document").then((module) => ({ default: module.QuoteDocument })));
 const QuotesPage = lazy(() => import("@/pages/quotes/quotes-page").then((module) => ({ default: module.QuotesPage })));
 const LabelsPage = lazy(() => import("@/pages/labels/labels-page").then((module) => ({ default: module.LabelsPage })));
@@ -151,7 +150,6 @@ export const router = createBrowserRouter([
       { path: "atendimento-consulta", element: withSuspense(<AuthGuard page="/app/atendimento-consulta"><AttendanceQueryPage /></AuthGuard>) },
       { path: "estoque",     element: withSuspense(<AuthGuard page="/app/estoque"><StockPage /></AuthGuard>) },
       { path: "saida",       element: withSuspense(<AuthGuard page="/app/saida"><ExitPage /></AuthGuard>) },
-      { path: "pintura",     element: withSuspense(<AuthGuard page="/app/pintura"><PaintingPage /></AuthGuard>) },
       { path: "imprimir-orcamento", element: withSuspense(<AuthGuard page="/app/imprimir-orcamento"><QuotePrintPage /></AuthGuard>) },
       { path: "orcamento",   element: withSuspense(<AuthGuard page="/app/orcamento"><QuotesPage /></AuthGuard>) },
       { path: "entrada",     element: withSuspense(<AuthGuard page="/app/entrada"><EntryPage /></AuthGuard>) },
