@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FileDown, MessageCircle, Printer, RotateCcw } from "lucide-react";
+import { BookmarkPlus, FileDown, MessageCircle, Printer, RotateCcw } from "lucide-react";
 import jsPDF from "jspdf";
 import { supabase } from "@/lib/database";
 
@@ -196,6 +196,10 @@ export function QuoteDocument() {
           <Button variant="outline" size="sm" onClick={handleReset}>
             <RotateCcw className="size-4" />
             Limpar
+          </Button>
+          <Button variant="outline" size="sm" onClick={saveToAgenda} aria-label="Salvar na agenda">
+            <BookmarkPlus className="size-4" />
+            Salvar
           </Button>
           <Button variant="outline" size="sm" onClick={handlePrint} disabled={!images}>
             <Printer className="size-4" />
