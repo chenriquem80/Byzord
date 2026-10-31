@@ -102,18 +102,16 @@ export function QuoteDocument() {
   async function saveToAgenda() {
     if (!supabase || !user) return;
     setAgendaError(null);
-    const { data, error } = await supabase.from("agenda").insert({
+    const { error } = await supabase.from("agenda").insert({
       event_date: todayIso(),
       description: `**** ORÇAMENTO ****\n${body.trim()}`,
       store_id: user.storeId ?? null,
       user_name: user.name ?? "",
-    }).select("id").single();
+    });
     if (error) {
       setAgendaError(`Erro ao salvar na agenda: ${error.message}`);
-      console.error("saveToAgenda:", error);
       return;
     }
-    console.log("Agenda salva:", data?.id);
     setAgendaSaved(true);
     setTimeout(() => setAgendaSaved(false), 5000);
   }
