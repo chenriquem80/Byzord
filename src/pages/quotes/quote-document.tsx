@@ -193,7 +193,7 @@ export function QuoteDocument() {
       title="Modelo de Orçamento"
       description="Edite o texto direto na folha e depois imprima em A4 ou exporte em PDF para enviar ao cliente."
       action={
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-nowrap gap-2">
           <Button variant="outline" size="sm" onClick={handleReset}>
             <RotateCcw className="size-4" />
             Limpar
@@ -202,9 +202,8 @@ export function QuoteDocument() {
             <Printer className="size-4" />
             Imprimir (A4)
           </Button>
-          <Button variant="outline" size="sm" onClick={handleWhatsApp} className="border-green-500 text-green-600 hover:bg-green-50">
+          <Button variant="outline" size="sm" onClick={handleWhatsApp} className="border-green-500 text-green-600 hover:bg-green-50" aria-label="Enviar pelo WhatsApp">
             <MessageCircle className="size-4" />
-            WhatsApp
           </Button>
           <Button size="sm" onClick={handleExportPdf} disabled={!images}>
             <FileDown className="size-4" />
