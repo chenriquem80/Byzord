@@ -203,8 +203,10 @@ function SidebarContent({
           alt="Byzord Auto Vitrais"
           className="mx-auto w-full max-w-[220px] object-contain"
         />
-        {user?.name && (
-          <p className="mt-3 text-center text-xs text-slate-400">{user.name}</p>
+        {(user?.name || user?.storeName) && (
+          <p className="mt-3 text-center text-xs text-slate-400">
+            {[user?.storeName, user?.name].filter(Boolean).join(" · ")}
+          </p>
         )}
       </div>
 
