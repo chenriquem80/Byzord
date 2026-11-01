@@ -107,6 +107,7 @@ export function StockPage() {
   const [photoDialog, setPhotoDialog] = useState<{ open: boolean; productName: string; urls: string[]; loading: boolean }>({
     open: false, productName: "", urls: [], loading: false,
   });
+  const [productsWithPhotos, setProductsWithPhotos] = useState<Set<string>>(new Set());
 
   // Dialog de detalhes da condição especial
   const [condDialog, setCondDialog] = useState<{
@@ -215,12 +216,13 @@ export function StockPage() {
     if (!supabase) { setLoading(false); return; }
     setLoading(true);
 
-    const [storesResp, productsResp, mfResp, invResp, compatResp] = await Promise.all([
+    const [storesResp, productsResp, mfResp, invResp, compatResp, photosResp] = await Promise.all([
       supabase.from("stores").select("*"),
       supabase.from("products").select("*"),
       supabase.from("product_manufacturers").select("*"),
       supabase.from("product_store_inventory").select("*"),
       supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
+      supabase.from("product_photos").select("product_id"),
     ]);
 
     const stores = storesResp.data ?? [];
@@ -228,6 +230,7 @@ export function StockPage() {
     const rawMf = mfResp.data ?? [];
     const rawInv = invResp.data ?? [];
     const rawCompat = compatResp.data ?? [];
+    setProductsWithPhotos(new Set((photosResp.data ?? []).map((ph: any) => ph.product_id as string)));
 
     setDbStores(stores);
 
@@ -492,7 +495,7 @@ export function StockPage() {
       {
         id: "photos",
         header: "Foto",
-        cell: ({ row }) => (
+        cell: ({ row }) => productsWithPhotos.has(row.original.product.id) ? (
           <button
             type="button"
             title="Ver fotos"
@@ -501,7 +504,7 @@ export function StockPage() {
           >
             <Images className="size-4" />
           </button>
-        ),
+        ) : null,
       },
       {
         id: "compat",
