@@ -1,4 +1,4 @@
-import { ChevronRight, Menu } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { getIcon } from "@/components/shared/icon-map";
@@ -165,6 +165,18 @@ export function AppShell() {
           <main className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-6 xl:p-8">
             <Outlet />
           </main>
+
+          {/* Botão flutuante de voltar — apenas mobile, fora da tela inicial */}
+          {location.pathname !== "/app" && (
+            <button
+              onClick={() => navigate(-1)}
+              className="fixed bottom-5 left-4 z-50 flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-lg ring-1 ring-slate-200 transition active:scale-95 lg:hidden"
+              aria-label="Voltar"
+            >
+              <ChevronLeft className="size-4" />
+              Voltar
+            </button>
+          )}
         </div>
       </div>
     </div>
