@@ -152,11 +152,6 @@ export function ExitPage() {
           };
         });
         setDbProducts(mapped);
-        if (mapped.length > 0 && mapped[0].manufacturers.length > 0) {
-          form.setValue("productId", mapped[0].id);
-          form.setValue("manufacturer", mapped[0].manufacturers[0].manufacturer);
-          form.setValue("price", mapped[0].manufacturers[0].price);
-        }
       }
     }
     fetchData();
@@ -514,9 +509,13 @@ export function ExitPage() {
                   if (product && product.manufacturers.length > 0) {
                     form.setValue("manufacturer", product.manufacturers[0].manufacturer);
                     form.setValue("price", product.manufacturers[0].price);
+                  } else {
+                    form.setValue("manufacturer", "");
+                    form.setValue("price", 0);
                   }
                 }}
               >
+                <option value="">Selecione um produto...</option>
                 {allProducts.map((item) => (
                   <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
