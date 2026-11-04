@@ -162,6 +162,8 @@ type MovRow = {
   quantity: number;
   user_name: string;
   note: string | null;
+  glass_type: string | null;
+  feature: string | null;
 };
 
 function localDateStr() {
@@ -196,7 +198,7 @@ function MovementByStoreReport() {
     const end = new Date(dateTo + "T23:59:59.999");
     let q = supabase
       .from("stock_movements")
-      .select("created_at, type, product_name, manufacturer, store_name, quantity, user_name, note")
+      .select("created_at, type, product_name, manufacturer, store_name, quantity, user_name, note, glass_type, feature")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("created_at", { ascending: false });
@@ -231,13 +233,14 @@ function MovementByStoreReport() {
     doc.setTextColor(0);
     autoTable(doc, {
       startY: 34,
-      head: [["Data", "Hora", "Tipo", "Loja", "Produto", "Fabricante", "Qtd", "Usuário", "Observação"]],
+      head: [["Data", "Hora", "Tipo", "Loja", "Produto", "Fabricante", "Tipo Item", "Característica", "Qtd", "Usuário", "Observação"]],
       body: rows.map((r) => {
         const d = new Date(r.created_at);
         return [
           d.toLocaleDateString("pt-BR"),
           d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
           r.type, r.store_name, r.product_name, r.manufacturer,
+          r.glass_type || "—", r.feature || "—",
           (r.type === "Entrada" ? "+" : "-") + r.quantity,
           r.user_name || "—", r.note || "—",
         ];
@@ -311,7 +314,7 @@ function MovementByStoreReport() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  {["Data", "Hora", "Tipo", "Loja", "Produto", "Fabricante", "Qtd", "Usuário", "Observação"].map((h) => (
+                  {["Data", "Hora", "Tipo", "Loja", "Produto", "Fabricante", "Tipo Item", "Característica", "Qtd", "Usuário", "Observação"].map((h) => (
                     <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -332,6 +335,8 @@ function MovementByStoreReport() {
                       <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.store_name}</td>
                       <td className="px-3 py-2 font-medium text-slate-900">{r.product_name}</td>
                       <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.manufacturer}</td>
+                      <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.glass_type || "—"}</td>
+                      <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.feature || "—"}</td>
                       <td className={`px-3 py-2 font-semibold whitespace-nowrap ${isEntry ? "text-violet-700" : "text-amber-700"}`}>
                         {isEntry ? "+" : "-"}{r.quantity}
                       </td>
