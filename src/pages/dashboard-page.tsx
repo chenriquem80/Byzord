@@ -1,4 +1,4 @@
-import { PackageMinus, PackagePlus, RefreshCw } from "lucide-react";
+import { PackageMinus, PackagePlus, RefreshCw, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -44,11 +44,14 @@ function isTodayLocal(dateStr: string): boolean {
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(true);
   const [dbStores, setDbStores] = useState<DbStore[]>([]);
   const [agendaItems, setAgendaItems] = useState<{ id: string; description: string; user_name: string | null }[]>([]);
   const [loadingAgenda, setLoadingAgenda] = useState(true);
+  const [ctxMenu, setCtxMenu] = useState<{ visible: boolean; x: number; y: number; movement: StockMovement | null }>({ visible: false, x: 0, y: 0, movement: null });
+  const [cancelling, setCancelling] = useState(false);
 
   async function fetchMovements() {
     setLoadingMovements(true);
@@ -101,8 +104,59 @@ export function DashboardPage() {
   const entries = movements.filter((m) => m.type === "Entrada" || m.type === "entrada");
   const exits   = movements.filter((m) => m.type === "Saída" || m.type === "saida" || m.type === "Saida");
 
+  function handleContextMenu(e: React.MouseEvent, movement: StockMovement) {
+    if (!isAdmin) return;
+    e.preventDefault();
+    setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, movement });
+  }
+
+  async function cancelExit() {
+    const movement = ctxMenu.movement;
+    if (!movement || !supabase) return;
+    setCtxMenu((c) => ({ ...c, visible: false }));
+    if (!window.confirm(`Cancelar saída de "${movement.product_name}"?\nRetornará ${movement.quantity} un. ao estoque de ${movement.store_name}.`)) return;
+    setCancelling(true);
+    try {
+      const [storeRes, productRes] = await Promise.all([
+        supabase.from("stores").select("id").eq("name", movement.store_name).single(),
+        supabase.from("products").select("id").eq("name", movement.product_name).single(),
+      ]);
+      const storeId = storeRes.data?.id;
+      const productId = productRes.data?.id;
+      if (!storeId || !productId) { alert("Loja ou produto não encontrado."); return; }
+
+      const { data: mfData } = await supabase
+        .from("product_manufacturers")
+        .select("id")
+        .eq("product_id", productId)
+        .eq("manufacturer", movement.manufacturer)
+        .single();
+      const mfId = mfData?.id;
+      if (!mfId) { alert("Fabricante não encontrado."); return; }
+
+      const { data: invData } = await supabase
+        .from("product_store_inventory")
+        .select("id, stock")
+        .eq("manufacturer_id", mfId)
+        .eq("store_id", storeId)
+        .single();
+      if (!invData) { alert("Registro de estoque não encontrado."); return; }
+
+      const { error: updErr } = await supabase
+        .from("product_store_inventory")
+        .update({ stock: invData.stock + movement.quantity })
+        .eq("id", invData.id);
+      if (updErr) { alert("Erro ao atualizar estoque: " + updErr.message); return; }
+
+      await supabase.from("stock_movements").delete().eq("id", movement.id);
+      fetchMovements();
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" onClick={() => ctxMenu.visible && setCtxMenu((c) => ({ ...c, visible: false }))}>
       {/* Atalhos de navegação — apenas mobile */}
       <div className="grid w-full grid-cols-2 gap-2 lg:hidden">
         {mobileNavItems.filter((item) => user && canAccessPage(user, item.route as AppPage)).map((item) => (
@@ -174,7 +228,11 @@ export function DashboardPage() {
               movements.map((item) => {
                 const isEntry = item.type === "Entrada";
                 return (
-                  <div key={item.id} className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : "border-amber-100 bg-amber-50/40"}`}>
+                  <div
+                    key={item.id}
+                    onContextMenu={(e) => handleContextMenu(e, item)}
+                    className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : "border-amber-100 bg-amber-50/40"} ${isAdmin && !isEntry ? "cursor-context-menu" : ""}`}
+                  >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`shrink-0 rounded-xl p-2 ${isEntry ? "bg-violet-100" : "bg-amber-100"}`}>
                         {isEntry
@@ -235,6 +293,42 @@ export function DashboardPage() {
           </div>
         </SectionCard>
       </div>
+
+      {/* Menu de contexto — cancelar saída (admin) */}
+      {ctxMenu.visible && ctxMenu.movement && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setCtxMenu((c) => ({ ...c, visible: false }))} />
+          <div
+            className="fixed z-50 min-w-[200px] rounded-xl border border-border bg-white py-1 shadow-xl"
+            style={{ top: ctxMenu.y, left: ctxMenu.x }}
+          >
+            <div className="border-b border-border px-4 py-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Movimentação</p>
+              <p className="mt-0.5 text-sm font-medium text-slate-800 truncate">{ctxMenu.movement.product_name}</p>
+            </div>
+            {(ctxMenu.movement.type === "Saída" || ctxMenu.movement.type === "saida" || ctxMenu.movement.type === "Saida") ? (
+              <button
+                type="button"
+                onClick={cancelExit}
+                disabled={cancelling}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors"
+              >
+                <XCircle className="size-4 shrink-0" />
+                {cancelling ? "Cancelando..." : "Cancelar saída e devolver ao estoque"}
+              </button>
+            ) : (
+              <p className="px-4 py-2.5 text-sm text-slate-400">Cancelamento disponível apenas para saídas.</p>
+            )}
+            <button
+              type="button"
+              onClick={() => setCtxMenu((c) => ({ ...c, visible: false }))}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
