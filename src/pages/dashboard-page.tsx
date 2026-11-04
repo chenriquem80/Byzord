@@ -149,7 +149,8 @@ export function DashboardPage() {
       if (updErr) { alert("Erro ao atualizar estoque: " + updErr.message); return; }
 
       await supabase.from("stock_movements").delete().eq("id", movement.id);
-      await fetchMovements();
+      setMovements((prev) => prev.filter((m) => m.id !== movement.id));
+      fetchMovements();
     } finally {
       setCancelling(false);
     }
