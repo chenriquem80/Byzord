@@ -192,10 +192,26 @@ export function QuoteDocument() {
     saveToAgenda();
   }
 
-  function handleWhatsApp() {
-    const text = [COMPANY.name, "", body.trim(), "", dateLine, validityLine].join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  async function handleWhatsApp() {
     saveToAgenda();
+    const doc = buildPdf();
+    const pdfBlob = doc.output("blob");
+    const pdfFile = new File([pdfBlob], `orcamento-${date}.pdf`, { type: "application/pdf" });
+
+    if (navigator.canShare?.({ files: [pdfFile] })) {
+      try {
+        await navigator.share({ files: [pdfFile], title: "Orçamento" });
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") {
+          doc.save(`orcamento-${date}.pdf`);
+        }
+      }
+    } else {
+      // Fallback para desktop: baixa o PDF e abre WhatsApp com texto
+      doc.save(`orcamento-${date}.pdf`);
+      const text = [COMPANY.name, "", body.trim(), "", dateLine, validityLine].join("\n");
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    }
   }
 
   function handleReset() {
