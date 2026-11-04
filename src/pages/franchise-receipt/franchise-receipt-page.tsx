@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { BookmarkPlus, FileDown, MessageCircle, Printer, RotateCcw } from "lucide-react";
+import { FileDown, MessageCircle, Printer, RotateCcw } from "lucide-react";
 import jsPDF from "jspdf";
-import { supabase } from "@/lib/database";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -94,38 +93,12 @@ export function FranchiseReceiptPage() {
   const [valor, setValor] = useState("");
   const [city, setCity] = useState(defaultCity);
   const [date, setDate] = useState(todayIso());
-  const [agendaSaved, setAgendaSaved] = useState(false);
-  const [agendaError, setAgendaError] = useState<string | null>(null);
   const images = useLogoImages();
 
   useEffect(() => { setCity(defaultCity); }, [defaultCity]);
 
   const dateLine = `${city}, ${formatLongDate(date)}.`;
   const footerLines = [...COMPANY.address, [user?.name, COMPANY.phone].filter(Boolean).join(" - ")];
-
-  async function saveToAgenda() {
-    if (!supabase || !user) return;
-    setAgendaError(null);
-    const lines = [
-      "**** RECIBO FRANQUIA ****",
-      segurado ? `Segurado: ${segurado}` : "",
-      veiculo  ? `Veículo: ${veiculo}`   : "",
-      placa    ? `Placa: ${placa}`        : "",
-      item     ? `Item: ${item}`          : "",
-      os       ? `OS: ${os}`              : "",
-      at       ? `AT: ${at}`              : "",
-      valor    ? `Valor: R$ ${valor}`     : "",
-    ].filter(Boolean).join("\n");
-    const { error } = await supabase.from("agenda").insert({
-      event_date: date,
-      description: lines,
-      store_id: user.storeId ?? null,
-      user_name: user.name ?? "",
-    });
-    if (error) { setAgendaError(`Erro ao salvar na agenda: ${error.message}`); return; }
-    setAgendaSaved(true);
-    setTimeout(() => setAgendaSaved(false), 5000);
-  }
 
   function buildPdf(): jsPDF {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -199,16 +172,13 @@ export function FranchiseReceiptPage() {
     const doc = buildPdf();
     doc.autoPrint();
     window.open(doc.output("bloburl"), "_blank");
-    saveToAgenda();
   }
 
   function handleExportPdf() {
     buildPdf().save(`recibo-franquia-${date}.pdf`);
-    saveToAgenda();
   }
 
   async function handleWhatsApp() {
-    saveToAgenda();
     const doc = buildPdf();
     const pdfBlob = doc.output("blob");
     const pdfFile = new File([pdfBlob], `recibo-franquia-${date}.pdf`, { type: "application/pdf" });
@@ -234,10 +204,6 @@ export function FranchiseReceiptPage() {
             <RotateCcw className="size-4" />
             <span className="hidden sm:inline">Limpar</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={saveToAgenda} aria-label="Salvar na agenda">
-            <BookmarkPlus className="size-4" />
-            <span className="hidden sm:inline">Salvar</span>
-          </Button>
           <Button variant="outline" size="sm" onClick={handlePrint} disabled={!images} aria-label="Imprimir">
             <Printer className="size-4" />
             <span className="hidden sm:inline">Imprimir</span>
@@ -252,13 +218,6 @@ export function FranchiseReceiptPage() {
         </div>
       }
     >
-      {agendaSaved && (
-        <p className="mb-3 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">✓ Registrado na agenda</p>
-      )}
-      {agendaError && (
-        <p className="mb-3 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{agendaError}</p>
-      )}
-
       {/* Cidade + Data — sempre visíveis */}
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FormField label="Cidade">
