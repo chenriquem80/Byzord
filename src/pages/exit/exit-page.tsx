@@ -269,9 +269,10 @@ export function ExitPage() {
       setTimeout(() => setSaveSuccess(false), 4000);
       form.reset({
         storeId: values.storeId,
-        productId: allProducts[0]?.id ?? "",
-        manufacturer: allProducts[0]?.manufacturers[0]?.manufacturer ?? "",
-        customer: values.customer,
+        productId: "",
+        manufacturer: "",
+        productName: "",
+        customer: "",
         customerVehicle: "",
         plate: "",
         paymentMethod: values.paymentMethod,
@@ -280,6 +281,8 @@ export function ExitPage() {
         discount: 0,
         note: "",
       });
+      setCodeQuery("");
+      setGlassTypeFilter("");
       // Atualiza estoque local para refletir imediatamente
       selectedInventory.stock = newStock;
     } catch (err) {
