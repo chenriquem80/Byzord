@@ -61,6 +61,24 @@ function useLogoImages() {
   return images;
 }
 
+// Input transparente para edição dentro do papel
+function PaperInput({ value, onChange, placeholder, wide }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  wide?: boolean;
+}) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value.toUpperCase())}
+      placeholder={placeholder}
+      className={`border-b border-dashed border-transparent bg-transparent uppercase outline-none transition hover:border-slate-300 focus:border-primary/60 ${wide ? "w-[58%]" : "w-[40%]"}`}
+      style={{ fontFamily: "inherit", fontSize: "inherit", fontWeight: "inherit" }}
+    />
+  );
+}
+
 export function FranchiseReceiptPage() {
   const { user } = useAuth();
   const isTaubate = user?.storeName?.toLowerCase().includes("taubat") ?? false;
@@ -91,12 +109,12 @@ export function FranchiseReceiptPage() {
     const lines = [
       "**** RECIBO FRANQUIA ****",
       segurado ? `Segurado: ${segurado}` : "",
-      veiculo ? `Veículo: ${veiculo}` : "",
-      placa ? `Placa: ${placa}` : "",
-      item ? `Item: ${item}` : "",
-      os ? `OS: ${os}` : "",
-      at ? `AT: ${at}` : "",
-      valor ? `Valor: R$ ${valor}` : "",
+      veiculo  ? `Veículo: ${veiculo}`   : "",
+      placa    ? `Placa: ${placa}`        : "",
+      item     ? `Item: ${item}`          : "",
+      os       ? `OS: ${os}`              : "",
+      at       ? `AT: ${at}`              : "",
+      valor    ? `Valor: R$ ${valor}`     : "",
     ].filter(Boolean).join("\n");
     const { error } = await supabase.from("agenda").insert({
       event_date: date,
@@ -146,7 +164,6 @@ export function FranchiseReceiptPage() {
 
     doc.setFontSize(14);
     for (const f of fields) {
-      if (!f.value) continue;
       doc.setFont("times", "bold");
       const lw = doc.getTextWidth(f.label);
       doc.text(f.label, 22, y);
@@ -196,11 +213,8 @@ export function FranchiseReceiptPage() {
     const pdfBlob = doc.output("blob");
     const pdfFile = new File([pdfBlob], `recibo-franquia-${date}.pdf`, { type: "application/pdf" });
     if (navigator.canShare?.({ files: [pdfFile] })) {
-      try {
-        await navigator.share({ files: [pdfFile], title: "Recibo de Franquia" });
-      } catch (e) {
-        if ((e as Error).name !== "AbortError") doc.save(`recibo-franquia-${date}.pdf`);
-      }
+      try { await navigator.share({ files: [pdfFile], title: "Recibo de Franquia" }); }
+      catch (e) { if ((e as Error).name !== "AbortError") doc.save(`recibo-franquia-${date}.pdf`); }
     } else {
       doc.save(`recibo-franquia-${date}.pdf`);
     }
@@ -245,14 +259,18 @@ export function FranchiseReceiptPage() {
         <p className="mb-3 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{agendaError}</p>
       )}
 
-      {/* Formulário */}
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* Cidade + Data — sempre visíveis */}
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FormField label="Cidade">
           <Input value={city} onChange={(e) => setCity(e.target.value)} />
         </FormField>
         <FormField label="Data">
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </FormField>
+      </div>
+
+      {/* Mobile: formulário compacto */}
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:hidden">
         <FormField label="Segurado (a)">
           <Input value={segurado} onChange={(e) => setSegurado(e.target.value.toUpperCase())} placeholder="Nome completo" className="uppercase" />
         </FormField>
@@ -271,24 +289,23 @@ export function FranchiseReceiptPage() {
         <FormField label="AT">
           <Input value={at} onChange={(e) => setAt(e.target.value)} placeholder="Número AT" />
         </FormField>
-        <FormField label="Valor (R$)" className="sm:col-span-2">
+        <FormField label="Valor (R$)">
           <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="460,00" />
         </FormField>
       </div>
 
-      {/* Preview A4 */}
+      {/* Preview A4 — desktop com campos inline editáveis */}
       <div className="overflow-x-auto rounded-2xl bg-slate-100 p-4">
         <div
           className="relative mx-auto flex flex-col bg-white px-[83px] pb-[40px] pt-[38px] shadow-md"
           style={{ width: 794, minHeight: 900, fontFamily: '"Times New Roman", Times, serif' }}
         >
-          <img
-            src="/logo.png"
-            alt=""
-            aria-hidden
+          {/* Marca d'água */}
+          <img src="/logo.png" alt="" aria-hidden
             className="pointer-events-none absolute left-1/2 top-[370px] w-[491px] -translate-x-1/2 opacity-[0.13]"
           />
 
+          {/* Cabeçalho */}
           <div className="relative flex items-start">
             <img src="/logo.png" alt="Byzord Auto Vitrais" className="-ml-[30px] w-[159px]" />
             <div className="flex-1 text-center text-slate-500">
@@ -298,32 +315,53 @@ export function FranchiseReceiptPage() {
             </div>
           </div>
 
+          {/* Título */}
           <h2 className="relative mt-[50px] text-center text-[20px] font-bold tracking-wide">
             RECIBO DE FRANQUIA
           </h2>
 
+          {/* Campos editáveis */}
           <div className="relative mt-[32px] space-y-[10px] text-[18px] leading-relaxed">
-            {segurado && <p><span className="font-bold">Segurado (a):</span> {segurado}</p>}
-            {veiculo  && <p><span className="font-bold">Veículo:</span> {veiculo}</p>}
-            {placa    && <p><span className="font-bold">Placa:</span> {placa}</p>}
-            {item     && <p><span className="font-bold">Item:</span> {item}</p>}
-            {os       && <p><span className="font-bold">OS:</span> {os}</p>}
-            {at       && <p><span className="font-bold">AT:</span> {at}</p>}
-            {valor    && (
-              <p className="mt-[18px] text-[20px] font-bold">Valor: R$ {valor}</p>
-            )}
+            <p><span className="font-bold">Segurado (a): </span>
+              <PaperInput value={segurado} onChange={setSegurado} placeholder="Nome do segurado" wide />
+            </p>
+            <p><span className="font-bold">Veículo: </span>
+              <PaperInput value={veiculo} onChange={setVeiculo} placeholder="Modelo do veículo" wide />
+            </p>
+            <p><span className="font-bold">Placa: </span>
+              <PaperInput value={placa} onChange={setPlaca} placeholder="AAA0A00" />
+            </p>
+            <p><span className="font-bold">Item: </span>
+              <PaperInput value={item} onChange={setItem} placeholder="Ex: PARABRISA" wide />
+            </p>
+            <p><span className="font-bold">OS: </span>
+              <PaperInput value={os} onChange={setOs} placeholder="Número OS" />
+            </p>
+            <p><span className="font-bold">AT: </span>
+              <PaperInput value={at} onChange={setAt} placeholder="Número AT" />
+            </p>
+            <p className="mt-[18px] text-[20px] font-bold">
+              <span>Valor: R$ </span>
+              <input
+                value={valor}
+                onChange={(e) => setValor(e.target.value)}
+                placeholder="0,00"
+                className="w-[30%] border-b border-dashed border-transparent bg-transparent outline-none transition hover:border-slate-300 focus:border-primary/60"
+                style={{ fontFamily: "inherit", fontSize: "inherit", fontWeight: "inherit" }}
+              />
+            </p>
           </div>
 
+          {/* Data */}
           <p className="relative mt-[60px] text-right text-[18px]">{dateLine}</p>
 
+          {/* Rodapé */}
           <div className="relative mt-auto pt-[40px] text-center text-[12px] leading-tight text-slate-500">
             {footerLines.map((line) => <p key={line}>{line}</p>)}
           </div>
         </div>
       </div>
-      <p className="mt-2 hidden text-xs text-slate-400 sm:block">
-        Preencha os campos acima para gerar o recibo.
-      </p>
+      <p className="mt-2 hidden text-xs text-slate-400 sm:block">Clique nos campos dentro do recibo para editar.</p>
     </SectionCard>
   );
 }
