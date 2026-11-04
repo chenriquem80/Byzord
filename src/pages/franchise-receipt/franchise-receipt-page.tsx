@@ -137,6 +137,7 @@ export function FranchiseReceiptPage() {
 
     doc.setFontSize(14);
     for (const f of fields) {
+      if (!f.value.trim()) continue;
       doc.setFont("times", "bold");
       const lw = doc.getTextWidth(f.label);
       doc.text(f.label, 22, y);
