@@ -24,6 +24,7 @@ const menuItems: MenuItem[] = [
       { title: "Registro", route: "/app/agenda", icon: "PlusCircle" },
       { title: "Imprimir orçamento", route: "/app/imprimir-orcamento", icon: "Printer" },
       { title: "Encomenda de Peça", route: "/app/encomenda", icon: "PackageSearch" },
+      { title: "Recibo de Franquia", route: "/app/recibo-franquia", icon: "Receipt" },
       { title: "Consulta", route: "/app/agenda-consulta", icon: "Search" },
     ],
   },
@@ -57,7 +58,7 @@ const menuItems: MenuItem[] = [
 
 // Routes that belong to each group (for auto-expand on navigation)
 const groupChildRoutes: Record<string, string[]> = {
-  "/app/agenda": ["/app/agenda", "/app/imprimir-orcamento", "/app/encomenda", "/app/agenda-consulta"],
+  "/app/agenda": ["/app/agenda", "/app/imprimir-orcamento", "/app/encomenda", "/app/recibo-franquia", "/app/agenda-consulta"],
   "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/pedido"],
   "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia", "/app/produtos", "/app/etiquetagem", "/app/reposicao"],
 };

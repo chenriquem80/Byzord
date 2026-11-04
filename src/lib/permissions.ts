@@ -26,6 +26,7 @@ export type AppPage =
   | "/app/transferencia"
   | "/app/registro"
   | "/app/encomenda"
+  | "/app/recibo-franquia"
   | "/app/usuarios";
 
 export const PAGE_LABELS: Record<AppPage, string> = {
@@ -52,6 +53,7 @@ export const PAGE_LABELS: Record<AppPage, string> = {
   "/app/transferencia":         "Transferência",
   "/app/registro":              "Registro",
   "/app/encomenda":             "Encomenda de Peça",
+  "/app/recibo-franquia":       "Recibo de Franquia",
   "/app/usuarios":              "Usuários",
 };
 
@@ -64,6 +66,7 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
     { page: "/app/agenda", label: "Registro" },
     { page: "/app/imprimir-orcamento", label: "Imprimir orçamento" },
     { page: "/app/encomenda", label: "Encomenda de Peça" },
+    { page: "/app/recibo-franquia", label: "Recibo de Franquia" },
     { page: "/app/agenda-consulta", label: "Consulta" },
   ] },
   { title: "Atendimento", pages: [
@@ -114,6 +117,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/transferencia":         "write",
     "/app/registro":              "write",
     "/app/encomenda":             "write",
+    "/app/recibo-franquia":       "write",
     "/app/usuarios":              "write",
   },
   // Acesso total, exceto cadastro de usuários
@@ -141,6 +145,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/transferencia":         "write",
     "/app/registro":              "write",
     "/app/encomenda":             "write",
+    "/app/recibo-franquia":       "write",
     "/app/usuarios":              "none",
   },
   // Atendimento (write) + Orçamento (somente leitura) + Clientes (leitura)
@@ -168,6 +173,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/transferencia":         "none",
     "/app/registro":              "none",
     "/app/encomenda":             "write",
+    "/app/recibo-franquia":       "write",
     "/app/usuarios":              "none",
   },
   // Área de estoque completa (write), sem acesso a atendimento/orçamento
@@ -195,6 +201,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/transferencia":         "write",
     "/app/registro":              "read",
     "/app/encomenda":             "write",
+    "/app/recibo-franquia":       "none",
     "/app/usuarios":              "none",
   },
 };
