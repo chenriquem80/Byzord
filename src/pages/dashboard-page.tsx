@@ -27,8 +27,8 @@ type StockMovement = {
   user_name: string;
   quantity: number;
   note: string | null;
-  glass_type?: string | null;
-  feature?: string | null;
+  glass_type: string | null;
+  feature: string | null;
   created_at: string;
 };
 
@@ -64,7 +64,7 @@ export function DashboardPage() {
     cutoff.setHours(0, 0, 0, 0);
     const { data, error } = await supabase
       .from("stock_movements")
-      .select("id, type, product_name, store_name, manufacturer, user_name, quantity, note, created_at")
+      .select("id, type, product_name, store_name, manufacturer, user_name, quantity, note, glass_type, feature, created_at")
       .gte("created_at", cutoff.toISOString())
       .order("created_at", { ascending: false });
     if (error) { console.error("stock_movements:", error.message); }
