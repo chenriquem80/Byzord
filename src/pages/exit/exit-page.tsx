@@ -260,6 +260,8 @@ export function ExitPage() {
         user_name: authUser?.name ?? "",
         quantity: qty,
         note: noteParts.length > 0 ? noteParts.join(" | ") : null,
+        glass_type: selectedProduct.glassType ?? null,
+        feature: selectedProduct.feature ?? null,
       });
       if (mvErr) {
         console.error("Erro ao registrar movimentação:", mvErr.message);
