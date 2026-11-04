@@ -199,15 +199,15 @@ export function ExitPage() {
   const html5ScannerRef = useRef<Html5Qrcode | null>(null);
 
   const selectedProduct = useMemo(
-    () => allProducts.find((item) => item.id === form.watch("productId")) ?? allProducts[0],
+    () => form.watch("productId") ? (allProducts.find((item) => item.id === form.watch("productId")) ?? null) : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [form.watch("productId"), allProducts],
   );
 
   const manufacturerStock = useMemo(
-    () => selectedProduct.manufacturers.find((item) => item.manufacturer === form.watch("manufacturer")),
+    () => selectedProduct?.manufacturers.find((item) => item.manufacturer === form.watch("manufacturer")),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [form.watch("manufacturer"), selectedProduct.manufacturers],
+    [form.watch("manufacturer"), selectedProduct],
   );
 
   const selectedInventory = useMemo(
@@ -254,14 +254,14 @@ export function ExitPage() {
       ].filter(Boolean);
       const { error: mvErr } = await supabase.from("stock_movements").insert({
         type: "Saída",
-        product_name: selectedProduct.name,
+        product_name: selectedProduct?.name ?? values.productName,
         store_name: storeName,
         manufacturer: values.manufacturer,
         user_name: authUser?.name ?? "",
         quantity: qty,
         note: noteParts.length > 0 ? noteParts.join(" | ") : null,
-        glass_type: selectedProduct.glassType ?? null,
-        feature: selectedProduct.feature ?? null,
+        glass_type: selectedProduct?.glassType ?? null,
+        feature: selectedProduct?.feature ?? null,
       });
       if (mvErr) {
         console.error("Erro ao registrar movimentação:", mvErr.message);
@@ -527,18 +527,18 @@ export function ExitPage() {
           {/* Linha 2: Característica | Fabricante */}
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Característica">
-              <Input disabled value={selectedProduct.feature} />
+              <Input disabled value={selectedProduct?.feature ?? ""} />
             </FormField>
             <FormField label="Fabricante" error={form.formState.errors.manufacturer?.message}>
               <Select
                 value={form.watch("manufacturer")}
                 onChange={(e) => {
                   form.setValue("manufacturer", e.target.value);
-                  const mf = selectedProduct.manufacturers.find((m) => m.manufacturer === e.target.value);
+                  const mf = selectedProduct?.manufacturers.find((m) => m.manufacturer === e.target.value);
                   if (mf) form.setValue("price", mf.price);
                 }}
               >
-                {selectedProduct.manufacturers.map((item) => (
+                {(selectedProduct?.manufacturers ?? []).map((item) => (
                   <option key={item.id} value={item.manufacturer}>{item.manufacturer}</option>
                 ))}
               </Select>
@@ -548,7 +548,7 @@ export function ExitPage() {
           {/* Linha 3: Tipo do item | Quantidade | Em estoque */}
           <div className="grid grid-cols-3 gap-4">
             <FormField label="Tipo do item">
-              <Input disabled value={selectedProduct.glassType} />
+              <Input disabled value={selectedProduct?.glassType ?? ""} />
             </FormField>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Quantidade</label>
