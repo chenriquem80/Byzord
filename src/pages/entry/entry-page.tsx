@@ -4,8 +4,9 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { canWriteStore } from "@/lib/permissions";
 import { Camera, Check, Plus, X } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
-import { LabelCard } from "@/components/shared/label-card";
+import { LabelCard, type LabelData } from "@/components/shared/label-card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -66,6 +67,7 @@ export function EntryPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
   const entryListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -393,7 +395,7 @@ export function EntryPage() {
       }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-      handleCancel();
+      setShowPrintDialog(true);
     } catch (err: any) {
       console.error("Erro ao salvar entrada:", err);
       setSaveError(err?.message ?? "Erro ao salvar entrada. Verifique o console.");
@@ -792,6 +794,41 @@ export function EntryPage() {
           </div>
         </div>
       </SectionCard>
+
+      {/* Diálogo pós-entrada: imprimir etiqueta */}
+      <Dialog open={showPrintDialog} onOpenChange={(open) => { if (!open) { setShowPrintDialog(false); handleCancel(); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Entrada registrada!</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600">Deseja imprimir a{entryItems.length > 1 ? "s" : ""} etiqueta{entryItems.length > 1 ? "s" : ""}?</p>
+          <div className="mt-4 space-y-6">
+            {entryItems.map((item) => {
+              const compat = item.product.compatibilities[0];
+              const vehicleLabel = compat ? `${compat.automaker} ${compat.model}`.trim() : item.product.name;
+              const yearRange = compat ? `${compat.startYear}/${compat.endYear}` : "";
+              const dateLabel = purchaseDate
+                ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
+                : "";
+              const ladoValue = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
+              const labelData: LabelData = {
+                productCode: item.product.barcode || item.product.name,
+                vehicleLabel,
+                yearRange,
+                feature: item.product.feature,
+                glassType: item.product.glassType,
+                lado: ladoValue ?? (item.product as any).lado ?? null,
+                manufacturer: selectedManufacturer || item.mf.manufacturer,
+                purchaseSummary: `${item.cost} - ${dateLabel}`,
+              };
+              return <LabelCard key={item.key} label={labelData} />;
+            })}
+          </div>
+          <Button variant="outline" className="mt-4 w-full" onClick={() => { setShowPrintDialog(false); handleCancel(); }}>
+            Fechar sem imprimir
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
