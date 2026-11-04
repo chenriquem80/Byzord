@@ -110,10 +110,8 @@ export function DashboardPage() {
     setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, movement });
   }
 
-  async function cancelExit() {
-    const movement = ctxMenu.movement;
-    if (!movement || !supabase) return;
-    setCtxMenu((c) => ({ ...c, visible: false }));
+  async function doCancelExit(movement: StockMovement) {
+    if (!supabase) return;
     if (!window.confirm(`Cancelar saída de "${movement.product_name}"?\nRetornará ${movement.quantity} un. ao estoque de ${movement.store_name}.`)) return;
     setCancelling(true);
     try {
@@ -153,6 +151,19 @@ export function DashboardPage() {
     } finally {
       setCancelling(false);
     }
+  }
+
+  async function cancelExit() {
+    if (!ctxMenu.movement) return;
+    setCtxMenu((c) => ({ ...c, visible: false }));
+    await doCancelExit(ctxMenu.movement);
+  }
+
+  function handleMobileTap(item: StockMovement) {
+    if (!isAdmin) return;
+    const isExit = item.type === "Saída" || item.type === "saida" || item.type === "Saida";
+    if (!isExit) return;
+    doCancelExit(item);
   }
 
   return (
@@ -231,7 +242,8 @@ export function DashboardPage() {
                   <div
                     key={item.id}
                     onContextMenu={(e) => handleContextMenu(e, item)}
-                    className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : "border-amber-100 bg-amber-50/40"} ${isAdmin && !isEntry ? "cursor-context-menu" : ""}`}
+                    onClick={() => handleMobileTap(item)}
+                    className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : "border-amber-100 bg-amber-50/40"} ${isAdmin && !isEntry ? "cursor-context-menu lg:cursor-context-menu cursor-pointer" : ""}`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`shrink-0 rounded-xl p-2 ${isEntry ? "bg-violet-100" : "bg-amber-100"}`}>
@@ -256,6 +268,9 @@ export function DashboardPage() {
                       <p className="mt-1 text-xs text-slate-400">
                         {new Date(item.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                       </p>
+                      {isAdmin && !isEntry && (
+                        <p className="mt-1 text-[10px] text-rose-400 lg:hidden">toque p/ cancelar</p>
+                      )}
                     </div>
                   </div>
                 );
