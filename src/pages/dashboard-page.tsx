@@ -148,9 +148,9 @@ export function DashboardPage() {
         .eq("id", invData.id);
       if (updErr) { alert("Erro ao atualizar estoque: " + updErr.message); return; }
 
-      await supabase.from("stock_movements").delete().eq("id", movement.id);
+      const { error: delErr } = await supabase.from("stock_movements").delete().eq("id", movement.id);
+      if (delErr) { alert("Erro ao cancelar saída: " + delErr.message); return; }
       setMovements((prev) => prev.filter((m) => m.id !== movement.id));
-      fetchMovements();
     } finally {
       setCancelling(false);
     }
