@@ -18,7 +18,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { customers, products as mockProducts, stores as mockStores } from "@/data/mock-data";
+import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
 import { useAuth } from "@/contexts/auth-context";
 import { formatCurrency } from "@/lib/format";
 import { saleSchema } from "@/lib/schemas";
