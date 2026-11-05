@@ -61,7 +61,8 @@ export function AgendaQueryPage() {
     setLoading(false);
   }
 
-  useEffect(() => { handleSearch(); }, [storeId, isAdmin]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { handleSearch(); }, [storeId, isAdmin, storeFilter]);
 
   function handleClear() {
     setText("");
@@ -167,7 +168,7 @@ export function AgendaQueryPage() {
 
       <SectionCard
         title={searchedDate ? `Agenda de ${formatIsoDate(searchedDate)}` : "Resultados"}
-        description={`${entries.length} registro${entries.length !== 1 ? "s" : ""} encontrado${entries.length !== 1 ? "s" : ""}.`}
+        description={`${entries.length} registro${entries.length !== 1 ? "s" : ""} encontrado${entries.length !== 1 ? "s" : ""}${storeFilter ? ` — ${stores.find((s) => s.id === storeFilter)?.name ?? ""}` : " — todas as unidades"}.`}
       >
         {loading ? (
           <p className="text-sm text-slate-500">Buscando...</p>
