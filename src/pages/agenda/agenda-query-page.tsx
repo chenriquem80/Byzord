@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -145,7 +145,19 @@ export function AgendaQueryPage() {
             <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Digite parte da descrição..." />
           </FormField>
           <FormField label="Data">
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <div className="flex gap-1.5">
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="flex-1" />
+              {date && (
+                <button
+                  type="button"
+                  onClick={() => setDate("")}
+                  title="Limpar data"
+                  className="shrink-0 rounded-xl border border-border bg-white px-2.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
           </FormField>
           {isAdmin && (
             <FormField label="Unidade">
@@ -167,7 +179,7 @@ export function AgendaQueryPage() {
       </SectionCard>
 
       <SectionCard
-        title={searchedDate ? `Agenda de ${formatIsoDate(searchedDate)}` : "Resultados"}
+        title={searchedDate ? `Agenda de ${formatIsoDate(searchedDate)}` : "Todos os registros"}
         description={`${entries.length} registro${entries.length !== 1 ? "s" : ""} encontrado${entries.length !== 1 ? "s" : ""}${storeFilter ? ` — ${stores.find((s) => s.id === storeFilter)?.name ?? ""}` : " — todas as unidades"}.`}
       >
         {loading ? (
