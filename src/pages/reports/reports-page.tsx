@@ -198,7 +198,7 @@ function MovementByStoreReport() {
     const end = new Date(dateTo + "T23:59:59.999");
     let q = supabase
       .from("stock_movements")
-      .select("created_at, type, product_name, manufacturer, store_name, quantity, user_name, note")
+      .select("created_at, type, product_name, manufacturer, store_name, quantity, user_name, note, glass_type, feature")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("created_at", { ascending: false });
@@ -410,7 +410,7 @@ function UserActionReport() {
     const end = new Date(dateTo + "T23:59:59.999");
     let q = supabase
       .from("stock_movements")
-      .select("created_at, type, product_name, store_name, manufacturer, quantity, user_name, note")
+      .select("created_at, type, product_name, store_name, manufacturer, quantity, user_name, note, glass_type, feature")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("user_name", { ascending: true })
