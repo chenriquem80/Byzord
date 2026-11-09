@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FileDown, RefreshCw } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -17,6 +17,7 @@ type StoreRow = { id: string; name: string };
 type StockRow = {
   product_name: string;
   manufacturer: string;
+  brand: string;
   glass_type: string;
   feature: string;
   location: string;
@@ -31,6 +32,8 @@ function StockByStoreReport() {
   const [rows, setRows] = useState<StockRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+  const [brandFilter, setBrandFilter] = useState("");
+  const [glassTypeFilter, setGlassTypeFilter] = useState("");
 
   useEffect(() => {
     if (!supabase) return;
@@ -44,7 +47,7 @@ function StockByStoreReport() {
     setLoading(true);
     let q = supabase
       .from("product_store_inventory")
-      .select("stock, min_quantity, location, stores(id, name), product_manufacturers(manufacturer, products(name, glass_type, feature))")
+      .select("stock, min_quantity, location, stores(id, name), product_manufacturers(manufacturer, products(name, glass_type, feature, brand))")
       .order("stock", { ascending: false });
     if (storeId !== "all") q = q.eq("store_id", storeId);
     const { data, error } = await q;
@@ -52,6 +55,7 @@ function StockByStoreReport() {
     const mapped: StockRow[] = (data ?? []).map((r: any) => ({
       product_name: r.product_manufacturers?.products?.name ?? "—",
       manufacturer: r.product_manufacturers?.manufacturer ?? "—",
+      brand: r.product_manufacturers?.products?.brand ?? "—",
       glass_type: r.product_manufacturers?.products?.glass_type ?? "—",
       feature: r.product_manufacturers?.products?.feature ?? "—",
       location: r.location ?? "—",
@@ -59,10 +63,22 @@ function StockByStoreReport() {
       min_quantity: r.min_quantity ?? 0,
       store_name: r.stores?.name ?? "—",
     }));
+    setBrandFilter("");
+    setGlassTypeFilter("");
     setRows(mapped);
     setFetched(true);
     setLoading(false);
   }
+
+  const uniqueBrands = useMemo(() => [...new Set(rows.map((r) => r.brand).filter((b) => b && b !== "—"))].sort(), [rows]);
+  const uniqueGlassTypes = useMemo(() => [...new Set(rows.map((r) => r.glass_type).filter((t) => t && t !== "—"))].sort(), [rows]);
+
+  const filteredRows = useMemo(() => rows.filter((r) =>
+    (!brandFilter || r.brand === brandFilter) &&
+    (!glassTypeFilter || r.glass_type === glassTypeFilter)
+  ), [rows, brandFilter, glassTypeFilter]);
+
+  const totalStock = useMemo(() => filteredRows.reduce((sum, r) => sum + r.stock, 0), [filteredRows]);
 
   function exportPdf() {
     const doc = new jsPDF({ orientation: "landscape" });
@@ -71,19 +87,31 @@ function StockByStoreReport() {
     doc.text("Estoque Atual por Loja", 14, 16);
     doc.setFontSize(9);
     doc.setTextColor(120);
-    doc.text(`Loja: ${storeName}   •   Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 23);
+    const filters = [
+      brandFilter ? `Marca: ${brandFilter}` : null,
+      glassTypeFilter ? `Tipo: ${glassTypeFilter}` : null,
+    ].filter(Boolean).join("   •   ");
+    doc.text(`Loja: ${storeName}${filters ? `   •   ${filters}` : ""}   •   Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 23);
     doc.setTextColor(0);
     autoTable(doc, {
       startY: 28,
-      head: [["Loja", "Produto", "Fabricante", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"]],
-      body: rows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.glass_type, r.feature, r.location, r.stock, r.min_quantity]),
+      head: [["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"]],
+      body: [
+        ...filteredRows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.brand, r.glass_type, r.feature, r.location, r.stock, r.min_quantity]),
+        ["", "", "", "", "", "", "TOTAL", totalStock, ""],
+      ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       didParseCell: (data) => {
-        if (data.section === "body" && data.column.index === 6) {
+        const isTotal = data.row.index === filteredRows.length;
+        if (isTotal) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [241, 245, 249];
+        }
+        if (!isTotal && data.section === "body" && data.column.index === 7) {
           const stock = Number(data.cell.raw);
-          const min = Number(rows[data.row.index]?.min_quantity ?? 0);
+          const min = Number(filteredRows[data.row.index]?.min_quantity ?? 0);
           if (min > 0 && stock < min) data.cell.styles.textColor = [220, 38, 38];
         }
       },
@@ -118,34 +146,63 @@ function StockByStoreReport() {
       ) : rows.length === 0 ? (
         <p className="py-8 text-center text-sm text-slate-400">Nenhum registro encontrado.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                {["Loja", "Produto", "Fabricante", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"].map((h) => (
-                  <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((r, i) => (
-                <tr key={i} className="hover:bg-slate-50">
-                  <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.store_name}</td>
-                  <td className="px-3 py-2 font-medium text-slate-900">{r.product_name}</td>
-                  <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.manufacturer}</td>
-                  <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.glass_type}</td>
-                  <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.feature}</td>
-                  <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.location}</td>
-                  <td className={`px-3 py-2 font-semibold whitespace-nowrap ${r.stock < r.min_quantity && r.min_quantity > 0 ? "text-rose-600" : "text-slate-900"}`}>
-                    {r.stock}
-                  </td>
-                  <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.min_quantity}</td>
+        <>
+          {/* Filtros por marca e tipo */}
+          <div className="mb-4 flex flex-wrap gap-3">
+            <Select value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} className="w-48">
+              <option value="">Todas as marcas</option>
+              {uniqueBrands.map((b) => <option key={b} value={b}>{b}</option>)}
+            </Select>
+            <Select value={glassTypeFilter} onChange={(e) => setGlassTypeFilter(e.target.value)} className="w-48">
+              <option value="">Todos os tipos</option>
+              {uniqueGlassTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+            </Select>
+            {(brandFilter || glassTypeFilter) && (
+              <button type="button" onClick={() => { setBrandFilter(""); setGlassTypeFilter(""); }}
+                className="text-xs text-slate-500 underline hover:text-slate-700">
+                Limpar filtros
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  {["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"].map((h) => (
+                    <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="border-t border-border px-3 py-2 text-xs text-slate-400">{rows.length} registro{rows.length !== 1 ? "s" : ""}</p>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredRows.map((r, i) => (
+                  <tr key={i} className="hover:bg-slate-50">
+                    <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.store_name}</td>
+                    <td className="px-3 py-2 font-medium text-slate-900">{r.product_name}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.manufacturer}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.brand}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.glass_type}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.feature}</td>
+                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.location}</td>
+                    <td className={`px-3 py-2 font-semibold whitespace-nowrap ${r.stock < r.min_quantity && r.min_quantity > 0 ? "text-rose-600" : "text-slate-900"}`}>
+                      {r.stock}
+                    </td>
+                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.min_quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 bg-slate-50">
+                  <td colSpan={7} className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Total — {filteredRows.length} item{filteredRows.length !== 1 ? "s" : ""}
+                  </td>
+                  <td className="px-3 py-2.5 text-base font-bold text-slate-900">{totalStock}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
       )}
     </SectionCard>
   );
