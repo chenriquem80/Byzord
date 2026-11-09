@@ -302,10 +302,11 @@ export function UserManagementPage() {
 
   async function forcePasswordChange(user: User) {
     if (!supabase) return;
+    const newValue = !(user as any).mustChangePassword;
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ must_change_password: true })
+        .update({ must_change_password: newValue })
         .eq("id", user.id);
       if (error) throw error;
       fetchUsers();
@@ -445,7 +446,7 @@ export function UserManagementPage() {
                         : <UserCheck className="size-4 text-emerald-500" />}
                     </button>
                     <button type="button" onClick={() => forcePasswordChange(u)}
-                      title={(u as any).mustChangePassword ? "Troca de senha já solicitada" : "Solicitar troca de senha"}
+                      title={(u as any).mustChangePassword ? "Cancelar solicitação de troca de senha" : "Solicitar troca de senha"}
                       className={`flex size-9 items-center justify-center rounded-lg border transition-colors ${(u as any).mustChangePassword ? "border-amber-300 bg-amber-50" : "border-border hover:border-amber-300 hover:bg-amber-50"}`}>
                       <KeyRound className={`size-4 ${(u as any).mustChangePassword ? "text-amber-500" : "text-slate-500"}`} />
                     </button>
