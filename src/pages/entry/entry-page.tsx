@@ -185,10 +185,11 @@ export function EntryPage() {
       glassType: lastItem.product.glassType,
       lado: ladoValue ?? lastItem.product.lado ?? null,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
+      supplier: selectedSupplier,
       purchaseSummary: `${lastItem.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
     };
-  }, [lastItem, selectedManufacturer, isLadoD, isLadoE]);
+  }, [lastItem, selectedManufacturer, selectedSupplier, isLadoD, isLadoE]);
 
   const totalQuantity = useMemo(
     () =>
@@ -784,6 +785,7 @@ export function EntryPage() {
                       lado: currentLabel.lado,
                       glassType: currentLabel.glassType,
                       manufacturer: currentLabel.manufacturer,
+                      supplier: currentLabel.supplier,
                       purchaseSummary: currentLabel.purchaseSummary,
                     }}
                     wrapperClassName="flex flex-col items-center gap-3"
@@ -819,6 +821,7 @@ export function EntryPage() {
                 glassType: item.product.glassType,
                 lado: ladoValue ?? (item.product as any).lado ?? null,
                 manufacturer: selectedManufacturer || item.mf.manufacturer,
+                supplier: selectedSupplier,
                 purchaseSummary: `${item.cost} - ${dateLabel}`,
               };
               return <LabelCard key={item.key} label={labelData} />;
