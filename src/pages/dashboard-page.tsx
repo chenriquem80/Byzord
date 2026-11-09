@@ -1,4 +1,4 @@
-import { PackageMinus, PackagePlus, RefreshCw, XCircle } from "lucide-react";
+import { AlertTriangle, PackageMinus, PackagePlus, RefreshCw, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -34,6 +34,16 @@ type StockMovement = {
 
 type DbStore = { id: string; name: string; city: string };
 
+type BelowMinItem = {
+  id: string;
+  stock: number;
+  min_quantity: number;
+  manufacturer: string;
+  productName: string;
+  glassType: string | null;
+  storeName: string;
+};
+
 function isTodayLocal(dateStr: string): boolean {
   const d = new Date(dateStr);
   const today = new Date();
@@ -48,12 +58,20 @@ export function DashboardPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
   const isManager = user?.role === "GERENTE";
+  const isEstoquista = user?.role === "ESTOQUISTA";
   const seeAllStores = isAdmin || isManager;
+  const canAccessAgenda = user ? canAccessPage(user, "/app/agenda") : false;
+  const showAgenda = canAccessAgenda && !isEstoquista;
+  const showBelowMin = isEstoquista;
+  const hasRightPanel = showAgenda || showBelowMin;
+
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(true);
   const [dbStores, setDbStores] = useState<DbStore[]>([]);
   const [agendaItems, setAgendaItems] = useState<{ id: string; description: string; user_name: string | null }[]>([]);
   const [loadingAgenda, setLoadingAgenda] = useState(true);
+  const [belowMinItems, setBelowMinItems] = useState<BelowMinItem[]>([]);
+  const [loadingBelowMin, setLoadingBelowMin] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ visible: boolean; x: number; y: number; movement: StockMovement | null }>({ visible: false, x: 0, y: 0, movement: null });
   const [cancelling, setCancelling] = useState(false);
 
@@ -99,13 +117,48 @@ export function DashboardPage() {
     setLoadingAgenda(false);
   }
 
-  function refresh() { fetchMovements(); fetchAgenda(); }
+  async function fetchBelowMin() {
+    if (!supabase) return;
+    setLoadingBelowMin(true);
+    let q = supabase
+      .from("product_store_inventory")
+      .select("id, stock, min_quantity, store_id, product_manufacturers(manufacturer, products(name, glass_type)), stores(name)")
+      .gt("min_quantity", 0);
+    if (!seeAllStores && user?.storeId) {
+      q = q.eq("store_id", user.storeId);
+    }
+    const { data } = await q;
+    const filtered: BelowMinItem[] = (data ?? [])
+      .filter((row: any) => row.stock < row.min_quantity)
+      .map((row: any) => ({
+        id: row.id,
+        stock: row.stock,
+        min_quantity: row.min_quantity,
+        manufacturer: row.product_manufacturers?.manufacturer ?? "",
+        productName: row.product_manufacturers?.products?.name ?? "",
+        glassType: row.product_manufacturers?.products?.glass_type ?? null,
+        storeName: row.stores?.name ?? "",
+      }));
+    setBelowMinItems(filtered);
+    setLoadingBelowMin(false);
+  }
+
+  function refresh() {
+    fetchMovements();
+    if (showAgenda) fetchAgenda();
+    if (showBelowMin) fetchBelowMin();
+  }
 
   useEffect(() => {
     fetchMovements();
     fetchStores();
-    fetchAgenda();
-    const interval = setInterval(() => { fetchMovements(); fetchAgenda(); }, 60_000);
+    if (showAgenda) fetchAgenda();
+    if (showBelowMin) fetchBelowMin();
+    const interval = setInterval(() => {
+      fetchMovements();
+      if (showAgenda) fetchAgenda();
+      if (showBelowMin) fetchBelowMin();
+    }, 60_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -227,7 +280,7 @@ export function DashboardPage() {
         </SectionCard>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+      <div className={`grid gap-6 ${hasRightPanel ? "xl:grid-cols-[1.25fr_0.75fr]" : ""}`}>
         {/* Movimentações do dia */}
         <SectionCard
           title="Movimentações do dia"
@@ -293,34 +346,83 @@ export function DashboardPage() {
           </div>
         </SectionCard>
 
-        {/* Agenda do dia */}
-        <SectionCard
-          title="Agenda do dia"
-          description={`${agendaItems.length} registro${agendaItems.length !== 1 ? "s" : ""} hoje.`}
-          action={
-            <Button size="sm" variant="outline" onClick={fetchAgenda} disabled={loadingAgenda}>
-              <RefreshCw className={`size-3.5 ${loadingAgenda ? "animate-spin" : ""}`} />
-              Atualizar
-            </Button>
-          }
-        >
-          <div className="space-y-3">
-            {loadingAgenda ? (
-              <p className="py-6 text-center text-sm text-slate-400">Carregando...</p>
-            ) : agendaItems.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400">Nenhum registro na agenda hoje.</p>
-            ) : (
-              agendaItems.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-border bg-white p-4">
-                  <p className="whitespace-pre-wrap text-sm text-slate-800">{item.description}</p>
-                  {item.user_name && (
-                    <p className="mt-2 text-xs text-slate-400">{item.user_name}</p>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </SectionCard>
+        {/* Agenda do dia — apenas para quem tem acesso */}
+        {showAgenda && (
+          <SectionCard
+            title="Agenda do dia"
+            description={`${agendaItems.length} registro${agendaItems.length !== 1 ? "s" : ""} hoje.`}
+            action={
+              <Button size="sm" variant="outline" onClick={fetchAgenda} disabled={loadingAgenda}>
+                <RefreshCw className={`size-3.5 ${loadingAgenda ? "animate-spin" : ""}`} />
+                Atualizar
+              </Button>
+            }
+          >
+            <div className="space-y-3">
+              {loadingAgenda ? (
+                <p className="py-6 text-center text-sm text-slate-400">Carregando...</p>
+              ) : agendaItems.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-400">Nenhum registro na agenda hoje.</p>
+              ) : (
+                agendaItems.map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-border bg-white p-4">
+                    <p className="whitespace-pre-wrap text-sm text-slate-800">{item.description}</p>
+                    {item.user_name && (
+                      <p className="mt-2 text-xs text-slate-400">{item.user_name}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Produtos abaixo do mínimo — apenas para Estoquista */}
+        {showBelowMin && (
+          <SectionCard
+            title="Abaixo do mínimo"
+            description={`${belowMinItems.length} produto${belowMinItems.length !== 1 ? "s" : ""} abaixo do estoque mínimo.`}
+            action={
+              <Button size="sm" variant="outline" onClick={fetchBelowMin} disabled={loadingBelowMin}>
+                <RefreshCw className={`size-3.5 ${loadingBelowMin ? "animate-spin" : ""}`} />
+                Atualizar
+              </Button>
+            }
+          >
+            <div className="space-y-3">
+              {loadingBelowMin ? (
+                <p className="py-6 text-center text-sm text-slate-400">Carregando...</p>
+              ) : belowMinItems.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-400">Nenhum produto abaixo do mínimo.</p>
+              ) : (
+                belowMinItems.map((item) => (
+                  <div key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-amber-100 bg-amber-50/40 p-4">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="shrink-0 rounded-xl bg-amber-100 p-2">
+                        <AlertTriangle className="size-4 text-amber-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">{item.productName}</p>
+                        <p className="mt-0.5 text-sm text-slate-500">
+                          {item.manufacturer}
+                          {item.glassType ? ` • ${item.glassType}` : ""}
+                        </p>
+                        {seeAllStores && (
+                          <p className="mt-0.5 text-xs text-slate-400">{item.storeName}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700">
+                        {item.stock} / {item.min_quantity} un.
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </SectionCard>
+        )}
       </div>
 
       {/* Menu de contexto — cancelar saída (admin) */}
