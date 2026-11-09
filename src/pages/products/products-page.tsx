@@ -993,7 +993,26 @@ export function ProductsPage() {
             <Input type="number" step="0.01" {...form.register("price")} />
           </FormField>
           <FormField label="Última compra (mês/ano)" error={form.formState.errors.lastPurchaseDate?.message}>
-            <Input type="month" {...form.register("lastPurchaseDate")} />
+            <Input
+              type="text"
+              placeholder="MM/AA"
+              maxLength={5}
+              value={(() => {
+                const v = form.watch("lastPurchaseDate") ?? "";
+                const m = /^(\d{4})-(\d{2})/.exec(v);
+                return m ? `${m[2]}/${m[1].slice(2)}` : v;
+              })()}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
+                if (digits.length === 4) {
+                  form.setValue("lastPurchaseDate", `20${digits.slice(2)}-${digits.slice(0, 2)}`, { shouldValidate: true });
+                } else if (digits.length <= 2) {
+                  form.setValue("lastPurchaseDate", digits, { shouldValidate: false });
+                } else {
+                  form.setValue("lastPurchaseDate", `${digits.slice(0, 2)}/${digits.slice(2)}`, { shouldValidate: false });
+                }
+              }}
+            />
           </FormField>
           <FormField label="Fornecedor" error={form.formState.errors.lastSupplier?.message}>
             <ContextMenuDropdown
