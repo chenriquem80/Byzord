@@ -47,6 +47,8 @@ function isTodayLocal(dateStr: string): boolean {
 export function DashboardPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const isManager = user?.role === "GERENTE";
+  const seeAllStores = isAdmin || isManager;
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(true);
   const [dbStores, setDbStores] = useState<DbStore[]>([]);
@@ -62,11 +64,15 @@ export function DashboardPage() {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 1);
     cutoff.setHours(0, 0, 0, 0);
-    const { data, error } = await supabase
+    let movQuery = supabase
       .from("stock_movements")
       .select("id, type, product_name, store_name, manufacturer, user_name, quantity, note, glass_type, feature, created_at")
       .gte("created_at", cutoff.toISOString())
       .order("created_at", { ascending: false });
+    if (!seeAllStores && user?.storeName) {
+      movQuery = movQuery.eq("store_name", user.storeName);
+    }
+    const { data, error } = await movQuery;
     if (error) { console.error("stock_movements:", error.message); }
     const todayOnly = (data ?? []).filter((m) => m.created_at && isTodayLocal(m.created_at));
     setMovements(todayOnly);
@@ -184,8 +190,8 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* Resumo por loja */}
-      <div className="hidden lg:block">
+      {/* Resumo por loja — apenas admin/gerente */}
+      <div className={`${seeAllStores ? "hidden lg:block" : "hidden"}`}>
         <SectionCard
           title="Resumo por loja"
           description="Visual rápido para comparar o saldo operacional entre as unidades."
