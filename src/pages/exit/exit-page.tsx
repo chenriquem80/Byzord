@@ -190,6 +190,7 @@ export function ExitPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [scannedCode, setScannedCode] = useState<string | null>(null);
+  const [scannedCodeType, setScannedCodeType] = useState<"qr" | "barcode" | null>(null);
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const html5ScannerRef = useRef<Html5Qrcode | null>(null);
 
@@ -325,6 +326,7 @@ export function ExitPage() {
     setScannerOpen(false);
     setScannerError(null);
     setScannedCode(null);
+    setScannedCodeType(null);
   }
 
   // Inicia Html5Qrcode somente após o dialog estar montado no DOM
@@ -342,6 +344,7 @@ export function ExitPage() {
         const scanner = new Html5Qrcode("html5qr-live-reader", {
           verbose: false,
           formatsToSupport: [
+            Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
             Html5QrcodeSupportedFormats.CODE_128,
@@ -353,12 +356,19 @@ export function ExitPage() {
           { facingMode: "environment" },
           {
             fps: 15,
-            qrbox: (w: number, h: number) => ({
-              width: Math.floor(Math.min(w, h) * 0.9),
-              height: Math.floor(Math.min(w, h) * 0.35),
-            }),
+            qrbox: (w: number, h: number) => {
+              const side = Math.floor(Math.min(w, h) * 0.75);
+              return { width: side, height: side };
+            },
           },
-          (code) => { if (!cancelled) handleBarcodeScan(code); },
+          (code, result) => {
+            if (!cancelled) {
+              const fmt = (result as any)?.result?.format?.format;
+              const isQr = fmt === Html5QrcodeSupportedFormats.QR_CODE;
+              setScannedCodeType(isQr ? "qr" : "barcode");
+              handleBarcodeScan(code);
+            }
+          },
           () => {},
         );
       } catch (err: any) {
@@ -623,7 +633,7 @@ export function ExitPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Camera className="size-5" />
-              Escanear código de barras
+              Escanear código
             </DialogTitle>
           </DialogHeader>
 
@@ -635,12 +645,12 @@ export function ExitPage() {
             )}
             {scannedCode && !scannerError && (
               <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                Código lido: <strong>{scannedCode}</strong>
+                {scannedCodeType === "qr" ? "QR Code" : "Código de barras"} lido: <strong>{scannedCode}</strong>
               </p>
             )}
             {!scannerError && !scannedCode && (
               <p className="text-center text-sm text-slate-500">
-                Aponte a câmera para o código de barras
+                Aponte a câmera para o QR Code ou código de barras
               </p>
             )}
             <Button variant="outline" className="w-full" onClick={stopScanner}>
