@@ -577,7 +577,7 @@ export function ExitPage() {
                   <button key={(inv as any).specialCondition} type="button"
                     onClick={() => setSaleSpecialCond((inv as any).specialCondition)}
                     className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${saleSpecialCond === (inv as any).specialCondition ? "bg-sky-600 text-white" : "bg-sky-100 text-sky-700 hover:bg-sky-200"}`}>
-                    {(inv as any).specialCondition} ({inv.stock} un.)
+                    {({ B: "Blind", R: "Risc", BR: "Blind/Risc" } as Record<string, string>)[(inv as any).specialCondition] ?? (inv as any).specialCondition} ({inv.stock} un.)
                   </button>
                 ))}
               </div>
