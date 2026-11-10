@@ -62,6 +62,7 @@ export function EntryPage() {
   const [isTypeR, setIsTypeR] = useState(false);
   const [isLadoD, setIsLadoD] = useState(false);
   const [isLadoE, setIsLadoE] = useState(false);
+  const [isLadoA, setIsLadoA] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState<string>("all");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -177,7 +178,7 @@ export function EntryPage() {
     const dateLabel = purchaseDate
       ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
       : "";
-    const ladoValue = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
+    const ladoValue = [isLadoA && "A", isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
     return {
       vehicleLabel,
       yearRange,
@@ -189,7 +190,7 @@ export function EntryPage() {
       purchaseSummary: `${lastItem.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
     };
-  }, [lastItem, selectedManufacturer, selectedSupplier, isLadoD, isLadoE]);
+  }, [lastItem, selectedManufacturer, selectedSupplier, isLadoA, isLadoD, isLadoE]);
 
   const totalQuantity = useMemo(
     () =>
@@ -277,7 +278,7 @@ export function EntryPage() {
     if (!supabase || entryItems.length === 0) return;
     setSaving(true);
     const specialCond: string | null = isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null;
-    const ladoValue: string | null = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
+    const ladoValue: string | null = [isLadoA && "A", isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
 
     async function upsertInventory(mfId: string, storeId: string, qty: number) {
       let q = supabase!
@@ -416,6 +417,7 @@ export function EntryPage() {
     setNewManufacturer("");
     setIsLadoD(false);
     setIsLadoE(false);
+    setIsLadoA(false);
     setSelectedStoreId(authUser?.storeId ?? "all");
   }
 
@@ -621,6 +623,10 @@ export function EntryPage() {
                           <input type="checkbox" checked={isLadoE} onChange={(e) => setIsLadoE(e.target.checked)} className="size-4 accent-primary" />
                           E
                         </label>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                          <input type="checkbox" checked={isLadoA} onChange={(e) => setIsLadoA(e.target.checked)} className="size-4 accent-primary" />
+                          A
+                        </label>
                       </div>
                     </FormField>
                     <FormField label="Foto">
@@ -812,7 +818,7 @@ export function EntryPage() {
               const dateLabel = purchaseDate
                 ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
                 : "";
-              const ladoValue = [isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
+              const ladoValue = [isLadoA && "A", isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
               const labelData: LabelData = {
                 productCode: item.product.barcode || item.product.name,
                 vehicleLabel,

@@ -8,6 +8,7 @@ export const productSchema = z.object({
   isTypeR: z.boolean().optional().default(false),
   ladoD: z.boolean().optional().default(false),
   ladoE: z.boolean().optional().default(false),
+  ladoA: z.boolean().optional().default(false),
   glassType: z.string().min(1, "Selecione o tipo de vidro."),
   feature: z.string().min(1, "Selecione a característica."),
   manufacturer: z.string().min(1, "Selecione o fabricante."),

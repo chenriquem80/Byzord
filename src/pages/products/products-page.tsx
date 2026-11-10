@@ -28,6 +28,7 @@ type ProductFormValues = {
   isTypeR: boolean;
   ladoD: boolean;
   ladoE: boolean;
+  ladoA: boolean;
   glassType: string;
   feature: string;
   manufacturer: string;
@@ -62,6 +63,7 @@ function getEmptyFormValues(): ProductFormValues {
     isTypeR: false,
     ladoD: false,
     ladoE: false,
+    ladoA: false,
     glassType: "",
     feature: "",
     manufacturer: "",
@@ -90,8 +92,9 @@ function buildFormValues(p: Product, mfId?: string | null, storeId?: string | nu
     name: p.name,
     isTypeB: specialCondition === "B" || specialCondition === "BR",
     isTypeR: specialCondition === "R" || specialCondition === "BR",
-    ladoD: p.lado === "D" || p.lado === "D/E",
-    ladoE: p.lado === "E" || p.lado === "D/E",
+    ladoD: p.lado?.includes("D") ?? false,
+    ladoE: p.lado?.includes("E") ?? false,
+    ladoA: p.lado?.includes("A") ?? false,
     glassType: p.glassType,
     feature: p.feature,
     manufacturer: mf?.manufacturer ?? "",
@@ -358,6 +361,7 @@ export function ProductsPage() {
     feature: "Característica",
     ladoD: "Lado D",
     ladoE: "Lado E",
+    ladoA: "Lado A",
     manufacturer: "Fabricante",
     cost: "Preço de custo",
     price: "Preço de venda",
@@ -523,7 +527,7 @@ export function ProductsPage() {
     try {
       if (supabase) {
         if (isEditing) {
-          const ladoValue = [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
+          const ladoValue = [values.ladoA && "A", values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
           const specialCond: string | null = values.isTypeB && values.isTypeR ? "BR" : values.isTypeB ? "B" : values.isTypeR ? "R" : null;
           const { error } = await supabase
             .from("products")
@@ -590,7 +594,7 @@ export function ProductsPage() {
             }
           }
         } else {
-          const ladoValue = [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
+          const ladoValue = [values.ladoA && "A", values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
           const specialCond: string | null = values.isTypeB && values.isTypeR ? "BR" : values.isTypeB ? "B" : values.isTypeR ? "R" : null;
           const { data: inserted, error: insertError } = await supabase
             .from("products")
@@ -695,7 +699,7 @@ export function ProductsPage() {
               name: values.name,
               glassType: values.glassType as Product["glassType"],
               feature: values.feature as Product["feature"],
-              lado: [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null,
+              lado: [values.ladoA && "A", values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null,
               brand: values.brand,
               description: values.description,
               status: values.status,
@@ -711,7 +715,7 @@ export function ProductsPage() {
             name: values.name,
             glassType: values.glassType as Product["glassType"],
             feature: values.feature as Product["feature"],
-            lado: [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null,
+            lado: [values.ladoA && "A", values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null,
             brand: values.brand,
             description: values.description,
             photos: [],
@@ -882,6 +886,10 @@ export function ProductsPage() {
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="checkbox" {...form.register("ladoE")} className="size-4 accent-primary" />
                 <span className="text-sm font-semibold text-slate-700">E</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" {...form.register("ladoA")} className="size-4 accent-primary" />
+                <span className="text-sm font-semibold text-slate-700">A</span>
               </label>
             </div>
           </FormField>
