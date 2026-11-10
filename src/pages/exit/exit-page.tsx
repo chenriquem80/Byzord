@@ -571,7 +571,7 @@ export function ExitPage() {
               <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 shadow-sm">
                 <button type="button" onClick={() => setSaleSpecialCond(null)}
                   className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${!saleSpecialCond ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-                  Regular
+                  Risc
                 </button>
                 {specialInventories.map((inv) => (
                   <button key={(inv as any).specialCondition} type="button"
