@@ -192,7 +192,56 @@ export function ExitPage() {
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const [scannedCodeType, setScannedCodeType] = useState<"qr" | "barcode" | null>(null);
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
+  const [cameraExplainerOpen, setCameraExplainerOpen] = useState(false);
+  const [cameraGranting, setCameraGranting] = useState(false);
   const html5ScannerRef = useRef<Html5Qrcode | null>(null);
+
+  async function handleOpenScanner() {
+    // Se já autorizou antes, abre direto
+    try {
+      if (localStorage.getItem("cameraPermGranted") === "true") { setScannerOpen(true); return; }
+    } catch {}
+    // Tenta checar via Permissions API
+    try {
+      if (navigator.permissions) {
+        const status = await navigator.permissions.query({ name: "camera" as PermissionName });
+        if (status.state === "granted") {
+          try { localStorage.setItem("cameraPermGranted", "true"); } catch {}
+          setScannerOpen(true);
+          return;
+        }
+        if (status.state === "denied") {
+          setScannerError("Câmera bloqueada. Habilite nas configurações do navegador.");
+          setScannerOpen(true);
+          return;
+        }
+      }
+    } catch {}
+    // Primeira vez: mostra explicação antes de pedir a permissão
+    setCameraExplainerOpen(true);
+  }
+
+  async function grantCameraPermission() {
+    setCameraGranting(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      stream.getTracks().forEach((t) => t.stop());
+      try { localStorage.setItem("cameraPermGranted", "true"); } catch {}
+      setCameraExplainerOpen(false);
+      setScannerOpen(true);
+    } catch (err: any) {
+      const name = (err as Error)?.name ?? "";
+      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+        setScannerError("Permissão negada. Habilite a câmera nas configurações do navegador.");
+      } else {
+        setScannerError("Não foi possível acessar a câmera.");
+      }
+      setCameraExplainerOpen(false);
+      setScannerOpen(true);
+    } finally {
+      setCameraGranting(false);
+    }
+  }
 
   const selectedProduct = useMemo(
     () => form.watch("productId") ? (allProducts.find((item) => item.id === form.watch("productId")) ?? null) : null,
@@ -484,7 +533,7 @@ export function ExitPage() {
             )}
             <button
               type="button"
-              onClick={() => setScannerOpen(true)}
+              onClick={handleOpenScanner}
               className="flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-primary hover:text-primary"
             >
               <Camera className="size-4" />
@@ -626,6 +675,35 @@ export function ExitPage() {
           )}
         </form>
       </SectionCard>
+
+      {/* Explicação de permissão de câmera (exibida apenas na primeira vez) */}
+      <Dialog open={cameraExplainerOpen} onOpenChange={(open) => { if (!open) setCameraExplainerOpen(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="size-5" />
+              Permitir acesso à câmera
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Para escanear QR Codes e códigos de barras, o aplicativo precisa acessar a câmera do seu dispositivo.
+            </p>
+            <p className="text-sm text-slate-500">
+              Quando o navegador perguntar, selecione <strong>Permitir</strong>. Essa confirmação só será solicitada uma vez.
+            </p>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={grantCameraPermission} disabled={cameraGranting}>
+                <Camera className="size-4" />
+                {cameraGranting ? "Aguardando…" : "Permitir câmera"}
+              </Button>
+              <Button variant="outline" onClick={() => setCameraExplainerOpen(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Scanner de câmera */}
       <Dialog open={scannerOpen} onOpenChange={(open) => { if (!open) stopScanner(); }}>
