@@ -79,7 +79,7 @@ function getEmptyFormValues(): ProductFormValues {
   };
 }
 
-function buildFormValues(p: Product, mfId?: string | null, storeId?: string | null): ProductFormValues {
+function buildFormValues(p: Product, mfId?: string | null, storeId?: string | null, specialCondition?: string | null): ProductFormValues {
   const mf = (mfId ? p.manufacturers.find((m) => m.id === mfId) : null) ?? p.manufacturers[0];
   const inventory = storeId
     ? (mf?.inventories.find((i) => i.storeId === storeId) ?? mf?.inventories[0])
@@ -88,8 +88,8 @@ function buildFormValues(p: Product, mfId?: string | null, storeId?: string | nu
     supplierCode: p.supplierCode,
     barcode: p.barcode,
     name: p.name,
-    isTypeB: (p as any).isTypeB ?? false,
-    isTypeR: (p as any).isTypeR ?? false,
+    isTypeB: specialCondition === "B" || specialCondition === "BR",
+    isTypeR: specialCondition === "R" || specialCondition === "BR",
     ladoD: p.lado === "D" || p.lado === "D/E",
     ladoE: p.lado === "E" || p.lado === "D/E",
     glassType: p.glassType,
@@ -318,7 +318,13 @@ export function ProductsPage() {
         setInvMinimum(Math.max(0, firstInv?.minQuantity ?? 0));
 
         setCurrentProduct(product);
-        form.reset(buildFormValues(product, manufacturerId, firstInv?.storeId ?? null));
+        // Lê special_condition do registro de inventário correspondente para pré-preencher B/R
+        const activeMfIdForLoad = manufacturerId ?? product.manufacturers[0]?.id;
+        const targetStoreForLoad = ownStoreId || firstInv?.storeId;
+        const matchingRawInv =
+          allInvs.find((inv: any) => inv.manufacturer_id === activeMfIdForLoad && inv.store_id === targetStoreForLoad && !inv.special_condition) ??
+          allInvs.find((inv: any) => inv.manufacturer_id === activeMfIdForLoad && inv.store_id === targetStoreForLoad);
+        form.reset(buildFormValues(product, manufacturerId, firstInv?.storeId ?? null, matchingRawInv?.special_condition ?? null));
 
         // Carrega fotos do produto
         const { data: photosData } = await supabase
@@ -518,6 +524,7 @@ export function ProductsPage() {
       if (supabase) {
         if (isEditing) {
           const ladoValue = [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
+          const specialCond: string | null = values.isTypeB && values.isTypeR ? "BR" : values.isTypeB ? "B" : values.isTypeR ? "R" : null;
           const { error } = await supabase
             .from("products")
             .update({
@@ -554,32 +561,37 @@ export function ProductsPage() {
           // Atualiza estoque da loja selecionada usando manufacturer_id + store_id como filtro
           const storeId = selectedStoreId || dbStores[0]?.id;
           if (storeId && activeMfId && canWriteStore(authUser, storeId)) {
-            // Tenta UPDATE; se não afetar nenhuma linha, faz INSERT
-            const { data: updated, error: upErr } = await supabase
+            // Tenta UPDATE filtrando pela condição especial correta; se não afetar nenhuma linha, faz INSERT
+            let invUpQ = supabase
               .from("product_store_inventory")
               .update({ stock: Math.max(0, invQuantity), min_quantity: Math.max(0, invMinimum), location: invLocation })
               .eq("manufacturer_id", activeMfId)
-              .eq("store_id", storeId)
-              .is("special_condition", null)
-              .select("id");
+              .eq("store_id", storeId);
+            invUpQ = specialCond
+              ? (invUpQ as any).eq("special_condition", specialCond)
+              : (invUpQ as any).is("special_condition", null);
+            const { data: updated, error: upErr } = await (invUpQ as any).select("id");
 
             if (upErr) throw new Error(`Erro ao salvar estoque: ${upErr.message}`);
 
             if (!updated || updated.length === 0) {
+              const insertRow: Record<string, any> = {
+                manufacturer_id: activeMfId,
+                store_id: storeId,
+                stock: Math.max(0, invQuantity),
+                min_quantity: Math.max(0, invMinimum),
+                location: invLocation,
+              };
+              if (specialCond) insertRow.special_condition = specialCond;
               const { error: insErr } = await supabase
                 .from("product_store_inventory")
-                .insert({
-                  manufacturer_id: activeMfId,
-                  store_id: storeId,
-                  stock: Math.max(0, invQuantity),
-                  min_quantity: Math.max(0, invMinimum),
-                  location: invLocation,
-                });
+                .insert(insertRow);
               if (insErr) throw new Error(`Erro ao criar estoque: ${insErr.message}`);
             }
           }
         } else {
           const ladoValue = [values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
+          const specialCond: string | null = values.isTypeB && values.isTypeR ? "BR" : values.isTypeB ? "B" : values.isTypeR ? "R" : null;
           const { data: inserted, error: insertError } = await supabase
             .from("products")
             .insert({
@@ -618,13 +630,17 @@ export function ProductsPage() {
               .single();
             if (mfError) throw mfError;
 
-            const inventoryRows = activeStores.map((store: any) => ({
-              manufacturer_id: mf.id,
-              store_id: store.id,
-              location: invLocation,
-              stock: store.id === targetStoreId ? Math.max(0, invQuantity) : 0,
-              min_quantity: Math.max(0, invMinimum),
-            }));
+            const inventoryRows = activeStores.map((store: any) => {
+              const row: Record<string, any> = {
+                manufacturer_id: mf.id,
+                store_id: store.id,
+                location: invLocation,
+                stock: store.id === targetStoreId ? Math.max(0, invQuantity) : 0,
+                min_quantity: Math.max(0, invMinimum),
+              };
+              if (specialCond) row.special_condition = specialCond;
+              return row;
+            });
             const { error: invError } = await supabase
               .from("product_store_inventory")
               .insert(inventoryRows);
