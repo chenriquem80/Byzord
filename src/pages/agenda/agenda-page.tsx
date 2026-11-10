@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -42,11 +43,12 @@ export function AgendaPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const [micExplainerOpen, setMicExplainerOpen] = useState(false);
+  const [micGranting, setMicGranting] = useState(false);
 
-  function toggleMic() {
+  function startRecognition() {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { alert("Reconhecimento de voz não suportado neste navegador."); return; }
-    if (listening) { recognitionRef.current?.stop(); setListening(false); return; }
     const rec = new SR();
     rec.lang = "pt-BR";
     rec.interimResults = false;
@@ -64,6 +66,44 @@ export function AgendaPage() {
     rec.start();
     recognitionRef.current = rec;
     setListening(true);
+  }
+
+  async function toggleMic() {
+    if (listening) { recognitionRef.current?.stop(); setListening(false); return; }
+    // Se já autorizou antes, começa direto
+    try {
+      if (localStorage.getItem("micPermGranted") === "true") { startRecognition(); return; }
+    } catch {}
+    // Verifica via Permissions API
+    try {
+      if (navigator.permissions) {
+        const status = await navigator.permissions.query({ name: "microphone" as PermissionName });
+        if (status.state === "granted") {
+          try { localStorage.setItem("micPermGranted", "true"); } catch {}
+          startRecognition();
+          return;
+        }
+      }
+    } catch {}
+    // Primeira vez: mostra explicação antes de pedir permissão
+    setMicExplainerOpen(true);
+  }
+
+  async function grantMicPermission() {
+    setMicGranting(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      try { localStorage.setItem("micPermGranted", "true"); } catch {}
+      setMicExplainerOpen(false);
+      startRecognition();
+    } catch {
+      setMicExplainerOpen(false);
+      // tenta mesmo assim — SpeechRecognition vai lidar com o erro
+      startRecognition();
+    } finally {
+      setMicGranting(false);
+    }
   }
   // Unidade do registro: fixa na loja do usuário; administrador pode escolher
   const [formStoreId, setFormStoreId] = useState(storeId ?? "");
@@ -236,6 +276,35 @@ export function AgendaPage() {
           </ul>
         )}
       </SectionCard>
+
+      {/* Explicação de permissão de microfone (exibida apenas na primeira vez) */}
+      <Dialog open={micExplainerOpen} onOpenChange={(open) => { if (!open) setMicExplainerOpen(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mic className="size-5" />
+              Permitir acesso ao microfone
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Para usar a função de ditado, o aplicativo precisa acessar o microfone do seu dispositivo.
+            </p>
+            <p className="text-sm text-slate-500">
+              Quando o navegador perguntar, selecione <strong>Permitir</strong>. Essa confirmação só será solicitada uma vez.
+            </p>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={grantMicPermission} disabled={micGranting}>
+                <Mic className="size-4" />
+                {micGranting ? "Aguardando…" : "Permitir microfone"}
+              </Button>
+              <Button variant="outline" onClick={() => setMicExplainerOpen(false)}>
+                <X className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
