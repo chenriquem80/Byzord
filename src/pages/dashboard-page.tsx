@@ -123,13 +123,13 @@ export function DashboardPage() {
     let q = supabase
       .from("product_store_inventory")
       .select("id, stock, min_quantity, store_id, product_manufacturers(manufacturer, products(name, glass_type)), stores(name)")
-      .gt("min_quantity", 0);
+      .gte("min_quantity", 1);
     if (!seeAllStores && user?.storeId) {
       q = q.eq("store_id", user.storeId);
     }
     const { data } = await q;
     const filtered: BelowMinItem[] = (data ?? [])
-      .filter((row: any) => row.stock < row.min_quantity)
+      .filter((row: any) => (row.min_quantity ?? 0) >= 1 && row.stock < row.min_quantity)
       .map((row: any) => ({
         id: row.id,
         stock: row.stock,
