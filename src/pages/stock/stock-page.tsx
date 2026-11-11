@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Car, Check, Images, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { Car, Check, Images, MapPin, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,7 @@ export function StockPage() {
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [dbStores, setDbStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<"produto" | "localizacao">("produto");
 
   // Context menu (botão direito)
   const [ctxMenu, setCtxMenu] = useState<ContextMenu>({ visible: false, x: 0, y: 0, row: null });
@@ -382,6 +383,20 @@ export function StockPage() {
       });
   }, [glassType, query, products, stores]);
 
+  const sortedRows = useMemo(() => {
+    if (sortBy === "localizacao") {
+      return [...rows].sort((a, b) => {
+        const locA = (a.store1Location || a.store2Location || "").toLowerCase();
+        const locB = (b.store1Location || b.store2Location || "").toLowerCase();
+        if (!locA && !locB) return 0;
+        if (!locA) return 1;
+        if (!locB) return -1;
+        return locA.localeCompare(locB, "pt-BR", { numeric: true });
+      });
+    }
+    return rows;
+  }, [rows, sortBy]);
+
   const columns: ColumnDef<StockRow>[] = [
       {
         accessorKey: "productName",
@@ -568,10 +583,29 @@ export function StockPage() {
         title="Resultado"
         description="Clique na característica para abrir o detalhamento por loja e fabricante."
         action={
-          <Button size="sm" variant="outline" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setSortBy("produto")}
+                className={`rounded px-3 py-1 font-semibold transition-colors ${sortBy === "produto" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                Produto
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy("localizacao")}
+                className={`flex items-center gap-1 rounded px-3 py-1 font-semibold transition-colors ${sortBy === "localizacao" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                <MapPin className="size-3" />
+                Localização
+              </button>
+            </div>
+            <Button size="sm" variant="outline" onClick={fetchData} disabled={loading}>
+              <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+              Atualizar
+            </Button>
+          </div>
         }
       >
         {loading ? (
@@ -583,36 +617,86 @@ export function StockPage() {
         ) : (
           <>
             {/* Lista compacta — apenas mobile */}
-            <div className="space-y-2 lg:hidden">
-              {rows.map((row, i) => {
-                const showLado = !/parabrisa|vigia/i.test(row.product.glassType);
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setMobileDetail(row)}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3 text-left transition active:bg-slate-50"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{row.productName}</p>
-                      <p className="text-xs text-slate-500">
-                        {row.characteristic}
-                        {showLado && row.lado ? ` · ${row.lado}` : ""}
-                      </p>
-                      <p className="text-xs text-slate-400">{row.manufacturer}</p>
+            <div className="lg:hidden">
+              {sortBy === "localizacao" ? (
+                // Agrupado por localização
+                (() => {
+                  const groups = new Map<string, StockRow[]>();
+                  sortedRows.forEach((row) => {
+                    const loc = row.store1Location || row.store2Location || "Sem localização";
+                    if (!groups.has(loc)) groups.set(loc, []);
+                    groups.get(loc)!.push(row);
+                  });
+                  return [...groups.entries()].map(([loc, groupRows]) => (
+                    <div key={loc} className="mb-4">
+                      <div className="mb-1.5 flex items-center gap-1.5 px-1">
+                        <MapPin className="size-3.5 text-primary" />
+                        <span className="text-xs font-bold uppercase tracking-wide text-primary">{loc}</span>
+                        <span className="text-xs text-slate-400">· {groupRows.length} item{groupRows.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {groupRows.map((row, i) => {
+                          const showLado = !/parabrisa|vigia/i.test(row.product.glassType);
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setMobileDetail(row)}
+                              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3 text-left transition active:bg-slate-50"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-slate-900">{row.productName}</p>
+                                <p className="text-xs text-slate-500">
+                                  {row.characteristic}
+                                  {showLado && row.lado ? ` · ${row.lado}` : ""}
+                                </p>
+                                <p className="text-xs text-slate-400">{row.manufacturer}</p>
+                              </div>
+                              <div className="shrink-0 text-right text-xs text-slate-600">
+                                <p>{stores[0]?.code ?? "L1"}: <span className="font-bold text-slate-900">{row.store1Quantity}</span></p>
+                                {stores[1] && <p>{stores[1]?.code ?? "L2"}: <span className="font-bold text-slate-900">{row.store2Quantity}</span></p>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="shrink-0 text-right text-xs text-slate-600">
-                      <p>{stores[0]?.code ?? "L1"}: <span className="font-bold text-slate-900">{row.store1Quantity}</span></p>
-                      {stores[1] && <p>{stores[1]?.code ?? "L2"}: <span className="font-bold text-slate-900">{row.store2Quantity}</span></p>}
-                    </div>
-                  </button>
-                );
-              })}
+                  ));
+                })()
+              ) : (
+                // Lista por produto (padrão)
+                <div className="space-y-2">
+                  {sortedRows.map((row, i) => {
+                    const showLado = !/parabrisa|vigia/i.test(row.product.glassType);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setMobileDetail(row)}
+                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3 text-left transition active:bg-slate-50"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">{row.productName}</p>
+                          <p className="text-xs text-slate-500">
+                            {row.characteristic}
+                            {showLado && row.lado ? ` · ${row.lado}` : ""}
+                          </p>
+                          <p className="text-xs text-slate-400">{row.manufacturer}</p>
+                        </div>
+                        <div className="shrink-0 text-right text-xs text-slate-600">
+                          <p>{stores[0]?.code ?? "L1"}: <span className="font-bold text-slate-900">{row.store1Quantity}</span></p>
+                          {stores[1] && <p>{stores[1]?.code ?? "L2"}: <span className="font-bold text-slate-900">{row.store2Quantity}</span></p>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Tabela completa — apenas desktop */}
             <div className="hidden lg:block">
-              <DataTable columns={columns} data={rows} />
+              <DataTable columns={columns} data={sortedRows} />
             </div>
           </>
         )}
