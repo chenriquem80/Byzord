@@ -397,6 +397,17 @@ export function StockPage() {
     return rows;
   }, [rows, sortBy]);
 
+  const locationGroups = useMemo<[string, StockRow[]][]>(() => {
+    if (sortBy !== "localizacao") return [];
+    const map = new Map<string, StockRow[]>();
+    sortedRows.forEach((row) => {
+      const loc = row.store1Location || row.store2Location || "Sem localização";
+      if (!map.has(loc)) map.set(loc, []);
+      map.get(loc)!.push(row);
+    });
+    return [...map.entries()];
+  }, [sortedRows, sortBy]);
+
   const columns: ColumnDef<StockRow>[] = [
       {
         accessorKey: "productName",
@@ -620,14 +631,8 @@ export function StockPage() {
             <div className="lg:hidden">
               {sortBy === "localizacao" ? (
                 // Agrupado por localização
-                (() => {
-                  const groups = new Map<string, StockRow[]>();
-                  sortedRows.forEach((row) => {
-                    const loc = row.store1Location || row.store2Location || "Sem localização";
-                    if (!groups.has(loc)) groups.set(loc, []);
-                    groups.get(loc)!.push(row);
-                  });
-                  return [...groups.entries()].map(([loc, groupRows]) => (
+                <div>
+                  {locationGroups.map(([loc, groupRows]) => (
                     <div key={loc} className="mb-4">
                       <div className="mb-1.5 flex items-center gap-1.5 px-1">
                         <MapPin className="size-3.5 text-primary" />
@@ -661,8 +666,8 @@ export function StockPage() {
                         })}
                       </div>
                     </div>
-                  ));
-                })()
+                  ))}
+                </div>
               ) : (
                 // Lista por produto (padrão)
                 <div className="space-y-2">
