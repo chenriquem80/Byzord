@@ -85,7 +85,7 @@ const ALL_GLASS_TYPES = "__all__";
 
 export function StockPage() {
   const navigate = useNavigate();
-  const { readOnly } = usePermissions();
+  const { readOnly, showCostPrice } = usePermissions();
   const { user: authUser } = useAuth();
   const [query, setQuery] = useState("");
   const [glassType, setGlassType] = useState("");
@@ -468,11 +468,11 @@ export function StockPage() {
       { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1", size: 60 },
       { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2", size: 60 },
       { accessorKey: "manufacturer", header: "Fabricante" },
-      {
+      ...(showCostPrice ? [{
         accessorKey: "cost",
         header: "Preço compra",
-        cell: ({ row }) => formatCurrency(row.original.cost),
-      },
+        cell: ({ row }: any) => formatCurrency(row.original.cost),
+      }] : []),
       {
         accessorKey: "lastPurchaseDate",
         header: "Última compra",
@@ -699,7 +699,7 @@ export function StockPage() {
                         <tr>
                           <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Loja</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Estoque</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Custo</th>
+                          {showCostPrice && <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Custo</th>}
                           <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Venda</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Localização</th>
                         </tr>
@@ -711,7 +711,7 @@ export function StockPage() {
                             <tr key={inv.id} className="border-t border-border">
                               <td className="px-4 py-2">{inv.storeName}</td>
                               <td className="px-4 py-2">{inv.stock}</td>
-                              <td className="px-4 py-2">{formatCurrency(row.cost)}</td>
+                              {showCostPrice && <td className="px-4 py-2">{formatCurrency(row.cost)}</td>}
                               <td className="px-4 py-2">{formatCurrency(row.price)}</td>
                               <td className="px-4 py-2 text-slate-500">{inv.location || "—"}</td>
                             </tr>
@@ -841,10 +841,12 @@ export function StockPage() {
                   ))}
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl border border-border bg-white p-3">
-                    <p className="text-xs text-slate-400">Preço compra</p>
-                    <p className="font-semibold text-slate-900">{formatCurrency(row.cost)}</p>
-                  </div>
+                  {showCostPrice && (
+                    <div className="rounded-xl border border-border bg-white p-3">
+                      <p className="text-xs text-slate-400">Preço compra</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(row.cost)}</p>
+                    </div>
+                  )}
                   <div className="rounded-xl border border-border bg-white p-3">
                     <p className="text-xs text-slate-400">Última compra</p>
                     <p className="font-semibold text-slate-900">{formatMonthYear(row.lastPurchaseDate) || "—"}</p>

@@ -229,6 +229,11 @@ export function canEditPage(user: Pick<User, "role" | "permissions">, page: AppP
   return getPagePermission(user, page) === "write";
 }
 
+// Visibilidade do preço de compra: controlado pelo campo allowCostView do perfil.
+export function canViewCostPrice(user: Pick<User, "allowCostView"> | null | undefined): boolean {
+  return user?.allowCostView === true;
+}
+
 // Escrita por unidade: cada usuário altera apenas os dados da loja em que está cadastrado
 // (consulta de todas as lojas é livre). Administrador altera qualquer loja.
 export function canWriteStore(user: Pick<User, "role" | "storeId"> | null | undefined, storeId: string | null | undefined): boolean {

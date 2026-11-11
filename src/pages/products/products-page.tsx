@@ -118,7 +118,7 @@ function monthToDate(value: string | undefined): string | null {
 }
 
 export function ProductsPage() {
-  const { readOnly } = usePermissions();
+  const { readOnly, showCostPrice } = usePermissions();
   const { user: authUser } = useAuth();
   const isAdmin = authUser?.role === "ADMIN";
   // Loja do usuário (não-administrador edita estoque apenas dela)
@@ -1010,9 +1010,11 @@ export function ProductsPage() {
         description="Custos, preço de venda e histórico de compra."
       >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <FormField label="Preço de custo" error={form.formState.errors.cost?.message}>
-            <Input type="number" step="0.01" {...form.register("cost")} />
-          </FormField>
+          {showCostPrice && (
+            <FormField label="Preço de custo" error={form.formState.errors.cost?.message}>
+              <Input type="number" step="0.01" {...form.register("cost")} />
+            </FormField>
+          )}
           <FormField label="Preço de venda" error={form.formState.errors.price?.message}>
             <Input type="number" step="0.01" {...form.register("price")} />
           </FormField>
@@ -1261,7 +1263,7 @@ export function ProductsPage() {
                   <p className="text-slate-600">
                     {item.inventories.reduce((sum, inventory) => sum + inventory.stock, 0)} un.
                   </p>
-                  <p className="text-slate-600">{formatCurrency(item.cost)}</p>
+                  {showCostPrice ? <p className="text-slate-600">{formatCurrency(item.cost)}</p> : <span />}
                   <p className="text-slate-600">{formatCurrency(item.price)}</p>
                   <p className="text-slate-600">{formatMonthYear(item.lastPurchaseDate)}</p>
                 </div>

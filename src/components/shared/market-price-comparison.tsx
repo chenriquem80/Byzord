@@ -6,7 +6,7 @@ interface MarketPriceComparisonProps {
   productBrand: string;
   productImage?: string;
   salePrice: number;
-  costPrice: number;
+  costPrice?: number;
   searchQuery?: string;
 }
 

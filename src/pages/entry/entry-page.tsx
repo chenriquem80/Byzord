@@ -34,7 +34,7 @@ type EntryItem = {
 };
 
 export function EntryPage() {
-  const { readOnly } = usePermissions();
+  const { readOnly, showCostPrice } = usePermissions();
   const { user: authUser } = useAuth();
   const isAdmin = authUser?.role === "ADMIN";
   const navigate = useNavigate();
@@ -494,7 +494,7 @@ export function EntryPage() {
                                 {row.product.glassType} • {row.product.brand}
                               </p>
                               <p className="mt-0.5 text-xs font-medium text-slate-400">
-                                Fabricante: {row.mf.manufacturer} • Custo: {formatCurrency(row.mf.cost)}
+                                Fabricante: {row.mf.manufacturer}{showCostPrice ? ` • Custo: ${formatCurrency(row.mf.cost)}` : ""}
                               </p>
                             </div>
                             <div className="ml-4 flex shrink-0 items-center gap-2">
@@ -690,7 +690,7 @@ export function EntryPage() {
                               {item.product.name}
                             </p>
                             <p className="text-sm text-slate-500">
-                              {item.product.glassType} • {item.product.feature} • Fabricante: {item.mf.manufacturer} • Custo: {formatCurrency(item.mf.cost)}
+                              {item.product.glassType} • {item.product.feature} • Fabricante: {item.mf.manufacturer}{showCostPrice ? ` • Custo: ${formatCurrency(item.mf.cost)}` : ""}
                             </p>
                           </div>
                           <button
@@ -727,16 +727,18 @@ export function EntryPage() {
                                     onChange={(e) => updateItemQuantity(item.key, store.id, e.target.value)}
                                   />
                                 </div>
-                                <div>
-                                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Custo (R$)</p>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={item.cost}
-                                    onChange={(e) => updateItemCost(item.key, e.target.value)}
-                                  />
-                                </div>
+                                {showCostPrice && (
+                                  <div>
+                                    <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Custo (R$)</p>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={item.cost}
+                                      onChange={(e) => updateItemCost(item.key, e.target.value)}
+                                    />
+                                  </div>
+                                )}
                               </div>
                             );
                           })}

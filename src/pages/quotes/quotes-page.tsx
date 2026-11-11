@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { SectionCard } from "@/components/shared/section-card";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
@@ -15,6 +16,7 @@ function normalize(s: string) {
 }
 
 export function QuotesPage() {
+  const { showCostPrice } = usePermissions();
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [glassTypeFilter, setGlassTypeFilter] = useState<string>("");
@@ -288,12 +290,14 @@ export function QuotesPage() {
           >
             {showValues ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
-          <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Custo Interno</p>
-            <p className="text-xl font-black text-slate-900">
-              {showValues ? formatCurrency(manufacturerData.cost) : "••••••"}
-            </p>
-          </div>
+          {showCostPrice && (
+            <div className="space-y-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Custo Interno</p>
+              <p className="text-xl font-black text-slate-900">
+                {showValues ? formatCurrency(manufacturerData.cost) : "••••••"}
+              </p>
+            </div>
+          )}
         </div>
       </SectionCard>
 
@@ -304,7 +308,7 @@ export function QuotesPage() {
           productBrand={selectedManufacturer}
           productImage={selectedProduct.photos[0]}
           salePrice={customPrice}
-          costPrice={manufacturerData.cost}
+          costPrice={showCostPrice ? manufacturerData.cost : undefined}
           searchQuery={mlSearchQuery}
         />
       ) : (

@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth-context";
-import { canAccessPage, canEditPage, type AppPage } from "@/lib/permissions";
+import { canAccessPage, canEditPage, canViewCostPrice, type AppPage } from "@/lib/permissions";
 
 export function usePermissions() {
   const { user } = useAuth();
@@ -19,6 +19,7 @@ export function usePermissions() {
   }
 
   const readOnly = !canEdit();
+  const showCostPrice = canViewCostPrice(user);
 
-  return { canEdit, canAccess, readOnly };
+  return { canEdit, canAccess, readOnly, showCostPrice };
 }

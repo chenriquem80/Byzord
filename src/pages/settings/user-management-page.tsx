@@ -65,6 +65,7 @@ export function UserManagementPage() {
   // Permissões individuais do usuário
   const [permissionsUser, setPermissionsUser] = useState<User | null>(null);
   const [permissionsMap, setPermissionsMap] = useState<RolePermissionMap | null>(null);
+  const [permCanSeeCost, setPermCanSeeCost] = useState(false);
   const [permissionsSaving, setPermissionsSaving] = useState(false);
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
 
@@ -318,12 +319,14 @@ export function UserManagementPage() {
   function openPermissions(user: User) {
     setPermissionsUser(user);
     setPermissionsMap(getUserPermissions(user));
+    setPermCanSeeCost(user.allowCostView ?? false);
     setPermissionsError(null);
   }
 
   function closePermissions() {
     setPermissionsUser(null);
     setPermissionsMap(null);
+    setPermCanSeeCost(false);
   }
 
   function handlePermissionChange(page: AppPage, value: PagePermission) {
@@ -343,7 +346,10 @@ export function UserManagementPage() {
     setPermissionsError(null);
     const { data, error } = await client
       .from("profiles")
-      .update({ permissions: Object.keys(overrides).length > 0 ? overrides : null })
+      .update({
+        permissions: Object.keys(overrides).length > 0 ? overrides : null,
+        allow_cost_view: permCanSeeCost,
+      })
       .eq("id", permissionsUser.id)
       .select("id");
     setPermissionsSaving(false);
@@ -551,6 +557,24 @@ export function UserManagementPage() {
                   </div>
                 </div>
               ))}
+
+              {/* Dados sensíveis */}
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Dados sensíveis</p>
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Ver preço de compra</p>
+                    <p className="text-xs text-slate-400">Oculta o custo em todo o sistema quando desativado</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPermCanSeeCost((v) => !v)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${permCanSeeCost ? "bg-emerald-500" : "bg-slate-200"}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${permCanSeeCost ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
