@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, Plus, Search, UserMinus, UserCheck, Shield, ShieldCheck, KeyRound, UserCog } from "lucide-react";
+import { Pencil, Plus, Search, UserMinus, UserCheck, Shield, ShieldCheck, KeyRound, UserCog, Lock, Trash2 } from "lucide-react";
 import { supabase, supabaseAdmin } from "@/lib/database";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,17 @@ export function UserManagementPage() {
   const [editRoleUser, setEditRoleUser] = useState<User | null>(null);
   const [editRoleValue, setEditRoleValue] = useState<UserRole>("ATENDENTE");
   const [isRoleSaving, setIsRoleSaving] = useState(false);
+
+  // Definir senha diretamente
+  const [setPasswordUser, setSetPasswordUser] = useState<User | null>(null);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [setPasswordSaving, setSetPasswordSaving] = useState(false);
+  const [setPasswordError, setSetPasswordError] = useState<string | null>(null);
+
+  // Excluir usuário
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
+  const [deleteSaving, setDeleteSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Permissões individuais do usuário
   const [permissionsUser, setPermissionsUser] = useState<User | null>(null);
@@ -316,6 +327,54 @@ export function UserManagementPage() {
     }
   }
 
+  function openSetPassword(user: User) {
+    setSetPasswordUser(user);
+    setAdminPassword("");
+    setSetPasswordError(null);
+    setCtxMenu((m) => ({ ...m, visible: false }));
+  }
+
+  async function handleSetPassword() {
+    if (!setPasswordUser || !supabaseAdmin) return;
+    if (adminPassword.length < 6) {
+      setSetPasswordError("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    setSetPasswordSaving(true);
+    setSetPasswordError(null);
+    try {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(setPasswordUser.id, { password: adminPassword });
+      if (error) throw error;
+      setSetPasswordUser(null);
+    } catch (err: any) {
+      setSetPasswordError(err.message || "Erro ao definir senha.");
+    } finally {
+      setSetPasswordSaving(false);
+    }
+  }
+
+  function openDeleteConfirm(user: User) {
+    setDeleteConfirmUser(user);
+    setDeleteError(null);
+    setCtxMenu((m) => ({ ...m, visible: false }));
+  }
+
+  async function handleDeleteUser() {
+    if (!deleteConfirmUser || !supabaseAdmin) return;
+    setDeleteSaving(true);
+    setDeleteError(null);
+    try {
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(deleteConfirmUser.id);
+      if (error) throw error;
+      setDeleteConfirmUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      setDeleteError(err.message || "Erro ao excluir usuário.");
+    } finally {
+      setDeleteSaving(false);
+    }
+  }
+
   function openPermissions(user: User) {
     setPermissionsUser(user);
     setPermissionsMap(getUserPermissions(user));
@@ -456,6 +515,16 @@ export function UserManagementPage() {
                       className={`flex size-9 items-center justify-center rounded-lg border transition-colors ${(u as any).mustChangePassword ? "border-amber-300 bg-amber-50" : "border-border hover:border-amber-300 hover:bg-amber-50"}`}>
                       <KeyRound className={`size-4 ${(u as any).mustChangePassword ? "text-amber-500" : "text-slate-500"}`} />
                     </button>
+                    <button type="button" onClick={() => openSetPassword(u)} title="Definir senha"
+                      className="flex size-9 items-center justify-center rounded-lg border border-border text-violet-500 hover:border-violet-300 hover:bg-violet-50 transition-colors">
+                      <Lock className="size-4" />
+                    </button>
+                    {isAdmin && (
+                      <button type="button" onClick={() => openDeleteConfirm(u)} title="Excluir usuário"
+                        className="flex size-9 items-center justify-center rounded-lg border border-border text-rose-500 hover:border-rose-300 hover:bg-rose-50 transition-colors">
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -736,6 +805,16 @@ export function UserManagementPage() {
             onClick={() => { forcePasswordChange(ctxMenu.user!); setCtxMenu((m) => ({ ...m, visible: false })); }}>
             <KeyRound className="size-4" /> Solicitar troca de senha
           </button>
+          <button type="button" className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-violet-700 hover:bg-violet-50"
+            onClick={() => openSetPassword(ctxMenu.user!)}>
+            <Lock className="size-4" /> Definir senha
+          </button>
+          {isAdmin && (
+            <button type="button" className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-rose-700 hover:bg-rose-50"
+              onClick={() => openDeleteConfirm(ctxMenu.user!)}>
+              <Trash2 className="size-4" /> Excluir usuário
+            </button>
+          )}
         </div>,
         document.body
       )}
@@ -775,6 +854,77 @@ export function UserManagementPage() {
               <Button variant="outline" onClick={() => setEditUser(null)}>Cancelar</Button>
               <Button onClick={handleSaveEdit} disabled={editSaving || !editName.trim()}>
                 {editSaving ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Definir senha */}
+      <Dialog open={!!setPasswordUser} onOpenChange={() => setSetPasswordUser(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="size-5 text-violet-500" />
+              Definir Senha
+            </DialogTitle>
+            <DialogDescription>
+              Defina uma nova senha para <strong>{setPasswordUser?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <FormField label="Nova senha">
+              <Input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                autoComplete="new-password"
+              />
+            </FormField>
+            {setPasswordError && (
+              <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600">{setPasswordError}</p>
+            )}
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setSetPasswordUser(null)}>Cancelar</Button>
+              <Button onClick={handleSetPassword} disabled={setPasswordSaving || adminPassword.length < 6}>
+                {setPasswordSaving ? "Salvando..." : "Definir Senha"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Confirmar exclusão de usuário */}
+      <Dialog open={!!deleteConfirmUser} onOpenChange={() => setDeleteConfirmUser(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <Trash2 className="size-5" />
+              Excluir Usuário
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação é <strong>permanente</strong> e não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="rounded-xl border border-rose-100 bg-rose-50 p-4">
+              <p className="text-sm text-rose-700">
+                Tem certeza que deseja excluir o usuário <strong>{deleteConfirmUser?.name}</strong>?
+                Todos os dados de acesso serão removidos permanentemente.
+              </p>
+            </div>
+            {deleteError && (
+              <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600">{deleteError}</p>
+            )}
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setDeleteConfirmUser(null)}>Cancelar</Button>
+              <Button
+                onClick={handleDeleteUser}
+                disabled={deleteSaving}
+                className="bg-rose-600 hover:bg-rose-700 text-white"
+              >
+                {deleteSaving ? "Excluindo..." : "Excluir Definitivamente"}
               </Button>
             </div>
           </div>
