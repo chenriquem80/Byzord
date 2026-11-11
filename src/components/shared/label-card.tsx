@@ -64,10 +64,12 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     const qrSvg = qrWrapRef.current?.querySelector("svg")?.outerHTML ?? "";
     const bcSvg = bcWrapRef.current?.querySelector("svg")?.outerHTML ?? "";
 
-    const printWindow = window.open("", "_blank", "width=420,height=600");
-    if (!printWindow) return;
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:0;visibility:hidden;";
+    document.body.appendChild(iframe);
 
-    printWindow.document.write(`<!DOCTYPE html>
+    const doc = iframe.contentDocument!;
+    doc.write(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -95,10 +97,10 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
 </body>
 </html>`);
 
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    doc.close();
+    iframe.contentWindow!.focus();
+    iframe.contentWindow!.print();
+    setTimeout(() => document.body.removeChild(iframe), 1000);
   }
 
   return (

@@ -187,6 +187,7 @@ export function EntryPage() {
       lado: ladoValue ?? lastItem.product.lado ?? null,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
       supplier: selectedSupplier,
+      location: lastItem.mf.inventories[0]?.location ?? "",
       purchaseSummary: `${lastItem.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
     };
@@ -792,6 +793,7 @@ export function EntryPage() {
                       glassType: currentLabel.glassType,
                       manufacturer: currentLabel.manufacturer,
                       supplier: currentLabel.supplier,
+                      location: currentLabel.location,
                       purchaseSummary: currentLabel.purchaseSummary,
                     }}
                     wrapperClassName="flex flex-col items-center gap-3"
@@ -828,6 +830,7 @@ export function EntryPage() {
                 lado: ladoValue ?? (item.product as any).lado ?? null,
                 manufacturer: selectedManufacturer || item.mf.manufacturer,
                 supplier: selectedSupplier,
+                location: item.mf.inventories[0]?.location ?? "",
                 purchaseSummary: `${item.cost} - ${dateLabel}`,
               };
               return <LabelCard key={item.key} label={labelData} />;
