@@ -335,7 +335,11 @@ export function UserManagementPage() {
   }
 
   async function handleSetPassword() {
-    if (!setPasswordUser || !supabaseAdmin) return;
+    if (!setPasswordUser) return;
+    if (!supabaseAdmin) {
+      setSetPasswordError("Operação requer a chave de serviço (VITE_SUPABASE_SERVICE_ROLE_KEY) configurada no ambiente.");
+      return;
+    }
     if (adminPassword.length < 6) {
       setSetPasswordError("A senha deve ter pelo menos 6 caracteres.");
       return;
@@ -360,12 +364,21 @@ export function UserManagementPage() {
   }
 
   async function handleDeleteUser() {
-    if (!deleteConfirmUser || !supabaseAdmin) return;
+    if (!deleteConfirmUser) return;
     setDeleteSaving(true);
     setDeleteError(null);
     try {
-      const { error } = await supabaseAdmin.auth.admin.deleteUser(deleteConfirmUser.id);
-      if (error) throw error;
+      if (supabaseAdmin) {
+        // Exclusão completa: remove de auth.users + profiles (via cascade)
+        const { error } = await supabaseAdmin.auth.admin.deleteUser(deleteConfirmUser.id);
+        if (error) throw error;
+      } else if (supabase) {
+        // Fallback: remove apenas da tabela profiles (bloqueia acesso ao app)
+        const { error } = await supabase.from("profiles").delete().eq("id", deleteConfirmUser.id);
+        if (error) throw error;
+      } else {
+        throw new Error("Sem conexão com o banco de dados.");
+      }
       setDeleteConfirmUser(null);
       fetchUsers();
     } catch (err: any) {
