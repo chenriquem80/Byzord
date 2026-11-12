@@ -96,7 +96,10 @@ export function AgendaQueryPage() {
   }
 
   function handleEdit(entry: AgendaEntry) {
-    if (entry.description.startsWith("**** ENCOMENDA ****")) {
+    if (entry.description.startsWith("**** ORÇAMENTO ****")) {
+      const body = entry.description.replace(/^\*\*\*\* ORÇAMENTO \*\*\*\*\n?/, "");
+      navigate("/app/imprimir-orcamento", { state: { body, entryId: entry.id } });
+    } else if (entry.description.startsWith("**** ENCOMENDA ****")) {
       const lines = entry.description.replace(/^\*\*\*\* ENCOMENDA \*\*\*\*\n?/, "").split("\n");
       const arrivalLine = lines.find((l) => l.startsWith("Previsão de chegada:"));
       const descText = lines.filter((l) => !l.startsWith("Previsão de chegada:")).join("\n").trim();

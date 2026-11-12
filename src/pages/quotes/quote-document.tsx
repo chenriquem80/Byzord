@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { BookmarkPlus, FileDown, MessageCircle, Printer, RotateCcw } from "lucide-react";
 import jsPDF from "jspdf";
 import { supabase } from "@/lib/database";
@@ -82,6 +83,8 @@ function PaperInput({ value, onChange, placeholder, wide, uppercase }: {
 
 export function QuoteDocument() {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const isTaubate = user?.storeName?.toLowerCase().includes("taubat") ?? false;
   const COMPANY = isTaubate ? COMPANY_TAUBATE : COMPANY_PINDA;
   const defaultCity = isTaubate ? "Taubaté" : "Pindamonhangaba";
@@ -94,11 +97,26 @@ export function QuoteDocument() {
   const [date, setDate] = useState(todayIso());
   const [validDays, setValidDays] = useState(7);
   const [paymentCondition, setPaymentCondition] = useState("");
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [agendaSaved, setAgendaSaved] = useState(false);
   const [agendaError, setAgendaError] = useState<string | null>(null);
   const images = useLogoImages();
 
   useEffect(() => { setCity(defaultCity); }, [defaultCity]);
+
+  // Popula formulário quando vem da edição da agenda
+  useEffect(() => {
+    const state = location.state as { body?: string; entryId?: string } | null;
+    if (!state?.body) return;
+    const lines = state.body.split("\n");
+    const get = (prefix: string) => lines.find((l) => l.toLowerCase().startsWith(prefix.toLowerCase()))?.replace(new RegExp(`^${prefix}`, "i"), "").trim() ?? "";
+    setVeiculo(get("Veículo: "));
+    setPlaca(get("Placa: "));
+    setItem(get("Item avariado: "));
+    setValor(get("Valor: R$ "));
+    if (state.entryId) setEditingEntryId(state.entryId);
+    navigate(location.pathname, { replace: true, state: null });
+  }, []);
 
   const dateLine = `${city}, ${formatLongDate(date)}.`;
   const footerLines = [...COMPANY.address, [user?.name, COMPANY.phone].filter(Boolean).join(" - ")];
@@ -117,12 +135,15 @@ export function QuoteDocument() {
   async function saveToAgenda() {
     if (!supabase || !user) return;
     setAgendaError(null);
-    const { error } = await supabase.from("agenda").insert({
-      event_date: todayIso(),
-      description: `**** ORÇAMENTO ****\n${buildBodyText()}`,
-      store_id: user.storeId ?? null,
-      user_name: user.name ?? "",
-    });
+    const description = `**** ORÇAMENTO ****\n${buildBodyText()}`;
+    const { error } = editingEntryId
+      ? await supabase.from("agenda").update({ description }).eq("id", editingEntryId)
+      : await supabase.from("agenda").insert({
+          event_date: todayIso(),
+          description,
+          store_id: user.storeId ?? null,
+          user_name: user.name ?? "",
+        });
     if (error) { setAgendaError(`Erro ao salvar na agenda: ${error.message}`); return; }
     setAgendaSaved(true);
     setTimeout(() => setAgendaSaved(false), 5000);
@@ -233,11 +254,12 @@ export function QuoteDocument() {
   function handleReset() {
     setVeiculo(""); setPlaca(""); setItem(""); setValor("");
     setDate(todayIso()); setValidDays(7); setCity(defaultCity);
+    setPaymentCondition(""); setEditingEntryId(null);
   }
 
   return (
     <SectionCard
-      title="Modelo de Orçamento"
+      title={editingEntryId ? "Editar Orçamento" : "Modelo de Orçamento"}
       action={
         <div className="flex flex-nowrap gap-1.5">
           <Button variant="outline" size="sm" onClick={handleReset} aria-label="Limpar">
@@ -246,7 +268,7 @@ export function QuoteDocument() {
           </Button>
           <Button variant="outline" size="sm" onClick={saveToAgenda} aria-label="Salvar na agenda">
             <BookmarkPlus className="size-4" />
-            <span className="hidden sm:inline">Salvar</span>
+            <span className="hidden sm:inline">{editingEntryId ? "Atualizar" : "Salvar"}</span>
           </Button>
           <Button variant="outline" size="sm" onClick={handlePrint} disabled={!images} aria-label="Imprimir A4">
             <Printer className="size-4" />
