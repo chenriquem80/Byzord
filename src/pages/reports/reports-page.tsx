@@ -218,6 +218,7 @@ function StockAvailableReport() {
   const [fetched, setFetched] = useState(false);
   const [brandFilter, setBrandFilter] = useState("");
   const [glassTypeFilter, setGlassTypeFilter] = useState("");
+  const [sortKey, setSortKey] = useState<"produto" | "localizacao" | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -263,6 +264,14 @@ function StockAvailableReport() {
     (!glassTypeFilter || r.glass_type === glassTypeFilter)
   ), [rows, brandFilter, glassTypeFilter]);
 
+  const sortedFilteredRows = useMemo(() => {
+    if (!sortKey) return filteredRows;
+    return [...filteredRows].sort((a, b) => {
+      if (sortKey === "produto") return a.product_name.localeCompare(b.product_name, "pt-BR");
+      return a.location.localeCompare(b.location, "pt-BR", { numeric: true });
+    });
+  }, [filteredRows, sortKey]);
+
   const totalStock = useMemo(() => filteredRows.reduce((sum, r) => sum + r.stock, 0), [filteredRows]);
 
   function exportPdf() {
@@ -282,21 +291,21 @@ function StockAvailableReport() {
       startY: 28,
       head: [["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"]],
       body: [
-        ...filteredRows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.brand, r.glass_type, r.feature, r.location, r.stock, r.min_quantity]),
+        ...sortedFilteredRows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.brand, r.glass_type, r.feature, r.location, r.stock, r.min_quantity]),
         ["", "", "", "", "", "", "TOTAL", totalStock, ""],
       ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: "bold" },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       didParseCell: (data) => {
-        const isTotal = data.row.index === filteredRows.length;
+        const isTotal = data.row.index === sortedFilteredRows.length;
         if (isTotal) {
           data.cell.styles.fontStyle = "bold";
           data.cell.styles.fillColor = [241, 245, 249];
         }
         if (!isTotal && data.section === "body" && data.column.index === 7) {
           const stock = Number(data.cell.raw);
-          const min = Number(filteredRows[data.row.index]?.min_quantity ?? 0);
+          const min = Number(sortedFilteredRows[data.row.index]?.min_quantity ?? 0);
           if (min > 0 && stock < min) data.cell.styles.textColor = [220, 38, 38];
         }
       },
@@ -354,13 +363,25 @@ function StockAvailableReport() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  {["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"].map((h) => (
-                    <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">{h}</th>
-                  ))}
+                  {["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"].map((h) => {
+                    const isSortable = h === "Produto" || h === "Localização";
+                    const key = h === "Produto" ? "produto" : "localizacao";
+                    const isActive = isSortable && sortKey === key;
+                    return (
+                      <th
+                        key={h}
+                        onContextMenu={isSortable ? (e) => { e.preventDefault(); setSortKey(isActive ? null : key); } : undefined}
+                        title={isSortable ? "Clique direito para ordenar por este campo" : undefined}
+                        className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap select-none ${isActive ? "text-emerald-700 bg-emerald-50" : "text-slate-500"} ${isSortable ? "cursor-context-menu" : ""}`}
+                      >
+                        {h}{isActive && <span className="ml-1">↑</span>}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredRows.map((r, i) => (
+                {sortedFilteredRows.map((r, i) => (
                   <tr key={i} className="hover:bg-slate-50">
                     <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.store_name}</td>
                     <td className="px-3 py-2 font-medium text-slate-900">{r.product_name}</td>
