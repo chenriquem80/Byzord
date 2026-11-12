@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BookmarkPlus, FileDown, MessageCircle, Printer, RotateCcw } from "lucide-react";
 import jsPDF from "jspdf";
@@ -77,6 +77,31 @@ function PaperInput({ value, onChange, placeholder, wide, uppercase }: {
       placeholder={placeholder}
       className={`border-b border-dashed border-transparent bg-transparent outline-none transition hover:border-slate-300 focus:border-primary/60 ${wide ? "w-[58%]" : "w-[40%]"}`}
       style={{ fontFamily: "inherit", fontSize: "inherit", fontWeight: "inherit" }}
+    />
+  );
+}
+
+function PaperTextarea({ value, onChange, placeholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = "auto";
+      ref.current.style.height = `${ref.current.scrollHeight}px`;
+    }
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={2}
+      value={value}
+      onChange={(e) => onChange(e.target.value.toUpperCase())}
+      placeholder={placeholder}
+      className="mt-1 w-full resize-none overflow-hidden border-b border-dashed border-transparent bg-transparent outline-none transition hover:border-slate-300 focus:border-primary/60"
+      style={{ fontFamily: "inherit", fontSize: "inherit", fontWeight: "inherit", lineHeight: "inherit" }}
     />
   );
 }
@@ -188,8 +213,14 @@ export function QuoteDocument() {
       const lw = doc.getTextWidth(f.label);
       doc.text(f.label, 22, y);
       doc.setFont("times", "normal");
-      doc.text(` ${f.value}`, 22 + lw, y);
-      y += lineH;
+      if (f.label === "Item avariado:") {
+        const lines = doc.splitTextToSize(` ${f.value}`, pageW - 22 - lw - 14);
+        doc.text(lines, 22 + lw, y);
+        y += lineH * lines.length;
+      } else {
+        doc.text(` ${f.value}`, 22 + lw, y);
+        y += lineH;
+      }
     }
 
     if (valor.trim()) {
@@ -354,9 +385,10 @@ export function QuoteDocument() {
             <p><span className="font-bold">Placa: </span>
               <PaperInput value={placa} onChange={setPlaca} placeholder="AAA0A00" />
             </p>
-            <p><span className="font-bold">Item avariado: </span>
-              <PaperInput value={item} onChange={setItem} placeholder="Ex: PARABRISA" wide />
-            </p>
+            <div>
+              <span className="font-bold">Item avariado: </span>
+              <PaperTextarea value={item} onChange={setItem} placeholder="Ex: PARABRISA" />
+            </div>
             <p className="mt-[18px] text-[20px] font-bold">
               <span>Valor: R$ </span>
               <input
