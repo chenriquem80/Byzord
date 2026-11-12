@@ -187,7 +187,7 @@ export function EntryPage() {
       lado: ladoValue ?? lastItem.product.lado ?? null,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
       supplier: selectedSupplier,
-      location: lastItem.mf.inventories[0]?.location ?? "",
+      location: (lastItem.mf.inventories.find((inv) => inv.storeId === selectedStoreId) ?? lastItem.mf.inventories[0])?.location ?? "",
       purchaseSummary: `${lastItem.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
     };
@@ -218,7 +218,9 @@ export function EntryPage() {
         product.manufacturers.map((mf) => ({
           product,
           mf,
-          totalStock: mf.inventories.reduce((s, inv) => s + inv.stock, 0),
+          totalStock: mf.inventories
+            .filter((inv) => selectedStoreId === "all" || inv.storeId === selectedStoreId)
+            .reduce((s, inv) => s + inv.stock, 0),
         })),
       )
       .filter((row) => {
@@ -227,7 +229,7 @@ export function EntryPage() {
         seen.add(key);
         return true;
       });
-  }, [codeQuery, glassTypeFilter, products]);
+  }, [codeQuery, glassTypeFilter, products, selectedStoreId]);
 
   function handleAddItem(row: SearchRow) {
     const key = `${row.product.id}-${row.mf.id}-${Date.now()}`;
@@ -705,8 +707,7 @@ export function EntryPage() {
                         <div className="divide-y divide-border">
                           {stores.filter((store: any) => selectedStoreId === "all" || store.id === selectedStoreId).map((store) => {
                             const inventory =
-                              item.mf.inventories.find((inv) => inv.storeId === store.id) ??
-                              item.mf.inventories[0];
+                              item.mf.inventories.find((inv) => inv.storeId === store.id);
                             return (
                               <div
                                 key={store.id}
