@@ -180,9 +180,18 @@ export function ExitPage() {
         const key = `${row.product.id}-${row.mf.manufacturer}-${row.mf.cost}`;
         if (seen.has(key)) return false;
         seen.add(key);
+        // Oculta itens sem estoque na loja selecionada no formulário
+        const selectedStoreId = form.watch("storeId");
+        if (selectedStoreId) {
+          const storeStock = row.mf.inventories
+            .filter((inv) => inv.storeId === selectedStoreId)
+            .reduce((s, inv) => s + inv.stock, 0);
+          return storeStock > 0;
+        }
         return true;
       });
-  }, [codeQuery, glassTypeFilter, allProducts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codeQuery, glassTypeFilter, allProducts, form.watch("storeId")]);
 
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
