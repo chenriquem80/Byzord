@@ -93,6 +93,7 @@ export function QuoteDocument() {
   const [city, setCity] = useState(defaultCity);
   const [date, setDate] = useState(todayIso());
   const [validDays, setValidDays] = useState(7);
+  const [paymentCondition, setPaymentCondition] = useState("");
   const [agendaSaved, setAgendaSaved] = useState(false);
   const [agendaError, setAgendaError] = useState<string | null>(null);
   const images = useLogoImages();
@@ -102,6 +103,7 @@ export function QuoteDocument() {
   const dateLine = `${city}, ${formatLongDate(date)}.`;
   const footerLines = [...COMPANY.address, [user?.name, COMPANY.phone].filter(Boolean).join(" - ")];
   const validityLine = `*ORÇAMENTO VÁLIDO ATÉ ${validDays} DIA${validDays !== 1 ? "S" : ""}`;
+  const paymentLine = paymentCondition.trim() ? `*CONDIÇÃO DE PAGAMENTO: ${paymentCondition.trim().toUpperCase()}` : "";
 
   function buildBodyText(): string {
     return [
@@ -186,7 +188,12 @@ export function QuoteDocument() {
 
     doc.setFont("times", "bold");
     doc.setFontSize(15);
-    doc.text(validityLine, 22, dateY + 22);
+    if (paymentLine) {
+      doc.text(paymentLine, 22, dateY + 22);
+      doc.text(validityLine, 22, dateY + 32);
+    } else {
+      doc.text(validityLine, 22, dateY + 22);
+    }
 
     doc.setFont("times", "normal");
     doc.setFontSize(9);
@@ -218,7 +225,7 @@ export function QuoteDocument() {
       catch (e) { if ((e as Error).name !== "AbortError") doc.save(`orcamento-${date}.pdf`); }
     } else {
       doc.save(`orcamento-${date}.pdf`);
-      const text = [COMPANY.name, "", buildBodyText(), "", dateLine, validityLine].join("\n");
+      const text = [COMPANY.name, "", buildBodyText(), "", dateLine, ...(paymentLine ? [paymentLine] : []), validityLine].join("\n");
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     }
   }
@@ -262,8 +269,8 @@ export function QuoteDocument() {
         <p className="mb-3 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{agendaError}</p>
       )}
 
-      {/* Cidade, Data, Validade — sempre visíveis */}
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* Cidade, Data, Validade, Condição de Pagamento — sempre visíveis */}
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
         <FormField label="Cidade">
           <Input value={city} onChange={(e) => setCity(e.target.value)} />
         </FormField>
@@ -272,6 +279,9 @@ export function QuoteDocument() {
         </FormField>
         <FormField label="Validade (dias)">
           <Input type="number" min={1} value={validDays} onChange={(e) => setValidDays(Math.max(1, Number(e.target.value) || 1))} />
+        </FormField>
+        <FormField label="Condição de pagamento">
+          <Input value={paymentCondition} onChange={(e) => setPaymentCondition(e.target.value)} placeholder="Ex: À vista, Pix..." />
         </FormField>
       </div>
 
@@ -338,7 +348,8 @@ export function QuoteDocument() {
           </div>
 
           <p className="relative mt-[60px] text-right text-[19px]">{dateLine}</p>
-          <p className="relative mt-[30px] text-[20px] font-bold">{validityLine}</p>
+          {paymentLine && <p className="relative mt-[30px] text-[20px] font-bold">{paymentLine}</p>}
+          <p className={`relative ${paymentLine ? "mt-[10px]" : "mt-[30px]"} text-[20px] font-bold`}>{validityLine}</p>
 
           <div className="relative mt-auto pt-[40px] text-center text-[12px] leading-tight text-slate-500">
             {footerLines.map((line) => <p key={line}>{line}</p>)}
