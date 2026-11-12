@@ -22,6 +22,10 @@ export type AppPage =
   | "/app/fornecedores"
   | "/app/clientes"
   | "/app/relatorios"
+  | "/app/relatorios/itens-estoque"
+  | "/app/relatorios/movimentacoes"
+  | "/app/relatorios/acoes-usuario"
+  | "/app/relatorios/alteracoes-item"
   | "/app/configuracoes"
   | "/app/transferencia"
   | "/app/registro"
@@ -48,8 +52,12 @@ export const PAGE_LABELS: Record<AppPage, string> = {
   "/app/veiculos":              "Veículos",
   "/app/fornecedores":          "Fornecedores",
   "/app/clientes":              "Clientes",
-  "/app/relatorios":            "Relatórios",
-  "/app/configuracoes":         "Configurações",
+  "/app/relatorios":                    "Relatórios",
+  "/app/relatorios/itens-estoque":      "Itens em estoque",
+  "/app/relatorios/movimentacoes":      "Movimentações",
+  "/app/relatorios/acoes-usuario":      "Ações por usuário",
+  "/app/relatorios/alteracoes-item":    "Alterações por item",
+  "/app/configuracoes":                 "Configurações",
   "/app/transferencia":         "Transferência",
   "/app/registro":              "Registro",
   "/app/encomenda":             "Encomenda de Peça",
@@ -83,7 +91,13 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
     { page: "/app/etiquetagem", label: "Etiquetagem" },
     { page: "/app/reposicao", label: "Reposição" },
   ] },
-  { title: "Relatórios", pages: [{ page: "/app/relatorios", label: "Relatórios" }] },
+  { title: "Relatórios", pages: [
+    { page: "/app/relatorios",                 label: "Acesso à área" },
+    { page: "/app/relatorios/itens-estoque",   label: "Itens em estoque" },
+    { page: "/app/relatorios/movimentacoes",   label: "Movimentações" },
+    { page: "/app/relatorios/acoes-usuario",   label: "Ações por usuário" },
+    { page: "/app/relatorios/alteracoes-item", label: "Alterações por item" },
+  ] },
   { title: "Usuários", pages: [{ page: "/app/usuarios", label: "Usuários" }] },
 ];
 
@@ -112,7 +126,11 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/veiculos":              "write",
     "/app/fornecedores":          "write",
     "/app/clientes":              "write",
-    "/app/relatorios":            "write",
+    "/app/relatorios":                    "write",
+    "/app/relatorios/itens-estoque":      "write",
+    "/app/relatorios/movimentacoes":      "write",
+    "/app/relatorios/acoes-usuario":      "write",
+    "/app/relatorios/alteracoes-item":    "write",
     "/app/configuracoes":         "write",
     "/app/transferencia":         "write",
     "/app/registro":              "write",
@@ -140,7 +158,11 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/veiculos":              "write",
     "/app/fornecedores":          "write",
     "/app/clientes":              "write",
-    "/app/relatorios":            "write",
+    "/app/relatorios":                    "write",
+    "/app/relatorios/itens-estoque":      "write",
+    "/app/relatorios/movimentacoes":      "write",
+    "/app/relatorios/acoes-usuario":      "write",
+    "/app/relatorios/alteracoes-item":    "write",
     "/app/configuracoes":         "write",
     "/app/transferencia":         "write",
     "/app/registro":              "write",
@@ -168,7 +190,11 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/veiculos":              "none",
     "/app/fornecedores":          "none",
     "/app/clientes":              "read",
-    "/app/relatorios":            "none",
+    "/app/relatorios":                    "none",
+    "/app/relatorios/itens-estoque":      "none",
+    "/app/relatorios/movimentacoes":      "none",
+    "/app/relatorios/acoes-usuario":      "none",
+    "/app/relatorios/alteracoes-item":    "none",
     "/app/configuracoes":         "none",
     "/app/transferencia":         "none",
     "/app/registro":              "none",
@@ -196,7 +222,11 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/veiculos":              "none",
     "/app/fornecedores":          "none",
     "/app/clientes":              "none",
-    "/app/relatorios":            "none",
+    "/app/relatorios":                    "none",
+    "/app/relatorios/itens-estoque":      "none",
+    "/app/relatorios/movimentacoes":      "none",
+    "/app/relatorios/acoes-usuario":      "none",
+    "/app/relatorios/alteracoes-item":    "none",
     "/app/configuracoes":         "none",
     "/app/transferencia":         "write",
     "/app/registro":              "read",

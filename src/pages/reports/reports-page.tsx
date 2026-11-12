@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/database";
 import { useAuth } from "@/contexts/auth-context";
+import { canAccessPage } from "@/lib/permissions";
 
 
 type StoreRow = { id: string; name: string };
@@ -993,12 +994,17 @@ export function ReportsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
 
+  const canSeeEstoque    = !user || canAccessPage(user, "/app/relatorios/itens-estoque");
+  const canSeeMov        = !user || canAccessPage(user, "/app/relatorios/movimentacoes");
+  const canSeeAcoes      = !user || canAccessPage(user, "/app/relatorios/acoes-usuario");
+  const canSeeAlteracoes = !user || canAccessPage(user, "/app/relatorios/alteracoes-item");
+
   return (
     <div className="space-y-6">
-      <StockAvailableReport />
-      <MovementByStoreReport />
-      <UserActionReport />
-      <ItemChangeReport />
+      {canSeeEstoque    && <StockAvailableReport />}
+      {canSeeMov        && <MovementByStoreReport />}
+      {canSeeAcoes      && <UserActionReport />}
+      {canSeeAlteracoes && <ItemChangeReport />}
       {/* Estoque atual por loja (todos os itens, inclusive zerados): exclusivo para administradores */}
       {isAdmin && <StockByStoreReport />}
     </div>
