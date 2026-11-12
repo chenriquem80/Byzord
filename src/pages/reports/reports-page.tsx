@@ -289,10 +289,10 @@ function StockAvailableReport() {
     doc.setTextColor(0);
     autoTable(doc, {
       startY: 28,
-      head: [["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"]],
+      head: [["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque"]],
       body: [
-        ...sortedFilteredRows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.brand, r.glass_type, r.feature, r.location, r.stock, r.min_quantity]),
-        ["", "", "", "", "", "", "TOTAL", totalStock, ""],
+        ...sortedFilteredRows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.brand, r.glass_type, r.feature, r.location, r.stock]),
+        ["", "", "", "", "", "", "TOTAL", totalStock],
       ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: "bold" },
@@ -302,11 +302,6 @@ function StockAvailableReport() {
         if (isTotal) {
           data.cell.styles.fontStyle = "bold";
           data.cell.styles.fillColor = [241, 245, 249];
-        }
-        if (!isTotal && data.section === "body" && data.column.index === 7) {
-          const stock = Number(data.cell.raw);
-          const min = Number(sortedFilteredRows[data.row.index]?.min_quantity ?? 0);
-          if (min > 0 && stock < min) data.cell.styles.textColor = [220, 38, 38];
         }
       },
     });
@@ -363,7 +358,7 @@ function StockAvailableReport() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  {["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque", "Mínimo"].map((h) => {
+                  {["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque"].map((h) => {
                     const isSortable = h === "Produto" || h === "Localização";
                     const key = h === "Produto" ? "produto" : "localizacao";
                     const isActive = isSortable && sortKey === key;
@@ -390,10 +385,9 @@ function StockAvailableReport() {
                     <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.glass_type}</td>
                     <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.feature}</td>
                     <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.location}</td>
-                    <td className={`px-3 py-2 font-semibold whitespace-nowrap ${r.stock < r.min_quantity && r.min_quantity > 0 ? "text-rose-600" : "text-emerald-700"}`}>
+                    <td className="px-3 py-2 font-semibold whitespace-nowrap text-emerald-700">
                       {r.stock}
                     </td>
-                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.min_quantity}</td>
                   </tr>
                 ))}
               </tbody>
@@ -403,7 +397,6 @@ function StockAvailableReport() {
                     Total — {filteredRows.length} item{filteredRows.length !== 1 ? "s" : ""}
                   </td>
                   <td className="px-3 py-2.5 text-base font-bold text-emerald-700">{totalStock}</td>
-                  <td />
                 </tr>
               </tfoot>
             </table>
