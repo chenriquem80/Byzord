@@ -220,6 +220,21 @@ function StockAvailableReport() {
   const [brandFilter, setBrandFilter] = useState("");
   const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [sortKey, setSortKey] = useState<"produto" | "localizacao" | null>(null);
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      setLogoDataUrl(canvas.toDataURL("image/png"));
+    };
+    img.src = "/logo.png";
+  }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -277,8 +292,18 @@ function StockAvailableReport() {
 
   function exportPdf() {
     const doc = new jsPDF({ orientation: "landscape" });
+    const pageW = 297;
     const storeName = storeId === "all" ? "Todas as lojas" : (stores.find((s) => s.id === storeId)?.name ?? "");
+
+    // Logo canto superior direito
+    if (logoDataUrl) {
+      const logoW = 28;
+      const logoH = logoW * (227 / 482);
+      doc.addImage(logoDataUrl, "PNG", pageW - logoW - 10, 6, logoW, logoH);
+    }
+
     doc.setFontSize(14);
+    doc.setTextColor(185, 28, 28);
     doc.text("Itens em Estoque", 14, 16);
     doc.setFontSize(9);
     doc.setTextColor(120);
@@ -289,14 +314,14 @@ function StockAvailableReport() {
     doc.text(`Loja: ${storeName}${filters ? `   •   ${filters}` : ""}   •   Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 23);
     doc.setTextColor(0);
     autoTable(doc, {
-      startY: 28,
+      startY: 30,
       head: [["Loja", "Produto", "Fabricante", "Marca", "Tipo", "Característica", "Localização", "Estoque"]],
       body: [
         ...sortedFilteredRows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.brand, r.glass_type, r.feature, r.location, r.stock]),
         ["", "", "", "", "", "", "TOTAL", totalStock],
       ],
       styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: "bold" },
+      headStyles: { fillColor: [185, 28, 28], textColor: 255, fontStyle: "bold" },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       didParseCell: (data) => {
         const isTotal = data.row.index === sortedFilteredRows.length;
