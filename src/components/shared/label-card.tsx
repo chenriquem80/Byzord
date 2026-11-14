@@ -26,18 +26,18 @@ export const PRINT_CSS = `
   html, body { width: 10cm; height: 5cm; overflow: hidden; background: #fff; font-family: Arial, sans-serif; color: #0f172a; }
   body { padding: 0.2cm 0.25cm; display: flex; flex-direction: row; gap: 0.2cm; }
   .left { flex: 1; display: flex; flex-direction: column; gap: 0.07cm; overflow: hidden; min-width: 0; }
-  .right { width: 2.1cm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .right { width: 2.4cm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex-shrink: 0; }
   .code-row { display: flex; align-items: baseline; gap: 4px; flex-shrink: 0; }
-  .code-label { font-size: 6pt; color: #64748b; white-space: nowrap; }
-  .code-value { font-size: 9pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
-  .logo-wrap img { height: 0.85cm; width: auto; display: block; }
-  .info { font-size: 8.5pt; line-height: 1.4; flex: 1; overflow: hidden; }
+  .code-label { font-size: 7pt; color: #64748b; white-space: nowrap; }
+  .code-value { font-size: 10pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
+  .logo-wrap img { height: 1cm; width: auto; display: block; }
+  .info { font-size: 10pt; line-height: 1.4; flex: 1; overflow: hidden; }
   .info p { margin: 0; }
   .info .bold { font-weight: 700; }
-  .info .sub { font-size: 7pt; color: #475569; }
-  .coded-row { font-size: 5pt; font-family: monospace; color: #64748b; flex-shrink: 0; }
+  .info .sub { font-size: 8pt; color: #475569; }
+  .coded-row { font-size: 6pt; font-family: monospace; color: #64748b; flex-shrink: 0; }
   .qr-box { display: flex; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.07cm; }
-  .qr-box svg { width: 1.75cm !important; height: 1.75cm !important; }
+  .qr-box svg { width: 2.1cm !important; height: 2.1cm !important; }
   .bc-box { flex-shrink: 0; }
   .bc-box svg { width: 100% !important; height: 1.3cm !important; }
 `;
@@ -76,7 +76,6 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
       label.feature ? up(label.feature) : "",
       label.glassType ? up(label.glassType) : "",
       label.lado ? up(label.lado) : "",
-      label.manufacturer ? up(label.manufacturer) : "",
     ].filter(Boolean).join(" · ");
     const supplierLine = [up(label.supplier), up(label.location)].filter(Boolean).join(" / ");
 
@@ -131,7 +130,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
             <p>{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
             {(label.feature || label.glassType) && (
               <p className="font-bold">
-                {[label.feature, label.glassType, label.lado, label.manufacturer]
+                {[label.feature, label.glassType, label.lado]
                   .filter(Boolean).map(up).join(" · ")}
               </p>
             )}
@@ -153,10 +152,10 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
           )}
         </div>
         {/* Coluna direita: logo + QR */}
-        <div className="flex w-[72px] shrink-0 flex-col items-center justify-between">
-          <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-[26px] w-auto object-contain" />
+        <div className="flex w-[82px] shrink-0 flex-col items-center justify-between">
+          <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-[30px] w-auto object-contain" />
           <div ref={qrWrapRef} className="rounded border border-slate-300 p-0.5">
-            <QRCodeSVG value={codeValue} size={52} level="M" includeMargin={false} />
+            <QRCodeSVG value={codeValue} size={62} level="M" includeMargin={false} />
           </div>
         </div>
       </div>
