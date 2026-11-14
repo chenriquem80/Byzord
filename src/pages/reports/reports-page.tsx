@@ -867,11 +867,13 @@ type ItemChangeRow = {
   user_name: string;
   note: string | null;
   type: string;
+  glass_type: string | null;
 };
 
 function ItemChangeReport() {
   const today = localDateStr();
   const [search, setSearch] = useState("");
+  const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
   const [rows, setRows] = useState<ItemChangeRow[]>([]);
@@ -887,7 +889,7 @@ function ItemChangeReport() {
     const end = new Date(dateTo + "T23:59:59.999");
     const { data, error } = await supabase
       .from("stock_movements")
-      .select("created_at, type, product_name, manufacturer, user_name, note")
+      .select("created_at, type, product_name, manufacturer, user_name, note, glass_type")
       .in("type", ["Edição", "Cadastro"])
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
@@ -898,9 +900,11 @@ function ItemChangeReport() {
     setLoading(false);
   }
 
-  const filtered = search.trim()
-    ? rows.filter((r) => r.product_name.toLowerCase().includes(search.toLowerCase()))
-    : rows;
+  const uniqueGlassTypes = [...new Set(rows.map((r) => r.glass_type).filter(Boolean))].sort() as string[];
+
+  const filtered = rows
+    .filter((r) => !glassTypeFilter || r.glass_type === glassTypeFilter)
+    .filter((r) => !search.trim() || r.product_name.toLowerCase().includes(search.toLowerCase()));
 
   function exportPdf() {
     const doc = new jsPDF({ orientation: "landscape" });
@@ -935,12 +939,6 @@ function ItemChangeReport() {
       description="Histórico detalhado de cadastros e edições de produtos, com os campos que foram modificados."
       action={
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filtrar por produto..."
-            className="w-48"
-          />
           <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-38" />
           <span className="text-sm text-slate-400">até</span>
           <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-38" />
@@ -948,6 +946,20 @@ function ItemChangeReport() {
             <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
             Consultar
           </Button>
+          {fetched && (
+            <Select value={glassTypeFilter} onChange={(e) => { setGlassTypeFilter(e.target.value); setSearch(""); }} className="w-44">
+              <option value="">Todos os tipos</option>
+              {uniqueGlassTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+            </Select>
+          )}
+          {fetched && (
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar produto..."
+              className="w-48"
+            />
+          )}
           {filtered.length > 0 && (
             <Button size="sm" variant="outline" onClick={exportPdf}>
               <FileDown className="size-3.5" /> PDF
