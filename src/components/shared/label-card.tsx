@@ -22,21 +22,21 @@ export function noiseDigits(seed: string, count: number, salt: number): string {
 
 export const PRINT_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @page { margin: 0; }
-  html, body { width: 100%; height: 100%; background: #fff; font-family: sans-serif; color: #0f172a; overflow: hidden; }
-  body { padding: 0.4cm; display: flex; flex-direction: column; justify-content: space-between; }
-  .code-row { display: flex; align-items: baseline; gap: 6px; }
-  .code-label { font-size: 9pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
-  .code-value { font-size: 13pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
+  @page { size: 2in 4in; margin: 0; }
+  html, body { width: 2in; height: 4in; background: #fff; font-family: sans-serif; color: #0f172a; overflow: hidden; }
+  body { padding: 0.25cm; display: flex; flex-direction: column; justify-content: space-between; }
+  .code-row { display: flex; align-items: baseline; gap: 4px; }
+  .code-label { font-size: 7pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+  .code-value { font-size: 10pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
   .logo-wrap { display: flex; justify-content: center; }
-  .logo-wrap img { height: 2.2cm; width: auto; display: block; }
-  .info { font-size: 15pt; line-height: 1.75; }
+  .logo-wrap img { height: 1.4cm; width: auto; display: block; }
+  .info { font-size: 11pt; line-height: 1.6; }
   .info p { margin: 0; }
-  .coded-row { font-size: 10pt; font-family: monospace; }
-  .qr-box { display: flex; justify-content: center; align-items: center; border: 1px solid #94a3b8; border-radius: 6px; padding: 0.1cm; }
-  .qr-box svg { width: 2cm !important; height: 2cm !important; }
+  .coded-row { font-size: 7pt; font-family: monospace; }
+  .qr-box { display: flex; justify-content: center; align-items: center; border: 1px solid #94a3b8; border-radius: 4px; padding: 0.1cm; }
+  .qr-box svg { width: 1.5cm !important; height: 1.5cm !important; }
   .bc-box { display: flex; justify-content: center; }
-  .bc-box svg { width: 8.2cm !important; height: 2cm !important; }
+  .bc-box svg { width: 4.5cm !important; height: 1.4cm !important; }
 `;
 
 export type LabelData = {
