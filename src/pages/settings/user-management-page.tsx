@@ -364,21 +364,24 @@ export function UserManagementPage() {
   }
 
   async function handleDeleteUser() {
-    if (!deleteConfirmUser) return;
-    if (!supabaseAdmin) {
-      setDeleteError("Configuração incompleta: a variável VITE_SUPABASE_SERVICE_ROLE_KEY não está definida. Configure-a no Vercel e reimplante.");
-      return;
-    }
+    if (!deleteConfirmUser || !supabase) return;
     const userId = deleteConfirmUser.id;
     setDeleteSaving(true);
     setDeleteError(null);
     try {
-      // 1. Remove do perfil (admin ignora RLS)
-      const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", userId);
-      if (profileError) throw profileError;
-      // 2. Remove do auth (deve ser por último)
-      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-      if (authError) throw authError;
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) throw new Error("Sessão expirada. Faça login novamente.");
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${supabaseUrl}/functions/v1/delete-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Erro ao excluir usuário.");
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       setDeleteConfirmUser(null);
       fetchUsers();
