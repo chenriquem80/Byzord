@@ -22,21 +22,47 @@ export function noiseDigits(seed: string, count: number, salt: number): string {
 
 export const PRINT_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @page { margin: 0; }
+  @page { margin: 0; size: auto; }
   html, body { width: 100%; background: #fff; font-family: sans-serif; color: #0f172a; }
-  body { padding: 0.4cm; display: flex; flex-direction: column; gap: 0.25cm; }
-  .code-row { display: flex; align-items: baseline; gap: 6px; }
-  .code-label { font-size: 9pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
-  .code-value { font-size: 13pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
+
+  /* Retrato */
+  body { padding: 0.35cm; display: flex; flex-direction: column; gap: 0.15cm; }
+  .code-row { display: flex; align-items: baseline; gap: 5px; }
+  .code-label { font-size: 8pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+  .code-value { font-size: 11pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
   .logo-wrap { display: flex; justify-content: center; }
-  .logo-wrap img { height: 2.2cm; width: auto; display: block; }
-  .info { font-size: 15pt; line-height: 1.75; }
+  .logo-wrap img { height: 1.6cm; width: auto; display: block; }
+  .info { font-size: 11pt; line-height: 1.5; }
   .info p { margin: 0; }
-  .coded-row { font-size: 10pt; font-family: monospace; }
-  .qr-box { display: flex; justify-content: center; align-items: center; border: 1px solid #94a3b8; border-radius: 6px; padding: 0.1cm; }
-  .qr-box svg { width: 2cm !important; height: 2cm !important; }
+  .coded-row { font-size: 8pt; font-family: monospace; color: #64748b; }
+  .qr-box { display: flex; justify-content: center; align-items: center; border: 1px solid #94a3b8; border-radius: 5px; padding: 0.1cm; }
+  .qr-box svg { width: 1.8cm !important; height: 1.8cm !important; }
   .bc-box { display: flex; justify-content: center; width: 100%; }
-  .bc-box svg { width: 90% !important; height: 2cm !important; }
+  .bc-box svg { width: 90% !important; height: 1.5cm !important; }
+
+  /* Paisagem — reorganiza em 2 colunas */
+  @media print and (orientation: landscape) {
+    body {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "code logo"
+        "info  qr"
+        "coded qr"
+        "barcode barcode";
+      gap: 0.1cm 0.3cm;
+      padding: 0.3cm;
+    }
+    .code-row  { grid-area: code;    align-self: center; }
+    .logo-wrap { grid-area: logo;    justify-content: flex-end; }
+    .logo-wrap img { height: 1cm; }
+    .info      { grid-area: info;    font-size: 9pt; line-height: 1.4; }
+    .coded-row { grid-area: coded;   font-size: 6pt; align-self: end; }
+    .qr-box    { grid-area: qr;      align-self: start; }
+    .qr-box svg { width: 2cm !important; height: 2cm !important; }
+    .bc-box    { grid-area: barcode; }
+    .bc-box svg { width: 95% !important; height: 1cm !important; }
+  }
 `;
 
 export type LabelData = {
