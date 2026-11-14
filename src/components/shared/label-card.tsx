@@ -35,8 +35,8 @@ export const PRINT_CSS = `
   .coded-row { font-size: 10pt; font-family: monospace; }
   .qr-box { display: flex; justify-content: center; align-items: center; border: 1px solid #94a3b8; border-radius: 6px; padding: 0.1cm; }
   .qr-box svg { width: 2cm !important; height: 2cm !important; }
-  .bc-box { display: flex; justify-content: center; }
-  .bc-box svg { width: 8.2cm !important; height: 2cm !important; }
+  .bc-box { display: flex; justify-content: center; width: 100%; }
+  .bc-box svg { width: 90% !important; height: 2cm !important; }
 `;
 
 export type LabelData = {
