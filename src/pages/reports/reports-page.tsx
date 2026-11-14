@@ -885,6 +885,8 @@ function ItemChangeReport() {
     if (!supabase) return;
     setLoading(true);
     setQueryError(null);
+    setGlassTypeFilter("");
+    setSearch("");
     const start = new Date(dateFrom + "T00:00:00");
     const end = new Date(dateTo + "T23:59:59.999");
     const { data, error } = await supabase
@@ -894,8 +896,20 @@ function ItemChangeReport() {
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("created_at", { ascending: false });
-    if (error) { console.error(error); setQueryError(`Erro ao consultar: ${error.message}`); }
-    setRows(data ?? []);
+    if (error) { console.error(error); setQueryError(`Erro ao consultar: ${error.message}`); setLoading(false); return; }
+    const movements = data ?? [];
+
+    // glass_type pode estar nulo nos movimentos antigos — enriquece via tabela products
+    const nullNames = [...new Set(movements.filter((m) => !m.glass_type).map((m) => m.product_name))];
+    let glassMap: Record<string, string> = {};
+    if (nullNames.length > 0) {
+      const { data: prods } = await supabase
+        .from("products")
+        .select("name, glass_type")
+        .in("name", nullNames);
+      glassMap = Object.fromEntries((prods ?? []).map((p: any) => [p.name, p.glass_type ?? ""]));
+    }
+    setRows(movements.map((m) => ({ ...m, glass_type: m.glass_type || glassMap[m.product_name] || null })));
     setFetched(true);
     setLoading(false);
   }
