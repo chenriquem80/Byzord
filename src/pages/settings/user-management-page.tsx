@@ -365,22 +365,20 @@ export function UserManagementPage() {
 
   async function handleDeleteUser() {
     if (!deleteConfirmUser) return;
+    if (!supabaseAdmin) {
+      setDeleteError("Configuração incompleta: a variável VITE_SUPABASE_SERVICE_ROLE_KEY não está definida. Configure-a no Vercel e reimplante.");
+      return;
+    }
     const userId = deleteConfirmUser.id;
     setDeleteSaving(true);
     setDeleteError(null);
     try {
-      // 1. Remove do auth (requer chave de serviço)
-      if (supabaseAdmin) {
-        const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-        if (error) throw error;
-      }
-      // 2. Remove da tabela profiles (garante que sai do app mesmo sem cascade)
-      if (supabase) {
-        const { error } = await supabase.from("profiles").delete().eq("id", userId);
-        if (error && !supabaseAdmin) throw error; // só lança se foi o único método
-      }
-      if (!supabaseAdmin && !supabase) throw new Error("Sem conexão com o banco de dados.");
-      // Atualiza lista imediatamente sem esperar o fetchUsers
+      // 1. Remove do perfil (admin ignora RLS)
+      const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", userId);
+      if (profileError) throw profileError;
+      // 2. Remove do auth (deve ser por último)
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (authError) throw authError;
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       setDeleteConfirmUser(null);
       fetchUsers();
