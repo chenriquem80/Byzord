@@ -22,21 +22,23 @@ export function noiseDigits(seed: string, count: number, salt: number): string {
 
 export const PRINT_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @page { size: 2in 4in; margin: 0; }
-  html, body { width: 2in; height: 4in; background: #fff; font-family: sans-serif; color: #0f172a; overflow: hidden; }
-  body { padding: 0.25cm; display: flex; flex-direction: column; justify-content: space-between; }
-  .code-row { display: flex; align-items: baseline; gap: 4px; }
-  .code-label { font-size: 7pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
-  .code-value { font-size: 10pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
-  .logo-wrap { display: flex; justify-content: center; }
-  .logo-wrap img { height: 1.4cm; width: auto; display: block; }
-  .info { font-size: 11pt; line-height: 1.6; }
+  @page { size: 4in 2in; margin: 0; }
+  html, body { width: 4in; height: 2in; background: #fff; font-family: sans-serif; color: #0f172a; overflow: hidden; }
+  body { padding: 0.22cm 0.3cm; display: flex; flex-direction: column; justify-content: space-between; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.3cm; }
+  .code-row { display: flex; align-items: baseline; gap: 3px; }
+  .code-label { font-size: 6pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+  .code-value { font-size: 8.5pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
+  .logo-wrap img { height: 1.1cm; width: auto; display: block; }
+  .info { font-size: 9.5pt; line-height: 1.45; flex: 1; margin: 0.08cm 0; }
   .info p { margin: 0; }
-  .coded-row { font-size: 7pt; font-family: monospace; }
-  .qr-box { display: flex; justify-content: center; align-items: center; border: 1px solid #94a3b8; border-radius: 4px; padding: 0.1cm; }
-  .qr-box svg { width: 1.5cm !important; height: 1.5cm !important; }
-  .bc-box { display: flex; justify-content: center; }
-  .bc-box svg { width: 4.5cm !important; height: 1.4cm !important; }
+  .info .sub { font-size: 8pt; color: #475569; }
+  .coded-row { font-size: 6pt; font-family: monospace; color: #64748b; }
+  .bottom { display: flex; align-items: center; gap: 0.25cm; }
+  .qr-box { display: flex; align-items: center; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.08cm; flex-shrink: 0; }
+  .qr-box svg { width: 1.3cm !important; height: 1.3cm !important; }
+  .bc-box { flex: 1; display: flex; align-items: center; }
+  .bc-box svg { width: 100% !important; height: 1.1cm !important; }
 `;
 
 export type LabelData = {
@@ -77,23 +79,27 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
   <style>${PRINT_CSS}</style>
 </head>
 <body>
-  <div class="code-row">
-    <span class="code-label">CODIGO:</span>
-    <span class="code-value">${up(codeValue)}</span>
-  </div>
-  <div class="logo-wrap">
-    <img src="${LOGO_URL}" alt="Byzord Auto Vitrais" />
+  <div class="header">
+    <div>
+      <div class="code-row">
+        <span class="code-label">CODIGO:</span>
+        <span class="code-value">${up(codeValue)}</span>
+      </div>
+    </div>
+    <div class="logo-wrap">
+      <img src="${LOGO_URL}" alt="Byzord Auto Vitrais" />
+    </div>
   </div>
   <div class="info">
-    <p>${up(label.vehicleLabel)}</p>
-    ${label.yearRange ? `<p>${up(label.yearRange)}</p>` : ""}
-    ${label.feature ? `<p>${up(label.feature)}</p>` : ""}
-    ${label.glassType ? `<p>${up(label.glassType)}${label.lado ? ` - ${up(label.lado)}` : ""}${label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>` : ""}
-    ${(label.supplier || label.location) ? `<p style="font-size:12pt;color:#475569;">${[up(label.supplier), up(label.location)].filter(Boolean).join(" / ")}</p>` : ""}
+    <p>${up(label.vehicleLabel)}${label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
+    ${label.feature ? `<p>${up(label.feature)}${label.glassType ? ` · ${up(label.glassType)}` : ""}${label.lado ? ` - ${up(label.lado)}` : ""}${label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>` : ""}
+    ${(label.supplier || label.location) ? `<p class="sub">${[up(label.supplier), up(label.location)].filter(Boolean).join(" / ")}</p>` : ""}
   </div>
   ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${up(label.purchaseSummary)}\\00\\${n2}</div>` : ""}
-  ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
-  ${codeValue && bcSvg ? `<div class="bc-box">${bcSvg}</div>` : ""}
+  <div class="bottom">
+    ${codeValue && bcSvg ? `<div class="bc-box">${bcSvg}</div>` : ""}
+    ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
+  </div>
 </body>
 </html>`);
 
@@ -105,41 +111,48 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
 
   return (
     <div className={wrapperClassName ?? "flex flex-col items-center gap-3"}>
-      <div className="flex w-full max-w-[260px] flex-col justify-between rounded-[18px] bg-white px-4 pb-4 pt-3 text-slate-950 shadow-sm">
-        <div className="flex items-baseline gap-2">
-          <span className="shrink-0 text-[11px] font-medium text-slate-500">CODIGO:</span>
-          <span className="break-all text-[15px] font-bold leading-tight tracking-tight">{up(codeValue)}</span>
+      {/* Preview — proporção 4in × 2in (paisagem) */}
+      <div className="flex w-full max-w-[384px] flex-col justify-between rounded-[14px] bg-white px-3 pb-3 pt-2 text-slate-950 shadow-sm" style={{ aspectRatio: "2/1" }}>
+        {/* Header: código (esq) + logo (dir) */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-baseline gap-1">
+            <span className="shrink-0 text-[9px] font-medium text-slate-500">CODIGO:</span>
+            <span className="break-all text-[12px] font-bold leading-tight tracking-tight">{up(codeValue)}</span>
+          </div>
+          <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-7 w-auto object-contain" />
         </div>
-        <div className="mt-2 flex justify-center">
-          <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-14 w-auto object-contain" />
-        </div>
-        <div className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
-          <p>{up(label.vehicleLabel)}</p>
-          {label.yearRange && <p>{up(label.yearRange)}</p>}
-          {label.feature && <p>{up(label.feature)}</p>}
-          {label.glassType && <p>{up(label.glassType)}{label.lado ? ` - ${up(label.lado)}` : ""}{label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>}
+        {/* Info */}
+        <div className="flex-1 space-y-0.5 py-1 text-[12px] leading-snug text-slate-800">
+          <p>{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
+          {label.feature && (
+            <p>{up(label.feature)}{label.glassType ? ` · ${up(label.glassType)}` : ""}{label.lado ? ` - ${up(label.lado)}` : ""}{label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>
+          )}
           {(label.supplier || label.location) && (
-            <p className="text-[13px] text-slate-500">
+            <p className="text-[10px] text-slate-500">
               {[up(label.supplier), up(label.location)].filter(Boolean).join(" / ")}
             </p>
           )}
         </div>
+        {/* Coded row */}
         {label.purchaseSummary && (
-          <div className="mt-2 font-mono text-[11px]">
+          <div className="font-mono text-[8px] text-slate-400">
             {n1}\00\{up(label.purchaseSummary)}\00\{n2}
           </div>
         )}
-        <div ref={qrWrapRef} className="mt-3 flex justify-center rounded-md border border-slate-300 p-1">
-          <QRCodeSVG value={codeValue} size={40} level="M" includeMargin={false} />
-        </div>
-        {codeValue && (
-          <div ref={bcWrapRef} className="mt-2 flex justify-center">
-            <Barcode value={codeValue} format="CODE128" width={2} height={56} fontSize={10} margin={8} />
+        {/* Bottom: barcode (flex:1) + QR (direita) */}
+        <div className="flex items-center gap-2">
+          {codeValue && (
+            <div ref={bcWrapRef} className="min-w-0 flex-1">
+              <Barcode value={codeValue} format="CODE128" width={1.2} height={28} fontSize={7} margin={2} />
+            </div>
+          )}
+          <div ref={qrWrapRef} className="shrink-0 rounded border border-slate-300 p-0.5">
+            <QRCodeSVG value={codeValue} size={32} level="M" includeMargin={false} />
           </div>
-        )}
+        </div>
       </div>
 
-      <Button variant="outline" size="sm" className="w-full max-w-[260px] gap-2" onClick={handlePrint}>
+      <Button variant="outline" size="sm" className="w-full max-w-[384px] gap-2" onClick={handlePrint}>
         <Printer className="h-4 w-4" />
         Imprimir
       </Button>
