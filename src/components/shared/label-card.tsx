@@ -23,22 +23,22 @@ export function noiseDigits(seed: string, count: number, salt: number): string {
 export const PRINT_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   @page { size: 2in 4in; margin: 0; }
-  html, body { width: 2in; height: 4in; background: #fff; font-family: sans-serif; color: #0f172a; overflow: hidden; }
-  body { padding: 0.2cm 0.25cm; display: flex; flex-direction: column; justify-content: space-between; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.2cm; }
+  html, body { width: 2in; height: 4in; overflow: hidden; background: #fff; font-family: sans-serif; color: #0f172a; }
+  body { padding: 0.2cm 0.25cm; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.15cm; flex-shrink: 0; }
   .code-row { display: flex; align-items: baseline; gap: 3px; }
   .code-label { font-size: 5pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
   .code-value { font-size: 7pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
-  .logo-wrap img { height: 0.9cm; width: auto; display: block; }
-  .info { font-size: 9pt; line-height: 1.45; flex: 1; margin: 0.15cm 0; }
+  .logo-wrap img { height: 0.85cm; width: auto; display: block; }
+  .info { font-size: 8.5pt; line-height: 1.4; flex: 1; margin: 0.1cm 0; overflow: hidden; }
   .info p { margin: 0; }
-  .info .sub { font-size: 7.5pt; color: #475569; }
-  .coded-row { font-size: 5.5pt; font-family: monospace; color: #64748b; margin-bottom: 0.08cm; }
-  .bottom { display: flex; flex-direction: column; align-items: center; gap: 0.08cm; }
-  .qr-box { display: flex; align-items: center; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.08cm; }
-  .qr-box svg { width: 1.5cm !important; height: 1.5cm !important; }
+  .info .sub { font-size: 7pt; color: #475569; }
+  .coded-row { font-size: 5.5pt; font-family: monospace; color: #64748b; flex-shrink: 0; }
+  .bottom { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 0.07cm; flex-shrink: 0; }
+  .qr-box { display: flex; align-items: center; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.07cm; }
+  .qr-box svg { width: 1.4cm !important; height: 1.4cm !important; }
   .bc-box { width: 100%; display: flex; justify-content: center; }
-  .bc-box svg { width: 100% !important; height: 1.1cm !important; }
+  .bc-box svg { width: 100% !important; height: 1.0cm !important; }
 `;
 
 export type LabelData = {
@@ -66,12 +66,11 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     const qrSvg = qrWrapRef.current?.querySelector("svg")?.outerHTML ?? "";
     const bcSvg = bcWrapRef.current?.querySelector("svg")?.outerHTML ?? "";
 
-    const iframe = document.createElement("iframe");
-    iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:0;visibility:hidden;";
-    document.body.appendChild(iframe);
+    // Abre popup com dimensões exatas: 2in x 4in a 96dpi = 192 x 384px
+    const pw = window.open("", "_blank", "width=192,height=384,toolbar=0,scrollbars=0,status=0,menubar=0,resizable=0");
+    if (!pw) return;
 
-    const doc = iframe.contentDocument!;
-    doc.write(`<!DOCTYPE html>
+    pw.document.write(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -90,7 +89,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
   </div>
   <div class="info">
     <p>${up(label.vehicleLabel)}${label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
-    ${label.feature ? `<p>${up(label.feature)}${label.glassType ? ` · ${up(label.glassType)}` : ""}${label.lado ? ` - ${up(label.lado)}` : ""}${label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>` : ""}
+    ${label.feature ? `<p>${up(label.feature)}${label.glassType ? ` · ${up(label.glassType)}` : ""}${label.lado ? ` - ${up(label.lado)}` : ""}</p>` : ""}
     ${(label.supplier || label.location) ? `<p class="sub">${[up(label.supplier), up(label.location)].filter(Boolean).join(" / ")}</p>` : ""}
   </div>
   ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${up(label.purchaseSummary)}\\00\\${n2}</div>` : ""}
@@ -101,10 +100,10 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
 </body>
 </html>`);
 
-    doc.close();
-    iframe.contentWindow!.focus();
-    iframe.contentWindow!.print();
-    setTimeout(() => document.body.removeChild(iframe), 1000);
+    pw.document.close();
+    pw.focus();
+    pw.addEventListener("afterprint", () => pw.close());
+    setTimeout(() => pw.print(), 500);
   }
 
   return (
@@ -123,7 +122,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
         <div className="flex-1 space-y-0.5 py-1.5 text-[11px] leading-snug text-slate-800">
           <p>{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
           {label.feature && (
-            <p>{up(label.feature)}{label.glassType ? ` · ${up(label.glassType)}` : ""}{label.lado ? ` - ${up(label.lado)}` : ""}{label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>
+            <p>{up(label.feature)}{label.glassType ? ` · ${up(label.glassType)}` : ""}{label.lado ? ` - ${up(label.lado)}` : ""}</p>
           )}
           {(label.supplier || label.location) && (
             <p className="text-[9px] text-slate-500">
