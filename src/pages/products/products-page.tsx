@@ -6,7 +6,9 @@ import { useForm } from "react-hook-form";
 import type { FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SectionCard } from "@/components/shared/section-card";
+import { LabelCard, type LabelData } from "@/components/shared/label-card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -131,6 +133,8 @@ export function ProductsPage() {
   const isReadOnly = readOnly || viewOnly;
   const [savedMessage, setSavedMessage] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showLabelDialog, setShowLabelDialog] = useState(false);
+  const [pendingLabelData, setPendingLabelData] = useState<LabelData | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
   const DEFAULT_GLASS_TYPES = ["PARABRISA", "VIGIA", "PORTA DIANTEIRA", "PORTA TRASEIRA", "LATERAL FIXA", "QUEBRA-VENTO", "TETO SOLAR"];
   const DEFAULT_FEATURES = ["VERDE", "VERDE SENSOR", "DEGRADÊ", "DEGRADÊ SENSOR", "INCOLOR", "TÉRMICO"];
@@ -681,12 +685,22 @@ export function ProductsPage() {
             if (mvErr) console.error("Erro ao registrar movimentação de entrada:", mvErr.message);
           }
 
-          form.reset(getEmptyFormValues());
-          setInvLocation("");
-          setInvQuantity(0);
-          setInvMinimum(0);
-          setPhotoUrls([]);
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          // Monta dados da etiqueta para oferecer impressão
+          const dateLabel = values.lastPurchaseDate
+            ? new Date(values.lastPurchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
+            : "";
+          setPendingLabelData({
+            productCode: values.barcode || values.name,
+            vehicleLabel: values.name,
+            yearRange: "",
+            feature: values.feature,
+            glassType: values.glassType,
+            lado: ladoValue,
+            supplier: values.lastSupplier,
+            location: invLocation,
+            purchaseSummary: values.cost && dateLabel ? `${values.cost} - ${dateLabel}` : "",
+          });
+          setShowLabelDialog(true);
         }
       } else {
         // Sem Supabase: salva só em memória (dados perdidos ao recarregar)
@@ -786,6 +800,17 @@ export function ProductsPage() {
     } catch (err: any) {
       setSaveError(err.message ?? "Erro ao salvar produto.");
     }
+  }
+
+  function closeLabelDialog() {
+    setShowLabelDialog(false);
+    setPendingLabelData(null);
+    form.reset(getEmptyFormValues());
+    setInvLocation("");
+    setInvQuantity(0);
+    setInvMinimum(0);
+    setPhotoUrls([]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
 
@@ -1366,6 +1391,24 @@ export function ProductsPage() {
       </div>
 
     </div>
+
+      {/* Dialog pós-cadastro: imprimir etiqueta */}
+      <Dialog open={showLabelDialog} onOpenChange={(open) => { if (!open) closeLabelDialog(); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Item cadastrado!</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-500">Deseja imprimir a etiqueta agora?</p>
+          {pendingLabelData && (
+            <div className="flex justify-center py-2">
+              <LabelCard label={pendingLabelData} />
+            </div>
+          )}
+          <Button variant="outline" className="w-full" onClick={closeLabelDialog}>
+            Fechar sem imprimir
+          </Button>
+        </DialogContent>
+      </Dialog>
 
     </>
   );
