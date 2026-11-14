@@ -25,21 +25,21 @@ export const PRINT_CSS = `
   @page { size: 10cm 5cm; margin: 0; }
   html, body { width: 10cm; height: 5cm; overflow: hidden; background: #fff; font-family: Arial, sans-serif; color: #0f172a; }
   body { padding: 0.2cm 0.25cm; display: flex; flex-direction: row; gap: 0.2cm; }
-  .left { flex: 1; display: flex; flex-direction: column; gap: 0.07cm; overflow: hidden; min-width: 0; }
-  .right { width: 2.4cm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .left { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.07cm; overflow: hidden; min-width: 0; }
+  .right { width: 2.7cm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex-shrink: 0; }
   .code-row { display: flex; align-items: baseline; gap: 4px; flex-shrink: 0; }
   .code-label { font-size: 7pt; color: #64748b; white-space: nowrap; }
   .code-value { font-size: 10pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
   .logo-wrap img { height: 1cm; width: auto; display: block; }
-  .info { font-size: 10pt; line-height: 1.4; flex: 1; overflow: hidden; }
+  .info { font-size: 10pt; line-height: 1.4; flex: 1; overflow: hidden; text-align: center; }
   .info p { margin: 0; }
   .info .bold { font-weight: 700; }
   .info .sub { font-size: 8pt; color: #475569; }
-  .coded-row { font-size: 6pt; font-family: monospace; color: #64748b; flex-shrink: 0; }
+  .coded-row { font-size: 6pt; font-family: monospace; color: #64748b; flex-shrink: 0; text-align: center; }
   .qr-box { display: flex; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.07cm; }
-  .qr-box svg { width: 2.1cm !important; height: 2.1cm !important; }
-  .bc-box { flex-shrink: 0; }
-  .bc-box svg { width: 100% !important; height: 1.3cm !important; }
+  .qr-box svg { width: 2.4cm !important; height: 2.4cm !important; }
+  .bc-box { flex-shrink: 0; align-self: stretch; }
+  .bc-box svg { width: 100% !important; height: 1.5cm !important; }
 `;
 
 export type LabelData = {
@@ -120,13 +120,13 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
         className="flex w-full max-w-[400px] flex-row gap-2 rounded-[10px] bg-white p-2.5 text-slate-950 shadow-sm"
         style={{ fontFamily: "Arial, sans-serif", aspectRatio: "2/1" }}
       >
-        {/* Coluna esquerda */}
-        <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-hidden">
+        {/* Coluna esquerda — centralizada */}
+        <div className="flex min-w-0 flex-1 flex-col items-center gap-1 overflow-hidden">
           <div className="flex items-baseline gap-1 shrink-0">
             <span className="shrink-0 text-[8px] text-slate-500">CODIGO:</span>
             <span className="break-all text-[11px] font-bold leading-tight">{up(codeValue)}</span>
           </div>
-          <div className="flex-1 overflow-hidden text-[10px] leading-snug text-slate-800 space-y-px">
+          <div className="flex-1 overflow-hidden text-center text-[10px] leading-snug text-slate-800 space-y-px w-full">
             <p>{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
             {(label.feature || label.glassType) && (
               <p className="font-bold">
@@ -141,21 +141,21 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
             )}
           </div>
           {label.purchaseSummary && (
-            <div className="shrink-0 font-mono text-[6px] text-slate-400">
+            <div className="shrink-0 font-mono text-[6px] text-slate-400 text-center">
               {n1}\00\{up(label.purchaseSummary)}\00\{n2}
             </div>
           )}
           {codeValue && (
             <div ref={bcWrapRef} className="shrink-0 w-full">
-              <Barcode value={codeValue} format="CODE128" width={1.1} height={32} fontSize={6} margin={1} />
+              <Barcode value={codeValue} format="CODE128" width={1.1} height={38} fontSize={6} margin={1} />
             </div>
           )}
         </div>
         {/* Coluna direita: logo + QR */}
-        <div className="flex w-[82px] shrink-0 flex-col items-center justify-between">
+        <div className="flex w-[90px] shrink-0 flex-col items-center justify-between">
           <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-[30px] w-auto object-contain" />
           <div ref={qrWrapRef} className="rounded border border-slate-300 p-0.5">
-            <QRCodeSVG value={codeValue} size={62} level="M" includeMargin={false} />
+            <QRCodeSVG value={codeValue} size={70} level="M" includeMargin={false} />
           </div>
         </div>
       </div>
