@@ -39,7 +39,7 @@ export const PRINT_CSS = `
   .qr-box { display: flex; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.07cm; }
   .qr-box svg { width: 1.75cm !important; height: 1.75cm !important; }
   .bc-box { flex-shrink: 0; }
-  .bc-box svg { width: 100% !important; height: 1cm !important; }
+  .bc-box svg { width: 100% !important; height: 1.3cm !important; }
 `;
 
 export type LabelData = {
@@ -148,7 +148,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
           )}
           {codeValue && (
             <div ref={bcWrapRef} className="shrink-0 w-full">
-              <Barcode value={codeValue} format="CODE128" width={1.1} height={24} fontSize={6} margin={1} />
+              <Barcode value={codeValue} format="CODE128" width={1.1} height={32} fontSize={6} margin={1} />
             </div>
           )}
         </div>
