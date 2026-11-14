@@ -23,8 +23,8 @@ export function noiseDigits(seed: string, count: number, salt: number): string {
 export const PRINT_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   @page { margin: 0; }
-  html, body { width: 100%; height: 100%; background: #fff; font-family: sans-serif; color: #0f172a; overflow: hidden; }
-  body { padding: 0.4cm; display: flex; flex-direction: column; justify-content: space-between; }
+  html, body { width: 100%; background: #fff; font-family: sans-serif; color: #0f172a; }
+  body { padding: 0.4cm; display: flex; flex-direction: column; gap: 0.25cm; }
   .code-row { display: flex; align-items: baseline; gap: 6px; }
   .code-label { font-size: 9pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
   .code-value { font-size: 13pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
