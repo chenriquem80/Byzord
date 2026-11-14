@@ -490,9 +490,25 @@ export function ExitPage() {
                         Fabricante: {row.mf.manufacturer} • Preço: {formatCurrency(row.mf.price)}
                       </p>
                     </div>
-                    <span className={`ml-4 shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${row.totalStock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                      {row.totalStock} un.
-                    </span>
+                    <div className="ml-4 flex shrink-0 flex-col items-end gap-1">
+                      {(() => {
+                        const selStore = form.watch("storeId");
+                        const condMap: Record<string, string> = { B: "Blind", R: "Risc", BR: "Blind/Risc" };
+                        const conds = [...new Set(
+                          row.mf.inventories
+                            .filter((inv: any) => inv.specialCondition && inv.stock > 0 && (!selStore || inv.storeId === selStore))
+                            .map((inv: any) => inv.specialCondition as string)
+                        )];
+                        return conds.map((c) => (
+                          <span key={c} className="rounded-md bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                            {condMap[c] ?? c}
+                          </span>
+                        ));
+                      })()}
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${row.totalStock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                        {row.totalStock} un.
+                      </span>
+                    </div>
                   </button>
                 ))}
               </div>
