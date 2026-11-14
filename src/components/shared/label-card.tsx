@@ -22,47 +22,24 @@ export function noiseDigits(seed: string, count: number, salt: number): string {
 
 export const PRINT_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @page { margin: 0; size: auto; }
-  html, body { width: 100%; background: #fff; font-family: sans-serif; color: #0f172a; }
-
-  /* Retrato */
-  body { padding: 0.35cm; display: flex; flex-direction: column; gap: 0.15cm; }
-  .code-row { display: flex; align-items: baseline; gap: 5px; }
-  .code-label { font-size: 8pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
-  .code-value { font-size: 11pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
-  .logo-wrap { display: flex; justify-content: center; }
-  .logo-wrap img { height: 1.6cm; width: auto; display: block; }
-  .info { font-size: 11pt; line-height: 1.5; }
+  @page { size: 10cm 5cm; margin: 0; }
+  html, body { width: 10cm; height: 5cm; overflow: hidden; background: #fff; font-family: Arial, sans-serif; color: #0f172a; }
+  body { padding: 0.2cm 0.25cm; display: flex; flex-direction: row; gap: 0.2cm; }
+  .left { flex: 1; display: flex; flex-direction: column; gap: 0.07cm; overflow: hidden; min-width: 0; }
+  .right { width: 2.1cm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .code-row { display: flex; align-items: baseline; gap: 4px; flex-shrink: 0; }
+  .code-label { font-size: 6pt; color: #64748b; white-space: nowrap; }
+  .code-value { font-size: 9pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
+  .logo-wrap img { height: 0.85cm; width: auto; display: block; }
+  .info { font-size: 8.5pt; line-height: 1.4; flex: 1; overflow: hidden; }
   .info p { margin: 0; }
-  .coded-row { font-size: 8pt; font-family: monospace; color: #64748b; }
-  .qr-box { display: flex; justify-content: center; align-items: center; border: 1px solid #94a3b8; border-radius: 5px; padding: 0.1cm; }
-  .qr-box svg { width: 1.8cm !important; height: 1.8cm !important; }
-  .bc-box { display: flex; justify-content: center; width: 100%; }
-  .bc-box svg { width: 90% !important; height: 1.5cm !important; }
-
-  /* Paisagem — reorganiza em 2 colunas */
-  @media print and (orientation: landscape) {
-    body {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      grid-template-areas:
-        "code logo"
-        "info  qr"
-        "coded qr"
-        "barcode barcode";
-      gap: 0.1cm 0.3cm;
-      padding: 0.3cm;
-    }
-    .code-row  { grid-area: code;    align-self: center; }
-    .logo-wrap { grid-area: logo;    justify-content: flex-end; }
-    .logo-wrap img { height: 1cm; }
-    .info      { grid-area: info;    font-size: 9pt; line-height: 1.4; }
-    .coded-row { grid-area: coded;   font-size: 6pt; align-self: end; }
-    .qr-box    { grid-area: qr;      align-self: start; }
-    .qr-box svg { width: 2cm !important; height: 2cm !important; }
-    .bc-box    { grid-area: barcode; }
-    .bc-box svg { width: 95% !important; height: 1cm !important; }
-  }
+  .info .bold { font-weight: 700; }
+  .info .sub { font-size: 7pt; color: #475569; }
+  .coded-row { font-size: 5pt; font-family: monospace; color: #64748b; flex-shrink: 0; }
+  .qr-box { display: flex; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.07cm; }
+  .qr-box svg { width: 1.75cm !important; height: 1.75cm !important; }
+  .bc-box { flex-shrink: 0; }
+  .bc-box svg { width: 100% !important; height: 1cm !important; }
 `;
 
 export type LabelData = {
@@ -90,12 +67,20 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     const qrSvg = qrWrapRef.current?.querySelector("svg")?.outerHTML ?? "";
     const bcSvg = bcWrapRef.current?.querySelector("svg")?.outerHTML ?? "";
 
-    const iframe = document.createElement("iframe");
-    iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:0;visibility:hidden;";
-    document.body.appendChild(iframe);
+    // 10cm × 5cm a 96dpi = 378 × 189px
+    const pw = window.open("", "_blank", "width=378,height=189,toolbar=0,scrollbars=0,status=0,menubar=0,resizable=0");
+    if (!pw) return;
 
-    const doc = iframe.contentDocument!;
-    doc.write(`<!DOCTYPE html>
+    const yearRange = label.yearRange ? ` ${up(label.yearRange)}` : "";
+    const featureLine = [
+      label.feature ? up(label.feature) : "",
+      label.glassType ? up(label.glassType) : "",
+      label.lado ? up(label.lado) : "",
+      label.manufacturer ? up(label.manufacturer) : "",
+    ].filter(Boolean).join(" · ");
+    const supplierLine = [up(label.supplier), up(label.location)].filter(Boolean).join(" / ");
+
+    pw.document.write(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -103,69 +88,80 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
   <style>${PRINT_CSS}</style>
 </head>
 <body>
-  <div class="code-row">
-    <span class="code-label">CODIGO:</span>
-    <span class="code-value">${up(codeValue)}</span>
+  <div class="left">
+    <div class="code-row">
+      <span class="code-label">CODIGO:</span>
+      <span class="code-value">${up(codeValue)}</span>
+    </div>
+    <div class="info">
+      <p>${up(label.vehicleLabel)}${yearRange}</p>
+      ${featureLine ? `<p class="bold">${featureLine}</p>` : ""}
+      ${supplierLine ? `<p class="sub">${supplierLine}</p>` : ""}
+    </div>
+    ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${up(label.purchaseSummary)}\\00\\${n2}</div>` : ""}
+    ${codeValue && bcSvg ? `<div class="bc-box">${bcSvg}</div>` : ""}
   </div>
-  <div class="logo-wrap">
-    <img src="${LOGO_URL}" alt="Byzord Auto Vitrais" />
+  <div class="right">
+    <div class="logo-wrap"><img src="${LOGO_URL}" alt="Byzord Auto Vitrais" /></div>
+    ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
   </div>
-  <div class="info">
-    <p>${up(label.vehicleLabel)}</p>
-    ${label.yearRange ? `<p>${up(label.yearRange)}</p>` : ""}
-    ${label.feature ? `<p>${up(label.feature)}</p>` : ""}
-    ${label.glassType ? `<p>${up(label.glassType)}${label.lado ? ` - ${up(label.lado)}` : ""}${label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>` : ""}
-    ${(label.supplier || label.location) ? `<p style="font-size:12pt;color:#475569;">${[up(label.supplier), up(label.location)].filter(Boolean).join(" / ")}</p>` : ""}
-  </div>
-  ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${up(label.purchaseSummary)}\\00\\${n2}</div>` : ""}
-  ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
-  ${codeValue && bcSvg ? `<div class="bc-box">${bcSvg}</div>` : ""}
 </body>
 </html>`);
 
-    doc.close();
-    iframe.contentWindow!.focus();
-    iframe.contentWindow!.print();
-    setTimeout(() => document.body.removeChild(iframe), 1000);
+    pw.document.close();
+    pw.focus();
+    pw.addEventListener("afterprint", () => pw.close());
+    setTimeout(() => pw.print(), 500);
   }
 
   return (
     <div className={wrapperClassName ?? "flex flex-col items-center gap-3"}>
-      <div className="flex w-full max-w-[260px] flex-col justify-between rounded-[18px] bg-white px-4 pb-4 pt-3 text-slate-950 shadow-sm">
-        <div className="flex items-baseline gap-2">
-          <span className="shrink-0 text-[11px] font-medium text-slate-500">CODIGO:</span>
-          <span className="break-all text-[15px] font-bold leading-tight tracking-tight">{up(codeValue)}</span>
-        </div>
-        <div className="mt-2 flex justify-center">
-          <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-14 w-auto object-contain" />
-        </div>
-        <div className="mt-3 space-y-1 text-[15px] leading-relaxed text-slate-800">
-          <p>{up(label.vehicleLabel)}</p>
-          {label.yearRange && <p>{up(label.yearRange)}</p>}
-          {label.feature && <p>{up(label.feature)}</p>}
-          {label.glassType && <p>{up(label.glassType)}{label.lado ? ` - ${up(label.lado)}` : ""}{label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>}
-          {(label.supplier || label.location) && (
-            <p className="text-[13px] text-slate-500">
-              {[up(label.supplier), up(label.location)].filter(Boolean).join(" / ")}
-            </p>
+      {/* Preview — proporção 10cm × 5cm (paisagem 2:1) */}
+      <div
+        className="flex w-full max-w-[400px] flex-row gap-2 rounded-[10px] bg-white p-2.5 text-slate-950 shadow-sm"
+        style={{ fontFamily: "Arial, sans-serif", aspectRatio: "2/1" }}
+      >
+        {/* Coluna esquerda */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-hidden">
+          <div className="flex items-baseline gap-1 shrink-0">
+            <span className="shrink-0 text-[8px] text-slate-500">CODIGO:</span>
+            <span className="break-all text-[11px] font-bold leading-tight">{up(codeValue)}</span>
+          </div>
+          <div className="flex-1 overflow-hidden text-[10px] leading-snug text-slate-800 space-y-px">
+            <p>{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
+            {(label.feature || label.glassType) && (
+              <p className="font-bold">
+                {[label.feature, label.glassType, label.lado, label.manufacturer]
+                  .filter(Boolean).map(up).join(" · ")}
+              </p>
+            )}
+            {(label.supplier || label.location) && (
+              <p className="text-[8px] text-slate-500">
+                {[up(label.supplier), up(label.location)].filter(Boolean).join(" / ")}
+              </p>
+            )}
+          </div>
+          {label.purchaseSummary && (
+            <div className="shrink-0 font-mono text-[6px] text-slate-400">
+              {n1}\00\{up(label.purchaseSummary)}\00\{n2}
+            </div>
+          )}
+          {codeValue && (
+            <div ref={bcWrapRef} className="shrink-0 w-full">
+              <Barcode value={codeValue} format="CODE128" width={1.1} height={24} fontSize={6} margin={1} />
+            </div>
           )}
         </div>
-        {label.purchaseSummary && (
-          <div className="mt-2 font-mono text-[11px]">
-            {n1}\00\{up(label.purchaseSummary)}\00\{n2}
+        {/* Coluna direita: logo + QR */}
+        <div className="flex w-[72px] shrink-0 flex-col items-center justify-between">
+          <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-[26px] w-auto object-contain" />
+          <div ref={qrWrapRef} className="rounded border border-slate-300 p-0.5">
+            <QRCodeSVG value={codeValue} size={52} level="M" includeMargin={false} />
           </div>
-        )}
-        <div ref={qrWrapRef} className="mt-3 flex justify-center rounded-md border border-slate-300 p-1">
-          <QRCodeSVG value={codeValue} size={40} level="M" includeMargin={false} />
         </div>
-        {codeValue && (
-          <div ref={bcWrapRef} className="mt-2 flex justify-center">
-            <Barcode value={codeValue} format="CODE128" width={2} height={56} fontSize={10} margin={8} />
-          </div>
-        )}
       </div>
 
-      <Button variant="outline" size="sm" className="w-full max-w-[260px] gap-2" onClick={handlePrint}>
+      <Button variant="outline" size="sm" className="w-full max-w-[400px] gap-2" onClick={handlePrint}>
         <Printer className="h-4 w-4" />
         Imprimir
       </Button>
