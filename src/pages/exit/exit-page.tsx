@@ -244,7 +244,7 @@ export function ExitPage() {
 
   const specialInventories = useMemo(
     () => (manufacturerStock?.inventories ?? []).filter(
-      (inv) => inv.storeId === form.watch("storeId") && (inv as any).specialCondition
+      (inv) => inv.storeId === form.watch("storeId") && (inv as any).specialCondition && inv.stock > 0
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [form.watch("storeId"), manufacturerStock],
