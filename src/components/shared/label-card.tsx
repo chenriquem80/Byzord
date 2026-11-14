@@ -67,10 +67,6 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     const qrSvg = qrWrapRef.current?.querySelector("svg")?.outerHTML ?? "";
     const bcSvg = bcWrapRef.current?.querySelector("svg")?.outerHTML ?? "";
 
-    // 10cm × 5cm a 96dpi = 378 × 189px
-    const pw = window.open("", "_blank", "width=378,height=189,toolbar=0,scrollbars=0,status=0,menubar=0,resizable=0");
-    if (!pw) return;
-
     const yearRange = label.yearRange ? ` ${up(label.yearRange)}` : "";
     const featureLine = [
       label.feature ? up(label.feature) : "",
@@ -80,10 +76,11 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     ].filter(Boolean).join(" · ");
     const supplierLine = [up(label.supplier), up(label.location)].filter(Boolean).join(" / ");
 
-    pw.document.write(`<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Etiqueta - ${codeValue}</title>
   <style>${PRINT_CSS}</style>
 </head>
@@ -106,8 +103,33 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
   </div>
 </body>
-</html>`);
+</html>`;
 
+    // iOS Safari não suporta window.open para impressão — usa iframe oculto
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;border:0;opacity:0;";
+      document.body.appendChild(iframe);
+      const doc = iframe.contentWindow?.document;
+      if (!doc) { document.body.removeChild(iframe); return; }
+      doc.open(); doc.write(html); doc.close();
+      // Aguarda imagem do logo carregar antes de imprimir
+      const img = doc.querySelector("img");
+      const doPrint = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 2000);
+      };
+      if (img) { img.onload = doPrint; img.onerror = doPrint; setTimeout(doPrint, 1500); }
+      else { setTimeout(doPrint, 300); }
+      return;
+    }
+
+    // Desktop/Android: popup tradicional
+    const pw = window.open("", "_blank", "width=378,height=189,toolbar=0,scrollbars=0,status=0,menubar=0,resizable=0");
+    if (!pw) return;
+    pw.document.write(html);
     pw.document.close();
     pw.focus();
     pw.addEventListener("afterprint", () => pw.close());
