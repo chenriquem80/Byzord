@@ -169,9 +169,7 @@ export function EntryPage() {
   const currentLabel = useMemo(() => {
     if (!lastItem) return null;
     const compat = lastItem.product.compatibilities[0];
-    const vehicleLabel = compat
-      ? `${compat.automaker} ${compat.model}`.trim()
-      : lastItem.product.name;
+    const vehicleLabel = compat ? compat.model : lastItem.product.name;
     const yearRange = compat
       ? `${compat.startYear}/${compat.endYear}`
       : "";
@@ -818,7 +816,7 @@ export function EntryPage() {
           <div className="mt-4 space-y-6">
             {entryItems.map((item) => {
               const compat = item.product.compatibilities[0];
-              const vehicleLabel = compat ? `${compat.automaker} ${compat.model}`.trim() : item.product.name;
+              const vehicleLabel = compat ? compat.model : item.product.name;
               const yearRange = compat ? `${compat.startYear}/${compat.endYear}` : "";
               const dateLabel = purchaseDate
                 ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })

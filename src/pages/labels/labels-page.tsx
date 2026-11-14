@@ -100,9 +100,7 @@ export function LabelsPage() {
 
   function buildLabels(product: Product) {
     const compat = product.compatibilities[0];
-    const vehicleLabel = compat
-      ? `${compat.automaker} ${compat.model}`.trim()
-      : product.name;
+    const vehicleLabel = compat ? compat.model : product.name;
     const yearRange = compat ? `${compat.startYear}/${compat.endYear}` : "";
 
     return product.manufacturers.map((mf) => {
