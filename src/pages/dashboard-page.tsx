@@ -243,8 +243,8 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* Resumo por loja — apenas admin/gerente */}
-      <div className={`${seeAllStores ? "hidden lg:block" : "hidden"}`}>
+      {/* Resumo por loja — admin/gerente veem todas; estoquista vê só a sua */}
+      <div className={`${seeAllStores || isEstoquista ? "hidden lg:block" : "hidden"}`}>
         <SectionCard
           title="Resumo por loja"
           description="Visual rápido para comparar o saldo operacional entre as unidades."
@@ -256,7 +256,7 @@ export function DashboardPage() {
           }
         >
           <div className="grid gap-4 md:grid-cols-2">
-            {dbStores.map((store) => {
+            {dbStores.filter((store) => seeAllStores || store.id === user?.storeId).map((store) => {
               const entryCount = entries.filter((m) => m.store_name === store.name).length;
               const exitCount  = exits.filter((m) => m.store_name === store.name).length;
               return (
