@@ -870,11 +870,17 @@ type ItemChangeRow = {
   glass_type: string | null;
 };
 
+function thirtyDaysAgoStr() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function ItemChangeReport() {
   const today = localDateStr();
   const [search, setSearch] = useState("");
   const [glassTypeFilter, setGlassTypeFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState(today);
+  const [dateFrom, setDateFrom] = useState(thirtyDaysAgoStr);
   const [dateTo, setDateTo] = useState(today);
   const [rows, setRows] = useState<ItemChangeRow[]>([]);
   const [loading, setLoading] = useState(false);
