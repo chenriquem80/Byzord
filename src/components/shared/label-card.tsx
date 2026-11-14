@@ -22,23 +22,23 @@ export function noiseDigits(seed: string, count: number, salt: number): string {
 
 export const PRINT_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @page { size: 2in 4in; margin: 0; }
-  html, body { width: 2in; height: 4in; background: #fff; font-family: sans-serif; color: #0f172a; overflow: hidden; }
-  body { padding: 0.2cm 0.25cm; display: flex; flex-direction: column; justify-content: space-between; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.2cm; }
+  @page { size: 10cm 5cm; margin: 0; }
+  html, body { width: 10cm; height: 5cm; background: #fff; font-family: sans-serif; color: #0f172a; overflow: hidden; }
+  body { padding: 0.25cm 0.35cm; display: flex; flex-direction: column; justify-content: space-between; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.3cm; }
   .code-row { display: flex; align-items: baseline; gap: 3px; }
-  .code-label { font-size: 5pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
-  .code-value { font-size: 7pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
-  .logo-wrap img { height: 0.9cm; width: auto; display: block; }
-  .info { font-size: 9pt; line-height: 1.45; flex: 1; margin: 0.15cm 0; }
+  .code-label { font-size: 6pt; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+  .code-value { font-size: 8.5pt; font-weight: 700; word-break: break-all; line-height: 1.2; }
+  .logo-wrap img { height: 1.1cm; width: auto; display: block; }
+  .info { font-size: 9pt; line-height: 1.45; flex: 1; margin: 0.1cm 0; }
   .info p { margin: 0; }
   .info .sub { font-size: 7.5pt; color: #475569; }
-  .coded-row { font-size: 5.5pt; font-family: monospace; color: #64748b; margin-bottom: 0.1cm; }
-  .bottom { display: flex; flex-direction: column; align-items: center; gap: 0.1cm; }
-  .qr-box { display: flex; align-items: center; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.1cm; }
-  .qr-box svg { width: 1.5cm !important; height: 1.5cm !important; }
-  .bc-box { width: 100%; display: flex; justify-content: center; }
-  .bc-box svg { width: 100% !important; height: 1.3cm !important; }
+  .coded-row { font-size: 6pt; font-family: monospace; color: #64748b; }
+  .bottom { display: flex; align-items: center; gap: 0.25cm; }
+  .qr-box { display: flex; align-items: center; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.1cm; flex-shrink: 0; }
+  .qr-box svg { width: 1.4cm !important; height: 1.4cm !important; }
+  .bc-box { flex: 1; display: flex; align-items: center; }
+  .bc-box svg { width: 100% !important; height: 1.2cm !important; }
 `;
 
 export type LabelData = {
@@ -97,8 +97,8 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
   </div>
   ${label.purchaseSummary ? `<div class="coded-row">${n1}\\00\\${up(label.purchaseSummary)}\\00\\${n2}</div>` : ""}
   <div class="bottom">
-    ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
     ${codeValue && bcSvg ? `<div class="bc-box">${bcSvg}</div>` : ""}
+    ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
   </div>
 </body>
 </html>`);
@@ -111,18 +111,18 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
 
   return (
     <div className={wrapperClassName ?? "flex flex-col items-center gap-3"}>
-      {/* Preview — proporção 2in × 4in (retrato) */}
-      <div className="flex w-full max-w-[192px] flex-col justify-between rounded-[14px] bg-white px-3 pb-3 pt-2 text-slate-950 shadow-sm" style={{ aspectRatio: "1/2" }}>
+      {/* Preview — proporção 10cm × 5cm (paisagem 2:1) */}
+      <div className="flex w-full max-w-[380px] flex-col justify-between rounded-[14px] bg-white px-3 pb-3 pt-2 text-slate-950 shadow-sm" style={{ aspectRatio: "2/1" }}>
         {/* Header: código (esq) + logo (dir) */}
-        <div className="flex items-start justify-between gap-1">
+        <div className="flex items-start justify-between gap-2">
           <div className="flex items-baseline gap-1">
-            <span className="shrink-0 text-[8px] font-medium text-slate-500">CODIGO:</span>
-            <span className="break-all text-[10px] font-bold leading-tight tracking-tight">{up(codeValue)}</span>
+            <span className="shrink-0 text-[9px] font-medium text-slate-500">CODIGO:</span>
+            <span className="break-all text-[12px] font-bold leading-tight tracking-tight">{up(codeValue)}</span>
           </div>
-          <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-5 w-auto object-contain" />
+          <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-7 w-auto object-contain" />
         </div>
         {/* Info */}
-        <div className="flex-1 space-y-0.5 py-1.5 text-[11px] leading-snug text-slate-800">
+        <div className="flex-1 space-y-0.5 py-1 text-[11px] leading-snug text-slate-800">
           <p>{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
           {label.feature && (
             <p>{up(label.feature)}{label.glassType ? ` · ${up(label.glassType)}` : ""}{label.lado ? ` - ${up(label.lado)}` : ""}{label.manufacturer ? ` · ${up(label.manufacturer)}` : ""}</p>
@@ -135,24 +135,24 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
         </div>
         {/* Coded row */}
         {label.purchaseSummary && (
-          <div className="mb-1 font-mono text-[7px] text-slate-400">
+          <div className="font-mono text-[7px] text-slate-400">
             {n1}\00\{up(label.purchaseSummary)}\00\{n2}
           </div>
         )}
-        {/* Bottom: QR centralizado + barcode */}
-        <div className="flex flex-col items-center gap-1">
-          <div ref={qrWrapRef} className="rounded border border-slate-300 p-0.5">
-            <QRCodeSVG value={codeValue} size={36} level="M" includeMargin={false} />
-          </div>
+        {/* Bottom: barcode (flex:1) + QR (direita) */}
+        <div className="flex items-center gap-2">
           {codeValue && (
-            <div ref={bcWrapRef} className="w-full">
-              <Barcode value={codeValue} format="CODE128" width={1} height={32} fontSize={7} margin={2} />
+            <div ref={bcWrapRef} className="min-w-0 flex-1">
+              <Barcode value={codeValue} format="CODE128" width={1.2} height={28} fontSize={7} margin={2} />
             </div>
           )}
+          <div ref={qrWrapRef} className="shrink-0 rounded border border-slate-300 p-0.5">
+            <QRCodeSVG value={codeValue} size={34} level="M" includeMargin={false} />
+          </div>
         </div>
       </div>
 
-      <Button variant="outline" size="sm" className="w-full max-w-[192px] gap-2" onClick={handlePrint}>
+      <Button variant="outline" size="sm" className="w-full max-w-[380px] gap-2" onClick={handlePrint}>
         <Printer className="h-4 w-4" />
         Imprimir
       </Button>
