@@ -108,7 +108,12 @@ export function StockPage() {
   const [photoDialog, setPhotoDialog] = useState<{ open: boolean; productName: string; urls: string[]; loading: boolean }>({
     open: false, productName: "", urls: [], loading: false,
   });
+  // Nomes de produto que possuem foto (qualquer product_id com esse nome)
   const [productsWithPhotos, setProductsWithPhotos] = useState<Set<string>>(new Set());
+  // Mapa nome → todos os product_ids (para buscar fotos de todos quando o nome coincide)
+  const productNameToIds = useRef<Map<string, string[]>>(new Map());
+  // Mapa nome → compatibilidades agregadas de todos os produtos com esse nome
+  const [productNameCompats, setProductNameCompats] = useState<Map<string, Product["compatibilities"]>>(new Map());
 
   // Dialog de detalhes da condição especial
   const [condDialog, setCondDialog] = useState<{
@@ -173,7 +178,9 @@ export function StockPage() {
   async function openPhotoDialog(product: Product) {
     setPhotoDialog({ open: true, productName: product.name, urls: [], loading: true });
     if (supabase) {
-      const { data } = await supabase.from("product_photos").select("url").eq("product_id", product.id);
+      // Busca fotos de todos os product_ids que compartilham o mesmo nome
+      const ids = productNameToIds.current.get(product.name) ?? [product.id];
+      const { data } = await supabase.from("product_photos").select("url").in("product_id", ids);
       setPhotoDialog((d) => ({ ...d, loading: false, urls: (data ?? []).map((p: any) => p.url) }));
     } else {
       setPhotoDialog((d) => ({ ...d, loading: false, urls: product.photos ?? [] }));
@@ -231,7 +238,21 @@ export function StockPage() {
     const rawMf = mfResp.data ?? [];
     const rawInv = invResp.data ?? [];
     const rawCompat = compatResp.data ?? [];
-    setProductsWithPhotos(new Set((photosResp.data ?? []).map((ph: any) => ph.product_id as string)));
+
+    // Agrupa product_ids por nome de produto
+    const nameToIds = new Map<string, string[]>();
+    rawProducts.forEach((p: any) => {
+      const name = (p.name ?? "") as string;
+      if (!nameToIds.has(name)) nameToIds.set(name, []);
+      nameToIds.get(name)!.push(p.id);
+    });
+    productNameToIds.current = nameToIds;
+
+    // Nomes que possuem pelo menos uma foto
+    const photoIds = new Set((photosResp.data ?? []).map((ph: any) => ph.product_id as string));
+    const namesWithPhotos = new Set<string>();
+    rawProducts.forEach((p: any) => { if (photoIds.has(p.id)) namesWithPhotos.add(p.name ?? ""); });
+    setProductsWithPhotos(namesWithPhotos);
 
     setDbStores(stores);
 
@@ -302,6 +323,17 @@ export function StockPage() {
           })),
       };
     });
+
+    // Agrega compatibilidades por nome de produto (deduplica por vehicle id)
+    const nameCompats = new Map<string, Product["compatibilities"]>();
+    mapped.forEach((p) => {
+      if (!nameCompats.has(p.name)) nameCompats.set(p.name, []);
+      const existing = nameCompats.get(p.name)!;
+      p.compatibilities.forEach((c) => {
+        if (!existing.some((e) => e.id === c.id)) existing.push(c);
+      });
+    });
+    setProductNameCompats(nameCompats);
 
     setDbProducts(mapped);
     setLoading(false);
@@ -521,7 +553,7 @@ export function StockPage() {
       {
         id: "photos",
         header: "Foto",
-        cell: ({ row }) => productsWithPhotos.has(row.original.product.id) ? (
+        cell: ({ row }) => productsWithPhotos.has(row.original.product.name) ? (
           <button
             type="button"
             title="Ver fotos"
@@ -535,7 +567,7 @@ export function StockPage() {
       {
         id: "compat",
         header: "Compatíveis",
-        cell: ({ row }) => <CompatPopup compatibilities={row.original.product.compatibilities} />,
+        cell: ({ row }) => <CompatPopup compatibilities={productNameCompats.get(row.original.product.name) ?? row.original.product.compatibilities} />,
       },
       {
         id: "actions",
