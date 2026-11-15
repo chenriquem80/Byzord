@@ -30,6 +30,7 @@ type EntryItem = {
   product: Product;
   mf: Manufacturer;
   quantities: Record<string, string>;
+  locations: Record<string, string>;
   cost: number;
 };
 
@@ -232,14 +233,29 @@ export function EntryPage() {
   function handleAddItem(row: SearchRow) {
     const key = `${row.product.id}-${row.mf.id}-${Date.now()}`;
     const quantities: Record<string, string> = {};
-    stores.forEach((store) => { quantities[store.id] = "0"; });
-    setEntryItems((prev) => [...prev, { key, product: row.product, mf: row.mf, quantities, cost: row.mf.cost ?? 0 }]);
+    const locations: Record<string, string> = {};
+    stores.forEach((store) => {
+      quantities[store.id] = "0";
+      const inv = row.mf.inventories.find((i) => i.storeId === store.id);
+      locations[store.id] = inv?.location ?? "";
+    });
+    setEntryItems((prev) => [...prev, { key, product: row.product, mf: row.mf, quantities, locations, cost: row.mf.cost ?? 0 }]);
     setTimeout(() => entryListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
   function updateItemCost(key: string, value: string) {
     setEntryItems((prev) =>
       prev.map((item) => item.key === key ? { ...item, cost: parseFloat(value) || 0 } : item)
+    );
+  }
+
+  function updateItemLocation(key: string, storeId: string, value: string) {
+    setEntryItems((prev) =>
+      prev.map((item) =>
+        item.key === key
+          ? { ...item, locations: { ...item.locations, [storeId]: value } }
+          : item,
+      ),
     );
   }
 
@@ -281,7 +297,7 @@ export function EntryPage() {
     const specialCond: string | null = isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null;
     const ladoValue: string | null = [isLadoA && "A", isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
 
-    async function upsertInventory(mfId: string, storeId: string, qty: number) {
+    async function upsertInventory(mfId: string, storeId: string, qty: number, location?: string) {
       let q = supabase!
         .from("product_store_inventory")
         .select("id, stock")
@@ -298,15 +314,18 @@ export function EntryPage() {
       if (selErr) throw new Error(`Erro ao buscar inventário: ${selErr.message}`);
 
       if (existing) {
+        const updateData: Record<string, any> = { stock: (existing.stock ?? 0) + qty };
+        if (location !== undefined) updateData.location = location;
         const { error: updErr } = await supabase!
           .from("product_store_inventory")
-          .update({ stock: (existing.stock ?? 0) + qty })
+          .update(updateData)
           .eq("id", existing.id);
         if (updErr) throw new Error(`Erro ao atualizar estoque: ${updErr.message}`);
       } else {
         const row: Record<string, any> = { manufacturer_id: mfId, store_id: storeId, stock: qty, min_quantity: 0 };
         if (specialCond) row.special_condition = specialCond;
         if (ladoValue) row.lado = ladoValue;
+        if (location !== undefined) row.location = location;
         const { data: inserted, error: insErr } = await supabase!
           .from("product_store_inventory")
           .insert(row)
@@ -329,7 +348,7 @@ export function EntryPage() {
           for (const store of stores) {
             const qty = Number(item.quantities[store.id] ?? 0);
             if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
-            await upsertInventory(item.mf.id, store.id, qty);
+            await upsertInventory(item.mf.id, store.id, qty, item.locations[store.id]);
           }
           await supabase.from("product_manufacturers")
             .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
@@ -341,7 +360,7 @@ export function EntryPage() {
             for (const store of stores) {
               const qty = Number(item.quantities[store.id] ?? 0);
               if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
-              await upsertInventory(existingMf.id, store.id, qty);
+              await upsertInventory(existingMf.id, store.id, qty, item.locations[store.id]);
             }
             await supabase.from("product_manufacturers")
               .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
@@ -364,7 +383,7 @@ export function EntryPage() {
             for (const store of stores) {
               const qty = Number(item.quantities[store.id] ?? 0);
               if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
-              await upsertInventory(newMfData.id, store.id, qty);
+              await upsertInventory(newMfData.id, store.id, qty, item.locations[store.id]);
             }
           }
         }
@@ -709,12 +728,12 @@ export function EntryPage() {
                             return (
                               <div
                                 key={store.id}
-                                className="grid gap-4 px-4 py-3 md:grid-cols-[1.2fr_0.8fr_0.8fr]"
+                                className={`grid gap-4 px-4 py-3 ${showCostPrice ? "md:grid-cols-[1.2fr_0.8fr_1fr_0.8fr]" : "md:grid-cols-[1.2fr_0.8fr_1fr]"}`}
                               >
                                 <div>
                                   <p className="font-medium text-slate-800">{store.name}</p>
                                   <p className="text-sm text-slate-500">
-                                    Estoque atual: {inventory?.stock ?? 0} • Local: {inventory?.location}
+                                    Estoque atual: {inventory?.stock ?? 0}
                                   </p>
                                 </div>
                                 <div>
@@ -724,6 +743,14 @@ export function EntryPage() {
                                     min="0"
                                     value={item.quantities[store.id] ?? "0"}
                                     onChange={(e) => updateItemQuantity(item.key, store.id, e.target.value)}
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Localização</p>
+                                  <Input
+                                    value={item.locations[store.id] ?? ""}
+                                    onChange={(e) => updateItemLocation(item.key, store.id, e.target.value)}
+                                    placeholder="Ex: 45B"
                                   />
                                 </div>
                                 {showCostPrice && (
