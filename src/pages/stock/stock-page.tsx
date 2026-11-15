@@ -569,8 +569,8 @@ export function StockPage() {
         title="Busca de Produto"
         description="Selecione o tipo do item e depois filtre por nome, código ou ano para consultar o estoque em todas as lojas."
       >
-        <div className="space-y-4">
-          <FormField label="1. Tipo do item" className="md:max-w-xs">
+        <div className="flex flex-wrap gap-4 items-end">
+          <FormField label="1. Tipo do item" className="w-64 shrink-0">
             <Select value={glassType} onChange={(e) => setGlassType(e.target.value)} placeholder="Selecione o tipo do item">
               <option value={ALL_GLASS_TYPES}>Todos os itens</option>
               {[...new Set(products.map((item) => item.glassType))].filter(Boolean).map((item) => (
@@ -578,7 +578,7 @@ export function StockPage() {
               ))}
             </Select>
           </FormField>
-          <FormField label="2. Produto">
+          <FormField label="2. Produto" className="flex-1 min-w-48">
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
