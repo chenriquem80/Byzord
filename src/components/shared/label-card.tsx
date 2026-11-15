@@ -69,8 +69,8 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
 
     const yearRange = label.yearRange ? ` ${up(label.yearRange)}` : "";
     const featureLine = [
-      label.feature ? up(label.feature) : "",
       label.glassType ? up(label.glassType) : "",
+      label.feature ? up(label.feature) : "",
       label.lado ? up(label.lado) : "",
       label.manufacturer ? up(label.manufacturer) : "",
     ].filter(Boolean).join(" · ");
@@ -153,7 +153,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
             <p>{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
             {(label.feature || label.glassType) && (
               <p className="font-bold">
-                {[label.feature, label.glassType, label.lado, label.manufacturer]
+                {[label.glassType, label.feature, label.lado, label.manufacturer]
                   .filter(Boolean).map(up).join(" · ")}
               </p>
             )}
