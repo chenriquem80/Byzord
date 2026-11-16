@@ -24,7 +24,7 @@ export const PRINT_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   @page { size: 10cm 5cm; margin: 0; }
   html, body { width: 10cm; height: 5cm; overflow: hidden; background: #fff; font-family: Arial, sans-serif; color: #0f172a; }
-  body { padding: 0.2cm 0.25cm; display: flex; flex-direction: row; gap: 0.2cm; }
+  body { padding: 0.2cm 0.25cm; display: flex; flex-direction: row-reverse; gap: 0.2cm; }
   .left { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.07cm; overflow: hidden; min-width: 0; }
   .right { width: 2.7cm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex-shrink: 0; }
   .code-row { display: flex; align-items: baseline; gap: 4px; flex-shrink: 0; }
@@ -140,10 +140,10 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     <div className={wrapperClassName ?? "flex flex-col items-center gap-3"}>
       {/* Preview — proporção 10cm × 5cm (paisagem 2:1) */}
       <div
-        className="flex w-full max-w-[400px] flex-row gap-2 rounded-[10px] bg-white p-2.5 text-slate-950 shadow-sm"
+        className="flex w-full max-w-[400px] flex-row-reverse gap-2 rounded-[10px] bg-white p-2.5 text-slate-950 shadow-sm"
         style={{ fontFamily: "Arial, sans-serif", aspectRatio: "2/1" }}
       >
-        {/* Coluna esquerda — centralizada */}
+        {/* Coluna de texto (lado direito, via flex-row-reverse) */}
         <div className="flex min-w-0 flex-1 flex-col items-center gap-1 overflow-hidden">
           <div className="flex items-baseline gap-1 shrink-0">
             <span className="shrink-0 text-[8px] text-slate-500">CODIGO:</span>
@@ -174,7 +174,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
             </div>
           )}
         </div>
-        {/* Coluna direita: logo + QR */}
+        {/* Coluna logo + QR (lado esquerdo) */}
         <div className="flex w-[90px] shrink-0 flex-col items-center justify-between">
           <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-[30px] w-auto object-contain" />
           <div ref={qrWrapRef} className="rounded border border-slate-300 p-0.5">
