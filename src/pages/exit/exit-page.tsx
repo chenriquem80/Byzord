@@ -160,6 +160,7 @@ export function ExitPage() {
   const searchResults = useMemo(() => {
     const terms = codeQuery.toLowerCase().split(/\s+/).filter(Boolean);
     const seen = new Set<string>();
+    const selectedStoreId = form.watch("storeId");
     return allProducts
       .filter((item) => {
         const matchesType = glassTypeFilter ? item.glassType === glassTypeFilter : true;
@@ -173,22 +174,18 @@ export function ExitPage() {
         product.manufacturers.map((mf) => ({
           product,
           mf,
-          totalStock: mf.inventories.reduce((s, inv) => s + inv.stock, 0),
+          // Estoque apenas da loja selecionada no formulário (de onde sai a baixa)
+          totalStock: mf.inventories
+            .filter((inv) => !selectedStoreId || inv.storeId === selectedStoreId)
+            .reduce((s, inv) => s + inv.stock, 0),
         })),
       )
       .filter((row) => {
         const key = `${row.product.id}-${row.mf.manufacturer}-${row.mf.cost}`;
         if (seen.has(key)) return false;
         seen.add(key);
-        // Oculta itens sem estoque na loja selecionada no formulário
-        const selectedStoreId = form.watch("storeId");
-        if (selectedStoreId) {
-          const storeStock = row.mf.inventories
-            .filter((inv) => inv.storeId === selectedStoreId)
-            .reduce((s, inv) => s + inv.stock, 0);
-          return storeStock > 0;
-        }
-        return true;
+        // Oculta itens sem estoque na loja selecionada
+        return !selectedStoreId || row.totalStock > 0;
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codeQuery, glassTypeFilter, allProducts, form.watch("storeId")]);
