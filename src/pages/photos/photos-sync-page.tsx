@@ -9,6 +9,7 @@ import {
   type Assignment,
   type BoardReading,
   type PhotoEntry,
+  PhotoNamer,
   assignFolder,
   copyPhoto,
   ensurePermission,
@@ -28,6 +29,8 @@ type Row = {
   time: string;
   reading?: BoardReading;
   assignment?: Assignment;
+  /** Nome com que foi salva na pasta do atendimento */
+  fileName?: string;
   status: RowStatus;
   error?: string;
 };
@@ -127,6 +130,7 @@ export function PhotosSyncPage() {
 
       // 2) Na ordem das fotos, decide a pasta e copia
       let current: { folder: string; plate: string } | null = null;
+      const namer = new PhotoNamer();
       // Depois de uma foto que falhou, as fotos sem lousa podem ser de outro atendimento:
       // ficam para a próxima sincronização, até aparecer uma foto com número.
       let blocked = false;
@@ -141,15 +145,24 @@ export function PhotosSyncPage() {
         blocked = false;
         const result = assignFolder(reading, current, day);
         current = result.current;
+        const saved = manifest.processed[photo.key];
+        if (saved) {
+          // Já copiada numa sincronização anterior: mantém a pasta e o nome que recebeu
+          const assignment = { ...result.assignment, folder: saved.folder };
+          if (current) current = { ...current, folder: saved.folder };
+          updateRow(photo.key, { reading, assignment, fileName: saved.fileName ?? photo.handle.name, status: "ja-existia" });
+          continue;
+        }
         try {
-          const copied = await copyPhoto(dest, result.assignment.folder, photo);
+          const fileName = await copyPhoto(dest, result.assignment.folder, photo, namer);
           manifest.processed[photo.key] = {
             folder: result.assignment.folder,
+            fileName,
             serviceNumber: reading.serviceNumber,
             plate: reading.plate,
             at: Date.now(),
           };
-          updateRow(photo.key, { reading, assignment: result.assignment, status: copied ? "copiada" : "ja-existia" });
+          updateRow(photo.key, { reading, assignment: result.assignment, fileName, status: "copiada" });
         } catch (err) {
           updateRow(photo.key, { reading, assignment: result.assignment, status: "erro", error: (err as Error)?.message });
         }
@@ -192,7 +205,8 @@ export function PhotosSyncPage() {
           </FormField>
           <p className="text-sm text-slate-500">
             As pastas são definidas em <Link to="/app/fotos-config" className="font-medium text-primary hover:underline">Local de salvamento</Link>.
-            Fotos já organizadas não são analisadas de novo.
+            Cada foto é salva com o número do atendimento e a sequência (ex: 20576401-01, 20576401-02).
+            Fotos já organizadas não são analisadas nem copiadas de novo.
           </p>
         </div>
 
@@ -259,6 +273,7 @@ export function PhotosSyncPage() {
                       {r.assignment ? (
                         <>
                           <p className="font-medium text-slate-800">{r.assignment.folder}</p>
+                          {r.fileName && <p className="font-mono text-xs text-slate-600">{r.fileName}</p>}
                           <p className="text-xs text-slate-400">{REASON_LABEL[r.assignment.reason]}</p>
                         </>
                       ) : <span className="text-slate-300">—</span>}

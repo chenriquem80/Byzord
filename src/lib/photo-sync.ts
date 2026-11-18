@@ -172,7 +172,14 @@ export async function readBoard(file: File): Promise<BoardReading> {
 
 const MANIFEST = ".byzord-fotos.json";
 
-export type ManifestItem = { folder: string; serviceNumber: string; plate: string; at: number };
+export type ManifestItem = {
+  folder: string;
+  /** Nome com que a foto foi salva na pasta do atendimento (ex: 20576401-03.jpeg) */
+  fileName?: string;
+  serviceNumber: string;
+  plate: string;
+  at: number;
+};
 export type Manifest = {
   /** Fotos já analisadas, para não reenviar à IA numa nova sincronização */
   processed: Record<string, ManifestItem>;
@@ -237,18 +244,44 @@ export function assignFolder(
   return { assignment: { folder: `SEM NUMERO ${d}-${m}-${y}`, reason: "sem-numero" }, current: null };
 }
 
-/** Copia a foto para destino/pasta/nome. Retorna false se já existia um arquivo com esse nome. */
-export async function copyPhoto(dest: DirHandle, folder: string, photo: PhotoEntry): Promise<boolean> {
-  const dir = await dest.getDirectoryHandle(folder, { create: true });
-  try {
-    await dir.getFileHandle(photo.handle.name);
-    return false;
-  } catch {
-    // não existe: copia
+/* ---------- Cópia com nome sequencial ---------- */
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Numeração das fotos dentro de cada pasta de atendimento: <pasta>-01, <pasta>-02, ...
+ * Na primeira foto de cada pasta, continua a partir do maior número que já existe nela
+ * (fotos de sincronizações anteriores).
+ */
+export class PhotoNamer {
+  private next = new Map<string, number>();
+
+  async nextName(dir: DirHandle, folder: string, originalName: string): Promise<string> {
+    if (!this.next.has(folder)) {
+      const pattern = new RegExp(`^${escapeRegex(folder)}-(\\d+)\\.`, "i");
+      let max = 0;
+      for await (const entry of dir.values()) {
+        const m = entry.kind === "file" ? entry.name.match(pattern) : null;
+        if (m) max = Math.max(max, Number(m[1]));
+      }
+      this.next.set(folder, max + 1);
+    }
+    const n = this.next.get(folder)!;
+    this.next.set(folder, n + 1);
+    const ext = (originalName.match(/\.[^.]+$/)?.[0] ?? ".jpg").toLowerCase();
+    return `${folder}-${String(n).padStart(2, "0")}${ext}`;
   }
-  const fh = await dir.getFileHandle(photo.handle.name, { create: true });
+}
+
+/** Copia a foto para destino/pasta com o próximo nome da sequência. Retorna o nome usado. */
+export async function copyPhoto(dest: DirHandle, folder: string, photo: PhotoEntry, namer: PhotoNamer): Promise<string> {
+  const dir = await dest.getDirectoryHandle(folder, { create: true });
+  const fileName = await namer.nextName(dir, folder, photo.handle.name);
+  const fh = await dir.getFileHandle(fileName, { create: true });
   const w = await fh.createWritable();
   await w.write(photo.file);
   await w.close();
-  return true;
+  return fileName;
 }
