@@ -36,6 +36,8 @@ export const PRINT_CSS = `
   .info .bold { font-weight: 700; }
   .info .sub { font-size: 8pt; color: #475569; }
   .coded-row { font-size: 6pt; font-family: monospace; color: #64748b; flex-shrink: 0; text-align: center; }
+  .variant-row { display: flex; gap: 0.12cm; justify-content: center; }
+  .variant-tag { font-size: 11pt; font-weight: 700; line-height: 1; border: 1px solid #0f172a; border-radius: 3px; padding: 0.05cm 0.12cm; }
   .qr-box { display: flex; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.07cm; }
   .qr-box svg { width: 2.4cm !important; height: 2.4cm !important; }
   .bc-box { flex-shrink: 0; align-self: stretch; }
@@ -97,6 +99,8 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
   const codeValue = label.productCode;
   const n1 = noiseDigits(codeValue, 7, 1);
   const n2 = noiseDigits(codeValue, 8, 2);
+  // Condição especial (B, R, BR) e lado (A, D, E) — só as letras, entre o logo e o QR
+  const variantTags = [label.specialCondition, label.lado].map((v) => up(v).trim()).filter(Boolean);
 
   function handlePrint() {
     const qrSvg = qrWrapRef.current?.querySelector("svg")?.outerHTML ?? "";
@@ -106,9 +110,11 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     const featureLine = [
       label.glassType ? up(label.glassType) : "",
       label.feature ? up(label.feature) : "",
-      label.lado ? up(label.lado) : "",
       label.manufacturer ? up(label.manufacturer) : "",
     ].filter(Boolean).join(" · ");
+    const variantHtml = variantTags.length > 0
+      ? `<div class="variant-row">${variantTags.map((t) => `<span class="variant-tag">${t}</span>`).join("")}</div>`
+      : "";
     const supplierLine = [up(label.supplier), up(label.location)].filter(Boolean).join(" / ");
 
     const html = `<!DOCTYPE html>
@@ -135,6 +141,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
   </div>
   <div class="right">
     <div class="logo-wrap"><img src="${LOGO_URL}" alt="Byzord Auto Vitrais" /></div>
+    ${variantHtml}
     ${qrSvg ? `<div class="qr-box">${qrSvg}</div>` : ""}
   </div>
 </body>
@@ -188,7 +195,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
             <p>{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
             {(label.feature || label.glassType) && (
               <p className="font-bold">
-                {[label.glassType, label.feature, label.lado, label.manufacturer]
+                {[label.glassType, label.feature, label.manufacturer]
                   .filter(Boolean).map(up).join(" · ")}
               </p>
             )}
@@ -212,6 +219,13 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
         {/* Coluna logo + QR (lado esquerdo) */}
         <div className="flex w-[90px] shrink-0 flex-col items-center justify-between">
           <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-[30px] w-auto object-contain" />
+          {variantTags.length > 0 && (
+            <div className="flex justify-center gap-1">
+              {variantTags.map((t) => (
+                <span key={t} className="rounded-[3px] border border-slate-900 px-1 text-[11px] font-bold leading-tight">{t}</span>
+              ))}
+            </div>
+          )}
           <div ref={qrWrapRef} className="rounded border border-slate-300 p-0.5">
             <QRCodeSVG value={buildLabelQrValue(label)} size={70} level="M" includeMargin={false} />
           </div>
