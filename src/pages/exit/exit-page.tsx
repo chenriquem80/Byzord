@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, X } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { SectionCard } from "@/components/shared/section-card";
+import { parseLabelQr } from "@/components/shared/label-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +69,15 @@ export function ExitPage() {
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [dbStores, setDbStores] = useState<typeof mockStores | null>(null);
   const [saleSpecialCond, setSaleSpecialCond] = useState<string | null>(null);
+  const [saleLado, setSaleLado] = useState<string | null>(null);
+  const [scanWarning, setScanWarning] = useState<string | null>(null);
+
+  // Ao trocar de item manualmente, limpa lado/condição para não baixar a variação errada
+  function resetVariant() {
+    setSaleSpecialCond(null);
+    setSaleLado(null);
+    setScanWarning(null);
+  }
 
   const allProducts = useMemo(() => dbProducts ?? mockProducts, [dbProducts]);
   const allStores = useMemo(() => dbStores ?? mockStores, [dbStores]);
@@ -120,6 +130,7 @@ export function ExitPage() {
                   stock: inv.stock ?? inv.stock_quantity ?? 0,
                   minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
                   specialCondition: inv.special_condition ?? null,
+                  lado: inv.lado ?? null,
                 };
               }),
             };
@@ -230,14 +241,36 @@ export function ExitPage() {
     [form.watch("manufacturer"), selectedProduct],
   );
 
-  const selectedInventory = useMemo(
-    () => manufacturerStock?.inventories.find(
+  // Registros de estoque da loja com a condição especial escolhida (podem variar por lado)
+  const conditionInventories = useMemo(
+    () => (manufacturerStock?.inventories ?? []).filter(
       (inv) => inv.storeId === form.watch("storeId") &&
         ((saleSpecialCond ? (inv as any).specialCondition === saleSpecialCond : !(inv as any).specialCondition))
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [form.watch("storeId"), manufacturerStock, saleSpecialCond],
   );
+
+  // Lados com estoque disponível nessa loja/condição
+  const ladoOptions = useMemo(
+    () => conditionInventories.filter((inv) => (inv as any).lado && inv.stock > 0),
+    [conditionInventories],
+  );
+
+  const selectedInventory = useMemo(() => {
+    const ladoOf = (inv: any) => (inv.lado ?? null) as string | null;
+    if (saleLado) {
+      // Lado escolhido: registro com esse lado; senão o registro sem lado (lado salvo só no produto)
+      return conditionInventories.find((inv) => ladoOf(inv) === saleLado)
+        ?? conditionInventories.find((inv) => !ladoOf(inv));
+    }
+    const withoutLado = conditionInventories.find((inv) => !ladoOf(inv));
+    if (withoutLado) return withoutLado;
+    // Só existe um registro (com lado): usa ele; se houver vários lados, exige escolha
+    return conditionInventories.length === 1 ? conditionInventories[0] : undefined;
+  }, [conditionInventories, saleLado]);
+
+  const needsLadoChoice = !selectedInventory && conditionInventories.length > 1;
 
   const specialInventories = useMemo(
     () => (manufacturerStock?.inventories ?? []).filter(
@@ -268,7 +301,9 @@ export function ExitPage() {
         .eq("id", selectedInventory.id);
       if (error) throw error;
       const storeName = allStores.find((s) => s.id === values.storeId)?.name ?? values.storeId;
+      const soldLado = (selectedInventory as any).lado ?? saleLado ?? null;
       const noteParts = [
+        soldLado ? `Lado: ${soldLado}` : null,
         saleSpecialCond ? `Condição: ${saleSpecialCond}` : null,
         values.note || null,
       ].filter(Boolean);
@@ -305,6 +340,7 @@ export function ExitPage() {
       });
       setCodeQuery("");
       setGlassTypeFilter("");
+      resetVariant();
       // Atualiza estoque local para refletir imediatamente
       selectedInventory.stock = newStock;
     } catch (err) {
@@ -316,15 +352,39 @@ export function ExitPage() {
   }
 
   function handleBarcodeScan(rawCode: string) {
-    const code = rawCode.replace(/[^\x20-\x7E]/g, "").trim();
+    const clean = rawCode.replace(/[^\x20-\x7E]/g, "").trim();
+    // Etiquetas novas trazem fabricante, lado e condição no QR; antigas só o código
+    const parsed = parseLabelQr(clean);
+    const code = parsed ? parsed.productCode.replace(/[^\x20-\x7E]/g, "").trim() : clean;
+    const norm = (v?: string | null) => (v ?? "").trim().toLocaleUpperCase("pt-BR");
     const found = allProducts.find((p) => {
       const bc = (p.barcode ?? "").replace(/[^\x20-\x7E]/g, "").trim();
-      return bc && (bc === code || code.endsWith(bc) || bc.endsWith(code));
+      if (bc && (bc === code || code.endsWith(bc) || bc.endsWith(code))) return true;
+      // Produto sem código de barras: a etiqueta usa o nome como código
+      return !!parsed && !bc && norm(p.name) === norm(code);
     });
-    if (found) {
+    if (found && found.manufacturers.length > 0) {
+      const storeId = form.getValues("storeId");
+      const hasStockInStore = (mf: (typeof found.manufacturers)[number]) =>
+        mf.inventories.some((inv) => inv.storeId === storeId && inv.stock > 0);
+      const byName = parsed?.manufacturer
+        ? found.manufacturers.find((m) => norm(m.manufacturer) === norm(parsed.manufacturer))
+        : undefined;
+      const mf = byName ?? found.manufacturers.find(hasStockInStore) ?? found.manufacturers[0];
+
       form.setValue("productId", found.id);
-      form.setValue("manufacturer", found.manufacturers[0].manufacturer);
-      form.setValue("price", found.manufacturers[0].price);
+      form.setValue("manufacturer", mf.manufacturer);
+      form.setValue("price", mf.price);
+      setSaleSpecialCond(parsed?.specialCondition ?? null);
+      setSaleLado(parsed?.lado ?? null);
+
+      if (parsed?.manufacturer && !byName) {
+        setScanWarning(`Fabricante da etiqueta (${parsed.manufacturer}) não encontrado neste produto. Confira o fabricante antes de confirmar.`);
+      } else if (!parsed && found.manufacturers.length > 1) {
+        setScanWarning("Etiqueta antiga: o QR code não informa fabricante, lado nem condição. Confira esses campos antes de confirmar.");
+      } else {
+        setScanWarning(null);
+      }
       stopScanner();
     } else {
       // Código lido mas produto não cadastrado: fecha scanner e aguarda seleção manual
@@ -461,6 +521,7 @@ export function ExitPage() {
                     type="button"
                     className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
                     onClick={async () => {
+                      resetVariant();
                       form.setValue("productId", row.product.id);
                       form.setValue("manufacturer", row.mf.manufacturer);
                       form.setValue("price", row.mf.price);
@@ -554,6 +615,7 @@ export function ExitPage() {
                 value={form.watch("productId")}
                 onChange={(e) => {
                   const productId = e.target.value;
+                  resetVariant();
                   form.setValue("productId", productId);
                   const product = allProducts.find((p) => p.id === productId);
                   if (product && product.manufacturers.length > 0) {
@@ -582,6 +644,7 @@ export function ExitPage() {
               <Select
                 value={form.watch("manufacturer")}
                 onChange={(e) => {
+                  resetVariant();
                   form.setValue("manufacturer", e.target.value);
                   const mf = selectedProduct?.manufacturers.find((m) => m.manufacturer === e.target.value);
                   if (mf) form.setValue("price", mf.price);
@@ -632,6 +695,33 @@ export function ExitPage() {
                 ))}
               </div>
             </FormField>
+          )}
+
+          {/* Lado (se houver estoque separado por lado) */}
+          {ladoOptions.length > 0 && (
+            <FormField label="Lado">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 shadow-sm">
+                {ladoOptions.map((inv) => {
+                  const lado = (inv as any).lado as string;
+                  const active = (selectedInventory as any)?.lado === lado;
+                  return (
+                    <button key={inv.id} type="button" onClick={() => setSaleLado(lado)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${active ? "bg-violet-600 text-white" : "bg-violet-100 text-violet-700 hover:bg-violet-200"}`}>
+                      {lado} ({inv.stock} un.)
+                    </button>
+                  );
+                })}
+              </div>
+              {needsLadoChoice && (
+                <p className="mt-1 text-xs font-medium text-amber-700">Selecione o lado para dar baixa.</p>
+              )}
+            </FormField>
+          )}
+
+          {scanWarning && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+              {scanWarning}
+            </div>
           )}
 
           {/* Linha 4: Observação */}

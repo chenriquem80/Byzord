@@ -51,6 +51,7 @@ export function LabelsPage() {
               stock: inv.stock ?? 0,
               minQuantity: inv.min_quantity ?? 0,
               lado: inv.lado ?? null,
+              specialCondition: inv.special_condition ?? null,
             })),
         }));
         return {
@@ -103,24 +104,36 @@ export function LabelsPage() {
     const vehicleLabel = compat ? compat.model : product.name;
     const yearRange = compat ? `${compat.startYear}/${compat.endYear}` : "";
 
-    return product.manufacturers.map((mf) => {
-      const invLado = mf.inventories[0] ? (mf.inventories[0] as any).lado ?? product.lado ?? null : product.lado ?? null;
+    // Uma etiqueta por fabricante + lado + condição especial, para o QR identificar o item exato
+    return product.manufacturers.flatMap((mf) => {
       const dateLabel = mf.lastPurchaseDate
         ? formatMonthYear(mf.lastPurchaseDate)
         : "";
-      return {
-        key: mf.id,
+      const variants = new Map<string, { lado: string | null; specialCondition: string | null; location: string }>();
+      for (const inv of mf.inventories as any[]) {
+        const lado = inv.lado ?? product.lado ?? null;
+        const specialCondition = inv.specialCondition ?? null;
+        const key = `${lado ?? ""}|${specialCondition ?? ""}`;
+        const current = variants.get(key);
+        if (!current || (!current.location && inv.location)) {
+          variants.set(key, { lado, specialCondition, location: inv.location ?? "" });
+        }
+      }
+      if (variants.size === 0) variants.set("", { lado: product.lado ?? null, specialCondition: null, location: "" });
+      return [...variants.entries()].map(([variantKey, v]) => ({
+        key: `${mf.id}-${variantKey}`,
         productCode: product.barcode || product.name,
         vehicleLabel,
         yearRange,
         feature: product.feature,
-        lado: invLado,
+        lado: v.lado,
         glassType: product.glassType,
         manufacturer: mf.manufacturer,
+        specialCondition: v.specialCondition,
         supplier: mf.supplier ?? "",
-        location: (mf.inventories[0] as any)?.location ?? "",
+        location: v.location,
         purchaseSummary: dateLabel ? `${mf.cost} - ${dateLabel}` : "",
-      };
+      }));
     });
   }
 
@@ -185,7 +198,7 @@ export function LabelsPage() {
       {selectedProduct && labelCards.length > 0 && (
         <SectionCard
           title="Pré-visualização"
-          description={`${selectedProduct.name} — ${labelCards.length} etiqueta${labelCards.length !== 1 ? "s" : ""} (uma por fabricante)`}
+          description={`${selectedProduct.name} — ${labelCards.length} etiqueta${labelCards.length !== 1 ? "s" : ""} (uma por fabricante, lado e condição)`}
         >
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {labelCards.map((lbl) => (

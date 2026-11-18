@@ -53,7 +53,42 @@ export type LabelData = {
   supplier?: string;
   location?: string;
   purchaseSummary?: string;
+  /** Condição especial do estoque (B, R, BR) — vai apenas no QR code */
+  specialCondition?: string | null;
 };
+
+// QR code identifica o item exato do estoque: produto + fabricante + lado + condição especial.
+// Formato: BYZ1|<código>|<fabricante>|<lado>|<condição> (campos com encodeURIComponent)
+const QR_PREFIX = "BYZ1";
+
+export function buildLabelQrValue(label: Pick<LabelData, "productCode" | "manufacturer" | "lado" | "specialCondition">): string {
+  return [QR_PREFIX, label.productCode, label.manufacturer, label.lado, label.specialCondition]
+    .map((v, i) => (i === 0 ? v : encodeURIComponent(v ?? "")))
+    .join("|");
+}
+
+export type ParsedLabelQr = {
+  productCode: string;
+  manufacturer: string | null;
+  lado: string | null;
+  specialCondition: string | null;
+};
+
+/** Lê o QR das etiquetas novas; retorna null para códigos simples (etiquetas antigas / código de barras). */
+export function parseLabelQr(raw: string): ParsedLabelQr | null {
+  const parts = raw.trim().split("|");
+  if (parts[0] !== QR_PREFIX || parts.length < 2) return null;
+  const dec = (v?: string) => {
+    if (!v) return null;
+    try { return decodeURIComponent(v) || null; } catch { return v; }
+  };
+  return {
+    productCode: dec(parts[1]) ?? "",
+    manufacturer: dec(parts[2]),
+    lado: dec(parts[3]),
+    specialCondition: dec(parts[4]),
+  };
+}
 
 export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapperClassName?: string }) {
   const qrWrapRef = useRef<HTMLDivElement>(null);
@@ -178,7 +213,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
         <div className="flex w-[90px] shrink-0 flex-col items-center justify-between">
           <img src={LOGO_URL} alt="Byzord Auto Vitrais" className="h-[30px] w-auto object-contain" />
           <div ref={qrWrapRef} className="rounded border border-slate-300 p-0.5">
-            <QRCodeSVG value={codeValue} size={70} level="M" includeMargin={false} />
+            <QRCodeSVG value={buildLabelQrValue(label)} size={70} level="M" includeMargin={false} />
           </div>
         </div>
       </div>

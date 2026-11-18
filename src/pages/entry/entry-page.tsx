@@ -823,6 +823,7 @@ export function EntryPage() {
                       supplier: currentLabel.supplier,
                       location: currentLabel.location,
                       purchaseSummary: currentLabel.purchaseSummary,
+                      specialCondition: isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null,
                     }}
                     wrapperClassName="flex flex-col items-center gap-3"
                   />
@@ -860,6 +861,7 @@ export function EntryPage() {
                 supplier: selectedSupplier,
                 location: item.mf.inventories[0]?.location ?? "",
                 purchaseSummary: `${item.cost} - ${dateLabel}`,
+                specialCondition: isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null,
               };
               return <LabelCard key={item.key} label={labelData} />;
             })}

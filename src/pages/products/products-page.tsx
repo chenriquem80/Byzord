@@ -696,6 +696,8 @@ export function ProductsPage() {
             feature: values.feature,
             glassType: values.glassType,
             lado: ladoValue,
+            manufacturer: values.manufacturer,
+            specialCondition: specialCond,
             supplier: values.lastSupplier,
             location: invLocation,
             purchaseSummary: values.cost && dateLabel ? `${values.cost} - ${dateLabel}` : "",
