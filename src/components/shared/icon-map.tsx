@@ -12,8 +12,6 @@ import {
   PlaySquare,
   PlusCircle,
   FileText,
-  FolderCog,
-  Images,
   Package,
   PackagePlus,
   Paintbrush,
@@ -57,8 +55,6 @@ const icons: Record<string, LucideIcon> = {
   Paintbrush,
   Printer,
   Wrench,
-  FolderCog,
-  Images,
 };
 
 export function getIcon(name: string) {

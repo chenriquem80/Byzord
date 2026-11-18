@@ -30,8 +30,6 @@ const UserManagementPage = lazy(() => import("@/pages/settings/user-management-p
 const TransferPage = lazy(() => import("@/pages/transfer/transfer-page").then((module) => ({ default: module.TransferPage })));
 const RegisterPage = lazy(() => import("@/pages/register-page").then((module) => ({ default: module.RegisterPage })));
 const PartOrdersPage = lazy(() => import("@/pages/part-orders/part-orders-page").then((module) => ({ default: module.PartOrdersPage })));
-const PhotosSyncPage = lazy(() => import("@/pages/photos/photos-sync-page").then((module) => ({ default: module.PhotosSyncPage })));
-const PhotosSettingsPage = lazy(() => import("@/pages/photos/photos-settings-page").then((module) => ({ default: module.PhotosSettingsPage })));
 const FranchiseReceiptPage = lazy(() => import("@/pages/franchise-receipt/franchise-receipt-page").then((module) => ({ default: module.FranchiseReceiptPage })));
 
 function withSuspense(component: ReactNode) {
@@ -170,8 +168,6 @@ export const router = createBrowserRouter([
       { path: "transferencia",element: withSuspense(<AuthGuard page="/app/transferencia"><TransferPage /></AuthGuard>) },
       { path: "encomenda",        element: withSuspense(<AuthGuard page="/app/encomenda"><PartOrdersPage /></AuthGuard>) },
       { path: "recibo-franquia",  element: withSuspense(<AuthGuard page="/app/recibo-franquia"><FranchiseReceiptPage /></AuthGuard>) },
-      { path: "fotos",            element: withSuspense(<AuthGuard page="/app/fotos"><PhotosSyncPage /></AuthGuard>) },
-      { path: "fotos-config",     element: withSuspense(<AuthGuard page="/app/fotos-config"><PhotosSettingsPage /></AuthGuard>) },
     ],
   },
   {
