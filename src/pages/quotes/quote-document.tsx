@@ -134,11 +134,13 @@ export function QuoteDocument() {
     const state = location.state as { body?: string; entryId?: string } | null;
     if (!state?.body) return;
     const lines = state.body.split("\n");
-    const get = (prefix: string) => lines.find((l) => l.toLowerCase().startsWith(prefix.toLowerCase()))?.replace(new RegExp(`^${prefix}`, "i"), "").trim() ?? "";
+    // Remove o prefixo pelo tamanho (sem regex: "R$" quebraria a expressão)
+    const get = (prefix: string) => lines.find((l) => l.toLowerCase().startsWith(prefix.toLowerCase()))?.slice(prefix.length).trim() ?? "";
     setVeiculo(get("Veículo: "));
     setPlaca(get("Placa: "));
     setItem(get("Item avariado: "));
     setValor(get("Valor: R$ "));
+    setPaymentCondition(get("Condição de pagamento: "));
     if (state.entryId) setEditingEntryId(state.entryId);
     navigate(location.pathname, { replace: true, state: null });
   }, []);
@@ -160,7 +162,11 @@ export function QuoteDocument() {
   async function saveToAgenda() {
     if (!supabase || !user) return;
     setAgendaError(null);
-    const description = `**** ORÇAMENTO ****\n${buildBodyText()}`;
+    const agendaBody = [
+      buildBodyText(),
+      paymentCondition.trim() ? `Condição de pagamento: ${paymentCondition.trim().toUpperCase()}` : "",
+    ].filter(Boolean).join("\n");
+    const description = `**** ORÇAMENTO ****\n${agendaBody}`;
     const { error } = editingEntryId
       ? await supabase.from("agenda").update({ description }).eq("id", editingEntryId)
       : await supabase.from("agenda").insert({
