@@ -26,6 +26,8 @@ export type AppPage =
   | "/app/relatorios/movimentacoes"
   | "/app/relatorios/acoes-usuario"
   | "/app/relatorios/alteracoes-item"
+  | "/app/fotos"
+  | "/app/fotos-config"
   | "/app/configuracoes"
   | "/app/transferencia"
   | "/app/registro"
@@ -57,6 +59,8 @@ export const PAGE_LABELS: Record<AppPage, string> = {
   "/app/relatorios/movimentacoes":      "Movimentações",
   "/app/relatorios/acoes-usuario":      "Ações por usuário",
   "/app/relatorios/alteracoes-item":    "Alterações por item",
+  "/app/fotos":                         "Fotos — Sincronização",
+  "/app/fotos-config":                  "Fotos — Local de salvamento",
   "/app/configuracoes":                 "Configurações",
   "/app/transferencia":         "Transferência",
   "/app/registro":              "Registro",
@@ -98,6 +102,10 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
     { page: "/app/relatorios/acoes-usuario",   label: "Ações por usuário" },
     { page: "/app/relatorios/alteracoes-item", label: "Alterações por item" },
   ] },
+  { title: "Fotos", pages: [
+    { page: "/app/fotos-config", label: "Local de salvamento" },
+    { page: "/app/fotos",        label: "Sincronização" },
+  ] },
   { title: "Usuários", pages: [{ page: "/app/usuarios", label: "Usuários" }] },
 ];
 
@@ -131,6 +139,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/relatorios/movimentacoes":      "write",
     "/app/relatorios/acoes-usuario":      "write",
     "/app/relatorios/alteracoes-item":    "write",
+    "/app/fotos":                         "write",
+    "/app/fotos-config":                  "write",
     "/app/configuracoes":         "write",
     "/app/transferencia":         "write",
     "/app/registro":              "write",
@@ -163,6 +173,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/relatorios/movimentacoes":      "write",
     "/app/relatorios/acoes-usuario":      "write",
     "/app/relatorios/alteracoes-item":    "write",
+    "/app/fotos":                         "write",
+    "/app/fotos-config":                  "write",
     "/app/configuracoes":         "write",
     "/app/transferencia":         "write",
     "/app/registro":              "write",
@@ -195,6 +207,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/relatorios/movimentacoes":      "none",
     "/app/relatorios/acoes-usuario":      "none",
     "/app/relatorios/alteracoes-item":    "none",
+    "/app/fotos":                         "write",
+    "/app/fotos-config":                  "write",
     "/app/configuracoes":         "none",
     "/app/transferencia":         "none",
     "/app/registro":              "none",
@@ -227,6 +241,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/relatorios/movimentacoes":      "none",
     "/app/relatorios/acoes-usuario":      "none",
     "/app/relatorios/alteracoes-item":    "none",
+    "/app/fotos":                         "write",
+    "/app/fotos-config":                  "write",
     "/app/configuracoes":         "none",
     "/app/transferencia":         "write",
     "/app/registro":              "read",

@@ -52,6 +52,15 @@ const menuItems: MenuItem[] = [
   },
   { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
   { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3" },
+  {
+    title: "Fotos",
+    route: "/app/fotos",
+    icon: "Images",
+    children: [
+      { title: "Local de salvamento", route: "/app/fotos-config", icon: "FolderCog" },
+      { title: "Sincronização", route: "/app/fotos", icon: "RefreshCcw" },
+    ],
+  },
   { title: "Usuários", route: "/app/usuarios", icon: "UserCog" },
   { title: "Sair", route: "/login", icon: "LogOut" },
 ];
@@ -60,6 +69,7 @@ const menuItems: MenuItem[] = [
 const groupChildRoutes: Record<string, string[]> = {
   "/app/agenda": ["/app/agenda", "/app/imprimir-orcamento", "/app/encomenda", "/app/recibo-franquia", "/app/agenda-consulta"],
   "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/pedido"],
+  "/app/fotos": ["/app/fotos", "/app/fotos-config"],
   "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia", "/app/produtos", "/app/etiquetagem", "/app/reposicao"],
 };
 
