@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FolderOpen, FolderInput, FolderOutput, AlertTriangle } from "lucide-react";
+import { FolderOpen, FolderInput, AlertTriangle } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,15 +13,9 @@ import {
 
 const FOLDERS: { key: FolderKey; title: string; description: string; icon: typeof FolderInput }[] = [
   {
-    key: "destination",
-    title: "Onde salvar as fotos",
-    description: "Pasta onde serão criadas as subpastas de cada atendimento (uma pasta por número).",
-    icon: FolderOutput,
-  },
-  {
     key: "source",
     title: "Fotos do grupo do WhatsApp",
-    description: "Pasta onde você salva as fotos do grupo \"Fotos\" do WhatsApp. A sincronização lê dela as fotos do dia.",
+    description: "Pasta onde você salva as fotos do grupo \"Fotos\" do WhatsApp. A sincronização lê dela as fotos do dia e cria dentro dela uma subpasta para cada atendimento.",
     icon: FolderInput,
   },
 ];
@@ -33,9 +27,7 @@ export function PhotosSettingsPage() {
 
   useEffect(() => {
     if (!supported) return;
-    Promise.all([loadFolder("source"), loadFolder("destination")]).then(([source, destination]) =>
-      setFolders({ source, destination }),
-    );
+    loadFolder("source").then((source) => setFolders((prev) => ({ ...prev, source })));
   }, [supported]);
 
   async function choose(key: FolderKey) {
@@ -53,7 +45,7 @@ export function PhotosSettingsPage() {
   return (
     <SectionCard
       title="Fotos — Local de salvamento"
-      description="Escolha as pastas usadas pela sincronização. A escolha fica salva neste navegador e neste computador."
+      description="Escolha a pasta do grupo do WhatsApp usada pela sincronização. A escolha fica salva neste navegador e neste computador."
     >
       {!supported && (
         <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -63,7 +55,7 @@ export function PhotosSettingsPage() {
       )}
       {error && <p className="mb-4 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</p>}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid max-w-xl gap-4">
         {FOLDERS.map(({ key, title, description, icon: Icon }) => (
           <div key={key} className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2">

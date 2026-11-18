@@ -1,6 +1,6 @@
 // Sincronização de fotos de atendimento: lê as fotos do dia de uma pasta (fotos salvas do grupo
 // "Fotos" do WhatsApp), identifica o número do atendimento escrito na lousa e copia cada foto
-// para uma subpasta com esse número dentro da pasta de destino.
+// para uma subpasta com esse número dentro da própria pasta do grupo.
 // Usa a File System Access API (Chrome/Edge no computador).
 import { supabase } from "@/lib/database";
 
@@ -168,7 +168,7 @@ export async function readBoard(file: File): Promise<BoardReading> {
   return body as BoardReading;
 }
 
-/* ---------- Registro do que já foi processado (fica na pasta de destino) ---------- */
+/* ---------- Registro do que já foi processado (fica na pasta do grupo) ---------- */
 
 const MANIFEST = ".byzord-fotos.json";
 

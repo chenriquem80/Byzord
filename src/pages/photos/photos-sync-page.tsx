@@ -79,14 +79,16 @@ export function PhotosSyncPage() {
   async function handleSync() {
     setMessage(null);
     setRows([]);
-    const [source, dest] = await Promise.all([loadFolder("source"), loadFolder("destination")]);
+    // As subpastas dos atendimentos são criadas dentro da própria pasta do grupo do WhatsApp
+    const source = await loadFolder("source");
+    const dest = source;
     if (!source || !dest) {
-      setMessage({ type: "error", text: "Escolha as pastas de origem e de destino em Fotos → Local de salvamento." });
+      setMessage({ type: "error", text: "Escolha a pasta do grupo do WhatsApp em Fotos → Local de salvamento." });
       return;
     }
     setRunning(true);
     try {
-      if (!(await ensurePermission(source, "read")) || !(await ensurePermission(dest, "readwrite"))) {
+      if (!(await ensurePermission(source, "readwrite"))) {
         throw new Error("Permissão para acessar as pastas foi negada.");
       }
       const photos = await listPhotosOfDay(source, day);
@@ -204,7 +206,7 @@ export function PhotosSyncPage() {
             <Input type="date" value={day} max={todayIso()} onChange={(e) => setDay(e.target.value)} disabled={running} />
           </FormField>
           <p className="text-sm text-slate-500">
-            As pastas são definidas em <Link to="/app/fotos-config" className="font-medium text-primary hover:underline">Local de salvamento</Link>.
+            A pasta é definida em <Link to="/app/fotos-config" className="font-medium text-primary hover:underline">Local de salvamento</Link>.
             Cada foto é salva com o número do atendimento e a sequência (ex: 20576401-01, 20576401-02).
             Fotos já organizadas não são analisadas nem copiadas de novo.
           </p>
