@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
 import { canWriteStore } from "@/lib/permissions";
-import { Camera, Check, Plus, X } from "lucide-react";
+import { Camera, Check, Plus, QrCode, X } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
-import { LabelCard, type LabelData } from "@/components/shared/label-card";
+import { LabelCard, parseLabelQr, type LabelData } from "@/components/shared/label-card";
+import { QrScannerDialog } from "@/components/shared/qr-scanner-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
@@ -71,6 +72,8 @@ export function EntryPage() {
   const [loaded, setLoaded] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const entryListRef = useRef<HTMLDivElement>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanMessage, setScanMessage] = useState<{ type: "ok" | "warn" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -230,17 +233,79 @@ export function EntryPage() {
       });
   }, [codeQuery, glassTypeFilter, products, selectedStoreId]);
 
-  function handleAddItem(row: SearchRow) {
+  function handleAddItem(row: SearchRow, initialQty = 0) {
     const key = `${row.product.id}-${row.mf.id}-${Date.now()}`;
     const quantities: Record<string, string> = {};
     const locations: Record<string, string> = {};
     stores.forEach((store) => {
-      quantities[store.id] = "0";
+      quantities[store.id] = initialQty > 0 && store.id === selectedStoreId ? String(initialQty) : "0";
       const inv = row.mf.inventories.find((i) => i.storeId === store.id);
       locations[store.id] = inv?.location ?? "";
     });
     setEntryItems((prev) => [...prev, { key, product: row.product, mf: row.mf, quantities, locations, cost: row.mf.cost ?? 0 }]);
     setTimeout(() => entryListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }
+
+  // Leitura do QR code da etiqueta: adiciona o produto/fabricante à entrada e
+  // preenche lado e condição especial conforme a etiqueta
+  function handleScan(raw: string) {
+    setScannerOpen(false);
+    const clean = raw.replace(/[^ -~]/g, "").trim();
+    const parsed = parseLabelQr(clean);
+    const code = parsed ? parsed.productCode.replace(/[^ -~]/g, "").trim() : clean;
+    const norm = (v?: string | null) => (v ?? "").trim().toLocaleUpperCase("pt-BR");
+    const found = products.find((p) => {
+      const bc = (p.barcode ?? "").replace(/[^ -~]/g, "").trim();
+      if (bc && (bc === code || code.endsWith(bc) || bc.endsWith(code))) return true;
+      // Produto sem código de barras: a etiqueta usa o nome como código
+      return !bc && norm(p.name) === norm(code);
+    });
+    if (!found) {
+      setScanMessage({ type: "error", text: `Produto não encontrado para o código "${code}". Busque pelo nome ou cadastre em Novo Item.` });
+      return;
+    }
+    if (found.manufacturers.length === 0) {
+      setScanMessage({ type: "error", text: `${found.name} não tem fabricante cadastrado. Cadastre o fabricante em Produtos.` });
+      return;
+    }
+    const byName = parsed?.manufacturer
+      ? found.manufacturers.find((m) => norm(m.manufacturer) === norm(parsed.manufacturer))
+      : undefined;
+    const mf = byName ?? found.manufacturers[0];
+
+    if (parsed) {
+      // Etiqueta nova: lado e condição vêm do QR
+      const lados = (parsed.lado ?? "").toUpperCase().split("/");
+      setIsLadoA(lados.includes("A"));
+      setIsLadoD(lados.includes("D"));
+      setIsLadoE(lados.includes("E"));
+      const cond = (parsed.specialCondition ?? "").toUpperCase();
+      setIsTypeB(cond.includes("B"));
+      setIsTypeR(cond.includes("R"));
+      if (parsed.manufacturer) {
+        if (!manufacturersList.includes(mf.manufacturer) && byName) setManufacturersList((prev) => [...prev, mf.manufacturer]);
+        if (!byName && !manufacturersList.includes(parsed.manufacturer)) setManufacturersList((prev) => [...prev, parsed.manufacturer!]);
+        setSelectedManufacturer(byName ? mf.manufacturer : parsed.manufacturer);
+      }
+    }
+
+    const row: SearchRow = { product: found, mf, totalStock: 0 };
+    if (isAlreadyAdded(row)) {
+      setScanMessage({ type: "warn", text: `${found.name} (${mf.manufacturer}) já está na entrada. Ajuste a quantidade abaixo.` });
+    } else {
+      handleAddItem(row, 1);
+      const extras = [
+        parsed?.lado ? `lado ${parsed.lado}` : null,
+        parsed?.specialCondition ? `condição ${parsed.specialCondition}` : null,
+      ].filter(Boolean).join(", ");
+      const warn = !parsed
+        ? " Etiqueta antiga: confira fabricante, lado e condição."
+        : parsed.manufacturer && !byName ? ` Fabricante ${parsed.manufacturer} ainda não existe neste produto e será criado ao salvar.` : "";
+      setScanMessage({
+        type: warn ? "warn" : "ok",
+        text: `${found.name} — ${byName?.manufacturer ?? mf.manufacturer} adicionado${extras ? ` (${extras})` : ""}.${warn}`,
+      });
+    }
   }
 
   function updateItemCost(key: string, value: string) {
@@ -446,6 +511,7 @@ export function EntryPage() {
 
   return (
     <div className="space-y-6">
+      <QrScannerDialog open={scannerOpen} onClose={() => setScannerOpen(false)} onScan={handleScan} />
       <SectionCard
         title="Nova entrada"
         description={loaded ? `${products.length} produto${products.length !== 1 ? "s" : ""} cadastrado${products.length !== 1 ? "s" : ""}` : "Carregando produtos..."}
@@ -469,6 +535,22 @@ export function EntryPage() {
           <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-4">
               {/* Search — igual ao estoque: texto + dropdown de tipo */}
+              {!readOnly && (
+                <Button type="button" className="w-full md:w-auto" onClick={() => { setScanMessage(null); setScannerOpen(true); }}>
+                  <QrCode className="size-4" />
+                  Ler QR code
+                </Button>
+              )}
+              {scanMessage && (
+                <div className={`flex items-start justify-between gap-2 rounded-2xl px-4 py-3 text-sm font-medium ${
+                  scanMessage.type === "ok" ? "bg-emerald-50 text-emerald-700"
+                    : scanMessage.type === "warn" ? "bg-amber-50 text-amber-800" : "bg-rose-50 text-rose-700"}`}>
+                  <span>{scanMessage.text}</span>
+                  <button type="button" onClick={() => setScanMessage(null)} className="shrink-0">
+                    <X className="size-4" />
+                  </button>
+                </div>
+              )}
               <div className="grid gap-4 md:grid-cols-[1fr_auto_auto]">
                 <Input
                   value={codeQuery}
