@@ -433,6 +433,191 @@ function StockAvailableReport() {
   );
 }
 
+// ── Relatório 3: Itens abaixo do estoque mínimo ─────────────────────────────
+
+type MinStockRow = StockRow & { lado: string; special_condition: string };
+
+function BelowMinimumReport() {
+  const { user } = useAuth();
+  // Funcionário vê só a própria loja; administrador escolhe qualquer loja
+  const lockedStoreId = user && user.role !== "ADMIN" && user.storeId ? user.storeId : null;
+  const [stores, setStores] = useState<StoreRow[]>([]);
+  const [storeId, setStoreId] = useState(lockedStoreId ?? "all");
+  const [glassTypeFilter, setGlassTypeFilter] = useState("");
+  const [rows, setRows] = useState<MinStockRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+  const [queryError, setQueryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("stores").select("id, name").then(({ data }) => {
+      if (data) setStores(data);
+    });
+  }, []);
+
+  async function fetchReport() {
+    if (!supabase) return;
+    setLoading(true);
+    setQueryError(null);
+    const effectiveStoreId = lockedStoreId ?? storeId;
+    let q = supabase
+      .from("product_store_inventory")
+      .select("*, stores(id, name), product_manufacturers(manufacturer, products(name, glass_type, feature, brand))")
+      .gt("min_quantity", 0);
+    if (effectiveStoreId !== "all") q = q.eq("store_id", effectiveStoreId);
+    const { data, error } = await q;
+    if (error) {
+      console.error(error);
+      setQueryError(`Erro ao consultar: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+    const mapped: MinStockRow[] = (data ?? [])
+      // Só entra quem está abaixo do mínimo cadastrado; igual ou acima fica de fora
+      .filter((r: any) => (r.stock ?? 0) < (r.min_quantity ?? 0))
+      .map((r: any) => ({
+        product_name: r.product_manufacturers?.products?.name ?? "—",
+        manufacturer: r.product_manufacturers?.manufacturer ?? "—",
+        brand: r.product_manufacturers?.products?.brand ?? "—",
+        glass_type: r.product_manufacturers?.products?.glass_type ?? "—",
+        feature: r.product_manufacturers?.products?.feature ?? "—",
+        location: r.location || "—",
+        stock: r.stock ?? 0,
+        min_quantity: r.min_quantity ?? 0,
+        store_name: r.stores?.name ?? "—",
+        lado: r.lado ?? "",
+        special_condition: r.special_condition ?? "",
+      }))
+      // Maior falta primeiro
+      .sort((a: MinStockRow, b: MinStockRow) =>
+        (b.min_quantity - b.stock) - (a.min_quantity - a.stock) || a.product_name.localeCompare(b.product_name, "pt-BR"));
+    setGlassTypeFilter("");
+    setRows(mapped);
+    setFetched(true);
+    setLoading(false);
+  }
+
+  const uniqueGlassTypes = useMemo(() => [...new Set(rows.map((r) => r.glass_type).filter((t) => t && t !== "—"))].sort(), [rows]);
+  const filteredRows = useMemo(() => rows.filter((r) => !glassTypeFilter || r.glass_type === glassTypeFilter), [rows, glassTypeFilter]);
+  const totalMissing = useMemo(() => filteredRows.reduce((sum, r) => sum + (r.min_quantity - r.stock), 0), [filteredRows]);
+  const variant = (r: MinStockRow) => [r.special_condition, r.lado].filter(Boolean).join(" ") || "—";
+
+  const HEAD = ["Loja", "Produto", "Fabricante", "Tipo", "Característica", "Cond./Lado", "Localização", "Estoque", "Mínimo", "Faltam"];
+
+  function exportPdf() {
+    const doc = new jsPDF({ orientation: "landscape" });
+    const sid = lockedStoreId ?? storeId;
+    const storeName = sid === "all" ? "Todas as lojas" : (stores.find((s) => s.id === sid)?.name ?? "");
+    doc.setFontSize(14);
+    doc.text("Itens Abaixo do Estoque Mínimo", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(
+      `Loja: ${storeName}${glassTypeFilter ? `   •   Tipo: ${glassTypeFilter}` : ""}   •   Gerado em: ${new Date().toLocaleString("pt-BR")}`,
+      14, 23,
+    );
+    doc.setTextColor(0);
+    autoTable(doc, {
+      startY: 28,
+      head: [HEAD],
+      body: [
+        ...filteredRows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.glass_type, r.feature, variant(r), r.location, r.stock, r.min_quantity, r.min_quantity - r.stock]),
+        ["", "", "", "", "", "", "", "", "TOTAL", totalMissing],
+      ],
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      didParseCell: (data) => {
+        const isTotal = data.row.index === filteredRows.length;
+        if (isTotal) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [241, 245, 249];
+        } else if (data.section === "body" && (data.column.index === 7 || data.column.index === 9)) {
+          data.cell.styles.textColor = [220, 38, 38];
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+    doc.save("abaixo_estoque_minimo.pdf");
+  }
+
+  return (
+    <SectionCard
+      title="Abaixo do estoque mínimo"
+      description="Itens com quantidade atual menor que o estoque mínimo cadastrado. Itens iguais ou acima do mínimo não aparecem."
+      action={
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={lockedStoreId ?? storeId} onChange={(e) => setStoreId(e.target.value)} className="w-44" disabled={!!lockedStoreId}>
+            {!lockedStoreId && <option value="all">Todas as lojas</option>}
+            {stores.filter((s) => !lockedStoreId || s.id === lockedStoreId).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>
+          <Button size="sm" onClick={fetchReport} disabled={loading}>
+            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+            Consultar
+          </Button>
+          {filteredRows.length > 0 && (
+            <Button size="sm" variant="outline" onClick={exportPdf}>
+              <FileDown className="size-3.5" /> PDF
+            </Button>
+          )}
+        </div>
+      }
+    >
+      {queryError && <p className="mb-4 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{queryError}</p>}
+      {!fetched ? (
+        <p className="py-8 text-center text-sm text-slate-400">Selecione a loja e clique em Consultar.</p>
+      ) : rows.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">Nenhum item abaixo do estoque mínimo.</p>
+      ) : (
+        <>
+          <div className="mb-4 flex flex-wrap gap-3">
+            <Select value={glassTypeFilter} onChange={(e) => setGlassTypeFilter(e.target.value)} className="w-48">
+              <option value="">Todos os tipos</option>
+              {uniqueGlassTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+            </Select>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  {HEAD.map((h) => (
+                    <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredRows.map((r, i) => (
+                  <tr key={i} className="hover:bg-slate-50">
+                    <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.store_name}</td>
+                    <td className="px-3 py-2 font-medium text-slate-900">{r.product_name}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.manufacturer}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.glass_type}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.feature}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{variant(r)}</td>
+                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.location}</td>
+                    <td className="px-3 py-2 font-semibold text-rose-600 whitespace-nowrap">{r.stock}</td>
+                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.min_quantity}</td>
+                    <td className="px-3 py-2 font-bold text-rose-600 whitespace-nowrap">{r.min_quantity - r.stock}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 bg-slate-50">
+                  <td colSpan={9} className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Total — {filteredRows.length} item{filteredRows.length !== 1 ? "s" : ""} abaixo do mínimo
+                  </td>
+                  <td className="px-3 py-2.5 text-base font-bold text-rose-600">{totalMissing}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
+    </SectionCard>
+  );
+}
+
 // ── Relatório 4: Movimentações por loja ─────────────────────────────────────
 
 type MovRow = {
@@ -1061,6 +1246,7 @@ export function ReportsPage() {
   const isAdmin = user?.role === "ADMIN";
 
   const canSeeEstoque    = !user || canAccessPage(user, "/app/relatorios/itens-estoque");
+  const canSeeMinimo     = !user || canAccessPage(user, "/app/relatorios/estoque-minimo");
   const canSeeMov        = !user || canAccessPage(user, "/app/relatorios/movimentacoes");
   const canSeeAcoes      = !user || canAccessPage(user, "/app/relatorios/acoes-usuario");
   const canSeeAlteracoes = !user || canAccessPage(user, "/app/relatorios/alteracoes-item");
@@ -1068,6 +1254,7 @@ export function ReportsPage() {
   return (
     <div className="space-y-6">
       {canSeeEstoque    && <StockAvailableReport />}
+      {canSeeMinimo     && <BelowMinimumReport />}
       {canSeeMov        && <MovementByStoreReport />}
       {canSeeAcoes      && <UserActionReport />}
       {canSeeAlteracoes && <ItemChangeReport />}

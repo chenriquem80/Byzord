@@ -23,6 +23,7 @@ export type AppPage =
   | "/app/clientes"
   | "/app/relatorios"
   | "/app/relatorios/itens-estoque"
+  | "/app/relatorios/estoque-minimo"
   | "/app/relatorios/movimentacoes"
   | "/app/relatorios/acoes-usuario"
   | "/app/relatorios/alteracoes-item"
@@ -54,6 +55,7 @@ export const PAGE_LABELS: Record<AppPage, string> = {
   "/app/clientes":              "Clientes",
   "/app/relatorios":                    "Relatórios",
   "/app/relatorios/itens-estoque":      "Itens em estoque",
+  "/app/relatorios/estoque-minimo":     "Abaixo do estoque mínimo",
   "/app/relatorios/movimentacoes":      "Movimentações",
   "/app/relatorios/acoes-usuario":      "Ações por usuário",
   "/app/relatorios/alteracoes-item":    "Alterações por item",
@@ -94,6 +96,7 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
   { title: "Relatórios", pages: [
     { page: "/app/relatorios",                 label: "Acesso à área" },
     { page: "/app/relatorios/itens-estoque",   label: "Itens em estoque" },
+    { page: "/app/relatorios/estoque-minimo",  label: "Abaixo do estoque mínimo" },
     { page: "/app/relatorios/movimentacoes",   label: "Movimentações" },
     { page: "/app/relatorios/acoes-usuario",   label: "Ações por usuário" },
     { page: "/app/relatorios/alteracoes-item", label: "Alterações por item" },
@@ -128,6 +131,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/clientes":              "write",
     "/app/relatorios":                    "write",
     "/app/relatorios/itens-estoque":      "write",
+    "/app/relatorios/estoque-minimo":     "write",
     "/app/relatorios/movimentacoes":      "write",
     "/app/relatorios/acoes-usuario":      "write",
     "/app/relatorios/alteracoes-item":    "write",
@@ -160,6 +164,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/clientes":              "write",
     "/app/relatorios":                    "write",
     "/app/relatorios/itens-estoque":      "write",
+    "/app/relatorios/estoque-minimo":     "write",
     "/app/relatorios/movimentacoes":      "write",
     "/app/relatorios/acoes-usuario":      "write",
     "/app/relatorios/alteracoes-item":    "write",
@@ -192,6 +197,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/clientes":              "read",
     "/app/relatorios":                    "none",
     "/app/relatorios/itens-estoque":      "none",
+    "/app/relatorios/estoque-minimo":     "none",
     "/app/relatorios/movimentacoes":      "none",
     "/app/relatorios/acoes-usuario":      "none",
     "/app/relatorios/alteracoes-item":    "none",
@@ -224,6 +230,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/clientes":              "none",
     "/app/relatorios":                    "none",
     "/app/relatorios/itens-estoque":      "none",
+    "/app/relatorios/estoque-minimo":     "none",
     "/app/relatorios/movimentacoes":      "none",
     "/app/relatorios/acoes-usuario":      "none",
     "/app/relatorios/alteracoes-item":    "none",
