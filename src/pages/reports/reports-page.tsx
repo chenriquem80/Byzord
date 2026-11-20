@@ -455,8 +455,11 @@ function localDateStr() {
 
 function MovementByStoreReport() {
   const today = localDateStr();
+  const { user } = useAuth();
+  // Funcionário vê só a movimentação da própria loja; administrador escolhe qualquer loja
+  const lockedStoreId = user && user.role !== "ADMIN" && user.storeId ? user.storeId : null;
   const [stores, setStores] = useState<StoreRow[]>([]);
-  const [storeId, setStoreId] = useState("all");
+  const [storeId, setStoreId] = useState(lockedStoreId ?? "all");
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
   const [typeFilter, setTypeFilter] = useState("all");
@@ -484,9 +487,15 @@ function MovementByStoreReport() {
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("created_at", { ascending: false });
-    if (storeId !== "all") {
-      const storeName = stores.find((s) => s.id === storeId)?.name ?? "";
-      if (storeName) q = q.eq("store_name", storeName);
+    const effectiveStoreId = lockedStoreId ?? storeId;
+    if (effectiveStoreId !== "all") {
+      const storeName = stores.find((s) => s.id === effectiveStoreId)?.name ?? "";
+      if (!storeName) {
+        setQueryError("Loja não encontrada. Recarregue a página e tente novamente.");
+        setLoading(false);
+        return;
+      }
+      q = q.eq("store_name", storeName);
     }
     if (typeFilter !== "all") q = q.eq("type", typeFilter);
     const { data, error } = await q;
@@ -549,9 +558,9 @@ function MovementByStoreReport() {
       description="Entradas e saídas de estoque filtradas por loja e período."
       action={
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="w-40">
-            <option value="all">Todas as lojas</option>
-            {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <Select value={lockedStoreId ?? storeId} onChange={(e) => setStoreId(e.target.value)} className="w-40" disabled={!!lockedStoreId}>
+            {!lockedStoreId && <option value="all">Todas as lojas</option>}
+            {stores.filter((s) => !lockedStoreId || s.id === lockedStoreId).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
           <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-36">
             <option value="all">Entrada + Saída</option>
