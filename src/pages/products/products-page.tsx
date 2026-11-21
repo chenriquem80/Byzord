@@ -549,6 +549,41 @@ export function ProductsPage() {
     setSaveError(`Campos obrigatórios não preenchidos: ${missing}`);
   }
 
+  /** Atualiza o mínimo de todos os registros de estoque dos produtos com mesmo nome, tipo e característica. */
+  async function syncMinimumToSameItems(
+    values: ProductFormValues,
+    storeId: string,
+    specialCond: string | null,
+    minimum: number,
+  ): Promise<{ error: string | null }> {
+    if (!supabase) return { error: null };
+    const norm = (v?: string | null) => (v ?? "").trim().toLocaleUpperCase("pt-BR");
+    const { data: sameProducts, error: pErr } = await supabase
+      .from("products")
+      .select("id, name, glass_type, feature")
+      .ilike("name", values.name.trim().replace(/[\\%_]/g, (c) => `\\${c}`));
+    if (pErr) return { error: pErr.message };
+    const productIds = (sameProducts ?? [])
+      .filter((p: any) => norm(p.name) === norm(values.name) && norm(p.glass_type) === norm(values.glassType) && norm(p.feature) === norm(values.feature))
+      .map((p: any) => p.id);
+    if (productIds.length === 0) return { error: null };
+    const { data: mfs, error: mErr } = await supabase
+      .from("product_manufacturers")
+      .select("id")
+      .in("product_id", productIds);
+    if (mErr) return { error: mErr.message };
+    const mfIds = (mfs ?? []).map((m: any) => m.id);
+    if (mfIds.length === 0) return { error: null };
+    let q = supabase
+      .from("product_store_inventory")
+      .update({ min_quantity: minimum })
+      .in("manufacturer_id", mfIds)
+      .eq("store_id", storeId);
+    q = specialCond ? (q as any).eq("special_condition", specialCond) : (q as any).is("special_condition", null);
+    const { error: uErr } = await q;
+    return { error: uErr?.message ?? null };
+  }
+
   async function handleSave(values: ProductFormValues) {
     setSaveError(null);
 
@@ -619,6 +654,15 @@ export function ProductsPage() {
                 .from("product_store_inventory")
                 .insert(insertRow);
               if (insErr) throw new Error(`Erro ao criar estoque: ${insErr.message}`);
+            }
+
+            // Mínimo alterado: aplica o mesmo mínimo nos itens iguais (mesmo produto, tipo e
+            // característica, qualquer fabricante) da mesma loja e mesma condição especial
+            const prevMin = currentProduct.manufacturers.find((m) => m.id === activeMfId)
+              ?.inventories.find((i) => i.storeId === storeId)?.minQuantity ?? 0;
+            if (Math.max(0, invMinimum) !== prevMin) {
+              const { error: syncErr } = await syncMinimumToSameItems(values, storeId, specialCond, Math.max(0, invMinimum));
+              if (syncErr) throw new Error(`Mínimo salvo neste item, mas falhou nos itens iguais: ${syncErr}`);
             }
           }
         } else {
