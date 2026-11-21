@@ -19,6 +19,7 @@ import { formatCurrency, formatMonthYear } from "@/lib/format";
 import { ImagePlus, Pencil, Trash2, X } from "lucide-react";
 import { ContextMenuDropdown } from "@/components/shared/context-menu-dropdown";
 import { supabase } from "@/lib/database";
+import { compatKey, dedupeCompatibilities } from "@/lib/compatibility";
 import { productSchema } from "@/lib/schemas";
 import type { Product, VehicleCompatibility } from "@/types/domain";
 
@@ -157,6 +158,7 @@ export function ProductsPage() {
   const [compatibilities, setCompatibilities] = useState<VehicleCompatibility[]>([]);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [addingVehicle, setAddingVehicle] = useState(false);
+  const [vehicleError, setVehicleError] = useState<string | null>(null);
   const [vehicleForm, setVehicleForm] = useState({
     automaker: "", model: "",
     startYear: String(new Date().getFullYear()),
@@ -300,7 +302,7 @@ export function ProductsPage() {
           compatibilities: [],
         };
 
-        setCompatibilities(
+        setCompatibilities(dedupeCompatibilities(
           (compatData ?? []).map((c: any) => ({
             id: c.id,
             automaker: c.vehicles?.automaker ?? "",
@@ -311,7 +313,7 @@ export function ProductsPage() {
             version: c.vehicles?.version ?? "",
             note: c.note ?? "",
           }))
-        );
+        ));
 
         // Inicializa a loja selecionada com a primeira loja disponível
         const mfInvs = product.manufacturers.find((m) => m.id === manufacturerId)?.inventories
@@ -375,6 +377,17 @@ export function ProductsPage() {
 
   async function handleAddVehicle() {
     if (!supabase || !currentProduct || !vehicleForm.automaker.trim() || !vehicleForm.model.trim()) return;
+    setVehicleError(null);
+    const newKey = compatKey({
+      automaker: vehicleForm.automaker, model: vehicleForm.model, generation: "",
+      startYear: Number(vehicleForm.startYear) || new Date().getFullYear(),
+      endYear: Number(vehicleForm.endYear) || new Date().getFullYear(),
+      version: vehicleForm.version,
+    });
+    if (compatibilities.some((c) => compatKey(c) === newKey)) {
+      setVehicleError("Este veículo já está na lista de veículos compatíveis.");
+      return;
+    }
     setAddingVehicle(true);
     try {
       const { data: newVehicle, error: vErr } = await supabase
@@ -440,6 +453,17 @@ export function ProductsPage() {
 
   async function handleSaveVehicle() {
     if (!supabase || !editingVehicleId) return;
+    setVehicleError(null);
+    const editKey = compatKey({
+      automaker: editVehicleForm.automaker, model: editVehicleForm.model, generation: "",
+      startYear: Number(editVehicleForm.startYear) || new Date().getFullYear(),
+      endYear: Number(editVehicleForm.endYear) || new Date().getFullYear(),
+      version: editVehicleForm.version,
+    });
+    if (compatibilities.some((c) => c.id !== editingVehicleId && compatKey(c) === editKey)) {
+      setVehicleError("Já existe outro veículo igual na lista de veículos compatíveis.");
+      return;
+    }
     setSavingVehicle(true);
     try {
       // Busca o vehicle_id a partir da tabela de compatibilidade
@@ -1088,6 +1112,14 @@ export function ProductsPage() {
             description="Lista de modelos e versões que utilizam este produto."
           >
             <div className="space-y-3">
+              {vehicleError && (
+                <div className="flex items-start justify-between gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                  <span>{vehicleError}</span>
+                  <button type="button" onClick={() => setVehicleError(null)} className="shrink-0">
+                    <X className="size-4" />
+                  </button>
+                </div>
+              )}
               {compatibilities.map((item) =>
                 editingVehicleId === item.id ? (
                   <div key={item.id} className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">

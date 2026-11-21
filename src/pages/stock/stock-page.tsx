@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/select";
 import { formatCurrency, formatMonthYear } from "@/lib/format";
 import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
+import { dedupeCompatibilities } from "@/lib/compatibility";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useAuth } from "@/contexts/auth-context";
 import { canWriteStore } from "@/lib/permissions";
@@ -324,14 +325,10 @@ export function StockPage() {
       };
     });
 
-    // Agrega compatibilidades por nome de produto (deduplica por vehicle id)
+    // Agrega compatibilidades por nome de produto, sem repetir o mesmo veículo
     const nameCompats = new Map<string, Product["compatibilities"]>();
     mapped.forEach((p) => {
-      if (!nameCompats.has(p.name)) nameCompats.set(p.name, []);
-      const existing = nameCompats.get(p.name)!;
-      p.compatibilities.forEach((c) => {
-        if (!existing.some((e) => e.id === c.id)) existing.push(c);
-      });
+      nameCompats.set(p.name, dedupeCompatibilities([...(nameCompats.get(p.name) ?? []), ...p.compatibilities]));
     });
     setProductNameCompats(nameCompats);
 
@@ -977,7 +974,7 @@ export function StockPage() {
                   <div className="rounded-xl border border-border bg-white p-3">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Veículos compatíveis</p>
                     <ul className="space-y-1">
-                      {row.product.compatibilities.map((c) => (
+                      {dedupeCompatibilities(row.product.compatibilities).map((c) => (
                         <li key={c.id} className="text-xs text-slate-700">
                           {c.automaker} {c.model}{c.generation ? ` · ${c.generation}` : ""}{(c.startYear || c.endYear) ? ` · ${c.startYear}/${c.endYear}` : ""}
                         </li>
