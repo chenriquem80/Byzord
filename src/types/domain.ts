@@ -1,4 +1,4 @@
-export type UserRole = "ADMIN" | "GERENTE" | "ATENDENTE" | "ESTOQUISTA";
+export type UserRole = "ADMIN" | "GERENTE" | "ATENDENTE" | "ESTOQUISTA" | "FINANCEIRO";
 export type ProductStatus = "ativo" | "inativo";
 export type GlassType =
   | "PARABRISA"

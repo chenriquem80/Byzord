@@ -1,5 +1,10 @@
 -- Financeiro: funcionários (registro, férias, pagamentos/holerite/13º) e boletos.
--- Acesso: administrador ou usuário com a permissão da página liberada em profiles.permissions.
+-- Acesso: administrador, perfil FINANCEIRO ou usuário com a permissão da página liberada em profiles.permissions.
+
+-- Novo perfil de usuário FINANCEIRO
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check
+  check (role in ('ADMIN', 'GERENTE', 'ATENDENTE', 'ESTOQUISTA', 'FINANCEIRO'));
 
 create or replace function public.has_page_access(page text, need_write boolean)
 returns boolean
@@ -14,6 +19,11 @@ as $$
       and coalesce(p.status, 'ativo') <> 'inativo'
       and (
         p.role = 'ADMIN'
+        -- perfil FINANCEIRO: acesso total à área, salvo se o administrador mudar a permissão do usuário
+        or (p.role = 'FINANCEIRO' and page like '/app/financeiro/%'
+            and coalesce(p.permissions ->> page, 'write') = 'write')
+        or (p.role = 'FINANCEIRO' and page like '/app/financeiro/%' and not need_write
+            and (p.permissions ->> page) = 'read')
         or (p.permissions ->> page) = 'write'
         or (not need_write and (p.permissions ->> page) = 'read')
       )

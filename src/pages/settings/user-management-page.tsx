@@ -571,6 +571,7 @@ export function UserManagementPage() {
               <option value="GERENTE">GERENTE</option>
               <option value="ATENDENTE">ATENDENTE</option>
               <option value="ESTOQUISTA">ESTOQUISTA</option>
+              <option value="FINANCEIRO">FINANCEIRO</option>
             </Select>
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">Todos os status</option>
@@ -698,7 +699,7 @@ export function UserManagementPage() {
 
             <FormField label="Novo perfil">
               <div className="grid grid-cols-2 gap-2">
-                {(["ADMIN", "GERENTE", "ATENDENTE", "ESTOQUISTA"] as UserRole[]).map((role) => (
+                {(["ADMIN", "GERENTE", "ATENDENTE", "ESTOQUISTA", "FINANCEIRO"] as UserRole[]).map((role) => (
                   <button
                     key={role}
                     type="button"
@@ -758,6 +759,7 @@ export function UserManagementPage() {
                 <Select value={newRole} onChange={(e) => setNewRole(e.target.value as UserRole)}>
                   <option value="ATENDENTE">ATENDENTE</option>
                   <option value="ESTOQUISTA">ESTOQUISTA</option>
+              <option value="FINANCEIRO">FINANCEIRO</option>
                   <option value="GERENTE">GERENTE</option>
                   <option value="ADMIN">ADMIN</option>
                 </Select>
@@ -846,6 +848,7 @@ export function UserManagementPage() {
               <Select value={editRole} onChange={(e) => setEditRole(e.target.value as UserRole)}>
                 <option value="ATENDENTE">ATENDENTE</option>
                 <option value="ESTOQUISTA">ESTOQUISTA</option>
+              <option value="FINANCEIRO">FINANCEIRO</option>
                 <option value="GERENTE">GERENTE</option>
                 <option value="ADMIN">ADMIN</option>
               </Select>
