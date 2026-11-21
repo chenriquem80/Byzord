@@ -557,11 +557,13 @@ export function ProductsPage() {
     minimum: number,
   ): Promise<{ error: string | null }> {
     if (!supabase) return { error: null };
-    const norm = (v?: string | null) => (v ?? "").trim().toLocaleUpperCase("pt-BR");
+    // Ignora maiúsculas e espaços sobrando ("CELTA  01/12 " = "CELTA 01/12")
+    const norm = (v?: string | null) => (v ?? "").trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR");
     const { data: sameProducts, error: pErr } = await supabase
       .from("products")
       .select("id, name, glass_type, feature")
-      .ilike("name", values.name.trim().replace(/[\\%_]/g, (c) => `\\${c}`));
+      // Busca ampla (espaços viram curinga) e filtra exatamente abaixo
+      .ilike("name", `%${values.name.trim().replace(/[\\%_]/g, (c) => `\\${c}`).replace(/\s+/g, "%")}%`);
     if (pErr) return { error: pErr.message };
     const productIds = (sameProducts ?? [])
       .filter((p: any) => norm(p.name) === norm(values.name) && norm(p.glass_type) === norm(values.glassType) && norm(p.feature) === norm(values.feature))

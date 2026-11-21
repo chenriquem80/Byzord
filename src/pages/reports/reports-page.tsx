@@ -495,7 +495,7 @@ function BelowMinimumReport() {
         special_condition: r.special_condition ?? "",
       };
       const key = [row.store_name, row.product_name, row.glass_type, row.feature, row.special_condition, row.lado]
-        .map((v) => String(v).trim().toLocaleUpperCase("pt-BR")).join("|");
+        .map((v) => String(v).trim().replace(/\s+/g, " ").toLocaleUpperCase("pt-BR")).join("|");
       const g = groups.get(key) ?? { ...row, manufacturer: "", brand: "", location: "", stock: 0, min_quantity: 0, locations: new Set<string>() };
       g.stock += r.stock ?? 0;
       g.min_quantity = Math.max(g.min_quantity, r.min_quantity ?? 0);
