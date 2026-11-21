@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { Camera, X } from "lucide-react";
+import { Camera, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -34,6 +34,8 @@ export function QrScannerDialog({
   formats = DEFAULT_FORMATS,
   wide = false,
   accept,
+  frameDecoder,
+  photoDecoder,
 }: {
   open: boolean;
   onClose: () => void;
@@ -41,20 +43,37 @@ export function QrScannerDialog({
   title?: string;
   hint?: string;
   formats?: Html5QrcodeSupportedFormats[];
-  /** Área de leitura larga (código de barras comprido, ex: boleto) */
+  /** Área de leitura larga e câmera em alta resolução (código de barras comprido, ex: boleto) */
   wide?: boolean;
   /** Aceita a leitura só se passar neste teste (leituras parciais são ignoradas) */
   accept?: (code: string) => boolean;
+  /** Leitor extra aplicado aos quadros do vídeo em resolução cheia */
+  frameDecoder?: (img: ImageData) => string | null;
+  /** Leitura a partir de uma foto (mostra o botão "Tirar foto do código") */
+  photoDecoder?: (file: File) => Promise<string | null>;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const doneRef = useRef(false);
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
+
+  function deliver(code: string) {
+    if (doneRef.current) return;
+    if (accept && !accept(code)) return;
+    doneRef.current = true;
+    onScanRef.current(code);
+  }
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    let done = false;
+    let frameTimer: number | undefined;
+    doneRef.current = false;
+    setPhotoError(null);
 
     async function start() {
       setError(null);
@@ -65,26 +84,51 @@ export function QrScannerDialog({
         const scanner = new Html5Qrcode(READER_ID, {
           verbose: false,
           formatsToSupport: formats,
+          // Leitor nativo do aparelho quando existir (Android/Chrome) — bem mais rápido e preciso
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         });
         scannerRef.current = scanner;
         await scanner.start(
           { facingMode: "environment" },
           {
-            fps: 15,
+            fps: wide ? 10 : 15,
             qrbox: (w: number, h: number) => {
               if (wide) return { width: Math.floor(w * 0.95), height: Math.max(60, Math.floor(h * 0.3)) };
               const side = Math.floor(Math.min(w, h) * 0.75);
               return { width: side, height: side };
             },
+            // Código de barras de boleto é fino: pede resolução alta e foco contínuo
+            ...(wide ? {
+              videoConstraints: {
+                facingMode: "environment",
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet],
+              },
+            } : {}),
           },
-          (code) => {
-            if (cancelled || done) return;
-            if (accept && !accept(code)) return;
-            done = true;
-            onScanRef.current(code);
-          },
+          (code) => { if (!cancelled) deliver(code); },
           () => {},
         );
+
+        // Leitor extra nos quadros do vídeo em resolução cheia
+        if (frameDecoder) {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          const tick = () => {
+            if (cancelled || doneRef.current) return;
+            const video = document.querySelector<HTMLVideoElement>(`#${READER_ID} video`);
+            if (ctx && video && video.videoWidth > 0) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              ctx.drawImage(video, 0, 0);
+              const found = frameDecoder(ctx.getImageData(0, 0, canvas.width, canvas.height));
+              if (found) { deliver(found); return; }
+            }
+            frameTimer = window.setTimeout(tick, 250);
+          };
+          frameTimer = window.setTimeout(tick, 500);
+        }
       } catch (err: any) {
         if (cancelled) return;
         const name = (err as Error)?.name ?? "";
@@ -101,11 +145,29 @@ export function QrScannerDialog({
     start();
     return () => {
       cancelled = true;
+      if (frameTimer) window.clearTimeout(frameTimer);
       const scanner = scannerRef.current;
       scannerRef.current = null;
       if (scanner) safeStop(scanner);
     };
   }, [open]);
+
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !photoDecoder) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const code = await photoDecoder(file);
+      if (code && (!accept || accept(code))) deliver(code);
+      else setPhotoError("Não consegui ler o código na foto. Tire de novo bem de perto, com o código de barras reto e ocupando a foto de lado a lado, com boa luz e sem reflexo.");
+    } catch {
+      setPhotoError("Não foi possível abrir a foto.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -122,6 +184,16 @@ export function QrScannerDialog({
             <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>
           ) : (
             <p className="text-center text-sm text-slate-500">{hint}</p>
+          )}
+          {photoDecoder && (
+            <>
+              <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
+              <Button className="w-full" onClick={() => photoInputRef.current?.click()} disabled={photoBusy}>
+                <ImagePlus className="size-4" />
+                {photoBusy ? "Lendo a foto..." : "Tirar foto do código"}
+              </Button>
+              {photoError && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{photoError}</p>}
+            </>
           )}
           <Button variant="outline" className="w-full" onClick={onClose}>
             <X className="size-4" />

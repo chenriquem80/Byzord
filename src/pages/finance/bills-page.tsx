@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/lib/database";
 import { parseBoleto, type BoletoInfo } from "@/lib/boleto";
+import { decodeBoletoFromFile, decodeBoletoFromImageData } from "@/lib/itf-decoder";
 import { addDays, brl, fmtDate, todayIso } from "@/lib/finance";
 
 type Bill = {
@@ -226,10 +227,12 @@ export function BillsPage() {
         onClose={() => setScannerOpen(false)}
         onScan={handleScan}
         title="Ler código de barras do boleto"
-        hint="Deite o celular e aponte para o código de barras do boleto, ocupando a faixa toda."
+        hint="Deite o celular e aproxime até o código de barras ocupar a faixa de lado a lado, sem tremer. Se não ler, use “Tirar foto do código”."
         formats={[Html5QrcodeSupportedFormats.ITF]}
         wide
-        accept={(code) => !!parseBoleto(code)}
+        accept={(code) => !!parseBoleto(code)?.valid}
+        frameDecoder={(img) => decodeBoletoFromImageData(img)}
+        photoDecoder={decodeBoletoFromFile}
       />
 
       {error && (
