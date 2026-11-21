@@ -120,6 +120,8 @@ function monthToDate(value: string | undefined): string | null {
   return value ? `${value.slice(0, 7)}-01` : null;
 }
 
+const DRAFT_PREFIX = "draft-";
+
 export function ProductsPage() {
   const { readOnly, showCostPrice } = usePermissions();
   const { user: authUser } = useAuth();
@@ -236,6 +238,7 @@ export function ProductsPage() {
   useEffect(() => {
     if (!productId) {
       setCurrentProduct(null);
+      setCompatibilities([]);
       form.reset(getEmptyFormValues());
       return;
     }
@@ -376,7 +379,7 @@ export function ProductsPage() {
   };
 
   async function handleAddVehicle() {
-    if (!supabase || !currentProduct || !vehicleForm.automaker.trim() || !vehicleForm.model.trim()) return;
+    if (!vehicleForm.automaker.trim() || !vehicleForm.model.trim()) return;
     setVehicleError(null);
     const newKey = compatKey({
       automaker: vehicleForm.automaker, model: vehicleForm.model, generation: "",
@@ -386,6 +389,26 @@ export function ProductsPage() {
     });
     if (compatibilities.some((c) => compatKey(c) === newKey)) {
       setVehicleError("Este veículo já está na lista de veículos compatíveis.");
+      return;
+    }
+    if (!currentProduct || !supabase) {
+      const newAutomaker = vehicleForm.automaker.trim();
+      setKnownAutomakers((prev) => prev.includes(newAutomaker) ? prev : [...prev, newAutomaker]);
+      setCompatibilities((prev) => [
+        ...prev,
+        {
+          id: `${DRAFT_PREFIX}${Date.now()}`,
+          automaker: newAutomaker,
+          model: vehicleForm.model.trim(),
+          generation: "",
+          startYear: Number(vehicleForm.startYear) || new Date().getFullYear(),
+          endYear: Number(vehicleForm.endYear) || new Date().getFullYear(),
+          version: vehicleForm.version.trim(),
+          note: "",
+        },
+      ]);
+      setVehicleForm({ automaker: "", model: "", startYear: String(new Date().getFullYear()), endYear: String(new Date().getFullYear()), version: "" });
+      setShowAddVehicle(false);
       return;
     }
     setAddingVehicle(true);
@@ -435,8 +458,10 @@ export function ProductsPage() {
   }
 
   async function handleDeleteVehicle(compatId: string) {
-    if (!supabase) return;
-    await supabase.from("product_vehicle_compatibility").delete().eq("id", compatId);
+    if (!compatId.startsWith(DRAFT_PREFIX)) {
+      if (!supabase) return;
+      await supabase.from("product_vehicle_compatibility").delete().eq("id", compatId);
+    }
     setCompatibilities((prev) => prev.filter((c) => c.id !== compatId));
   }
 
@@ -452,7 +477,9 @@ export function ProductsPage() {
   }
 
   async function handleSaveVehicle() {
-    if (!supabase || !editingVehicleId) return;
+    if (!editingVehicleId) return;
+    const isDraft = editingVehicleId.startsWith(DRAFT_PREFIX);
+    if (!supabase && !isDraft) return;
     setVehicleError(null);
     const editKey = compatKey({
       automaker: editVehicleForm.automaker, model: editVehicleForm.model, generation: "",
@@ -466,15 +493,15 @@ export function ProductsPage() {
     }
     setSavingVehicle(true);
     try {
-      // Busca o vehicle_id a partir da tabela de compatibilidade
-      const { data: compatRow } = await supabase
+      // Busca o vehicle_id a partir da tabela de compatibilidade (rascunho ainda não está no banco)
+      const { data: compatRow } = isDraft ? { data: null } : await supabase!
         .from("product_vehicle_compatibility")
         .select("vehicle_id")
         .eq("id", editingVehicleId)
         .single();
 
       if (compatRow?.vehicle_id) {
-        const { error } = await supabase
+        const { error } = await supabase!
           .from("vehicles")
           .update({
             automaker: editVehicleForm.automaker.trim(),
@@ -726,6 +753,25 @@ export function ProductsPage() {
           } catch (innerErr) {
             await supabase.from("products").delete().eq("id", productDbId);
             throw innerErr;
+          }
+
+          // Veículos compatíveis informados no cadastro
+          const compatErrors: string[] = [];
+          for (const c of dedupeCompatibilities(compatibilities)) {
+            const { data: vehicle, error: vErr } = await supabase
+              .from("vehicles")
+              .insert({ automaker: c.automaker, model: c.model, start_year: c.startYear, end_year: c.endYear, version: c.version })
+              .select("id")
+              .single();
+            if (vErr) { compatErrors.push(`${c.automaker} ${c.model}: ${vErr.message}`); continue; }
+            const { error: cErr } = await supabase
+              .from("product_vehicle_compatibility")
+              .insert({ product_id: productDbId, vehicle_id: vehicle.id });
+            if (cErr) compatErrors.push(`${c.automaker} ${c.model}: ${cErr.message}`);
+          }
+          setCompatibilities([]);
+          if (compatErrors.length > 0) {
+            setSaveError(`Item salvo, mas alguns veículos compatíveis não foram gravados (${compatErrors.join("; ")}). Adicione-os editando o item.`);
           }
 
           // Log de auditoria — cadastro de produto
@@ -1149,13 +1195,12 @@ export function ProductsPage() {
         </div>
       </SectionCard>
 
-      {/* Seções apenas para produtos existentes */}
-      {isEditing && (
-        <>
-          {/* Veículos Compatíveis */}
+          {/* Veículos Compatíveis (cadastro novo e edição) */}
           <SectionCard
             title="Veículos Compatíveis"
-            description="Lista de modelos e versões que utilizam este produto."
+            description={isEditing
+              ? "Lista de modelos e versões que utilizam este produto."
+              : "Lista de modelos e versões que utilizam este produto. Os veículos são gravados ao salvar o item."}
           >
             <div className="space-y-3">
               {vehicleError && (
@@ -1356,6 +1401,9 @@ export function ProductsPage() {
             </div>
           </SectionCard>
 
+      {/* Seções apenas para produtos existentes */}
+      {isEditing && (
+        <>
           {/* Histórico de Compras */}
           <SectionCard
             title="Histórico de Compras"
