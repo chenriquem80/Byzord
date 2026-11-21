@@ -170,6 +170,20 @@ export function EntryPage() {
 
   const lastItem = entryItems.length > 0 ? entryItems[entryItems.length - 1] : null;
 
+  /**
+   * Localização que vai na etiqueta: a digitada na entrada (loja selecionada; senão a loja que
+   * está recebendo quantidade; senão qualquer uma preenchida), e só então a já cadastrada.
+   */
+  function labelLocation(item: EntryItem): string {
+    const typed = (storeId: string) => (item.locations[storeId] ?? "").trim();
+    if (selectedStoreId !== "all" && typed(selectedStoreId)) return typed(selectedStoreId);
+    const receiving = stores.find((s: any) => Number(item.quantities[s.id] ?? 0) > 0 && typed(s.id));
+    if (receiving) return typed(receiving.id);
+    const anyTyped = stores.find((s: any) => typed(s.id));
+    if (anyTyped) return typed(anyTyped.id);
+    return (item.mf.inventories.find((inv) => inv.storeId === selectedStoreId) ?? item.mf.inventories[0])?.location ?? "";
+  }
+
   const currentLabel = useMemo(() => {
     if (!lastItem) return null;
     const compat = lastItem.product.compatibilities[0];
@@ -189,11 +203,12 @@ export function EntryPage() {
       lado: ladoValue ?? lastItem.product.lado ?? null,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
       supplier: selectedSupplier,
-      location: (lastItem.mf.inventories.find((inv) => inv.storeId === selectedStoreId) ?? lastItem.mf.inventories[0])?.location ?? "",
+      location: labelLocation(lastItem),
       purchaseSummary: `${lastItem.cost} - ${dateLabel}`,
       storeName: stores[0]?.name ?? "",
     };
-  }, [lastItem, selectedManufacturer, selectedSupplier, isLadoA, isLadoD, isLadoE]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastItem, selectedManufacturer, selectedSupplier, isLadoA, isLadoD, isLadoE, selectedStoreId, stores]);
 
   const totalQuantity = useMemo(
     () =>
@@ -941,7 +956,7 @@ export function EntryPage() {
                 lado: ladoValue ?? (item.product as any).lado ?? null,
                 manufacturer: selectedManufacturer || item.mf.manufacturer,
                 supplier: selectedSupplier,
-                location: item.mf.inventories[0]?.location ?? "",
+                location: labelLocation(item),
                 purchaseSummary: `${item.cost} - ${dateLabel}`,
                 specialCondition: isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null,
               };
