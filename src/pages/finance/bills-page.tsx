@@ -49,6 +49,7 @@ function billState(b: Bill, today: string): { label: string; className: string }
 export function BillsPage() {
   const { user } = useAuth();
   const { readOnly } = usePermissions();
+  const isAdmin = user?.role === "ADMIN";
   const ownStore = user?.storeId ?? "";
   const today = todayIso();
 
@@ -67,7 +68,7 @@ export function BillsPage() {
 
   const [supplierFilter, setSupplierFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("aberto");
-  const [storeFilter, setStoreFilter] = useState("all");
+  const [storeFilter, setStoreFilter] = useState(isAdmin ? "all" : ownStore);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -309,7 +310,7 @@ export function BillsPage() {
                 <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Ex: NF 1234 — vidros" />
               </FormField>
               <FormField label="Loja">
-                <Select value={form.storeId} onChange={(e) => setForm((f) => ({ ...f, storeId: e.target.value }))}>
+                <Select value={form.storeId} onChange={(e) => setForm((f) => ({ ...f, storeId: e.target.value }))} disabled={!isAdmin && !!ownStore}>
                   <option value="">Sem loja</option>
                   {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
@@ -360,9 +361,9 @@ export function BillsPage() {
             <option value="">Todos os fornecedores</option>
             {supplierOptions.map((s) => <option key={s} value={s}>{s}</option>)}
           </Select>
-          <Select value={storeFilter} onChange={(e) => setStoreFilter(e.target.value)}>
-            <option value="all">Todas as lojas</option>
-            {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <Select value={storeFilter} onChange={(e) => setStoreFilter(e.target.value)} disabled={!isAdmin && !!ownStore}>
+            {isAdmin && <option value="all">Todas as lojas</option>}
+            {stores.filter((s) => isAdmin || !ownStore || s.id === ownStore).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
           <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="Vencimento a partir de" />
           <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="Vencimento até" />

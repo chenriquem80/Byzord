@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/auth-context";
 import { supabase } from "@/lib/database";
 import { addDays, brl, fmtDate, parts, todayIso } from "@/lib/finance";
 
@@ -44,6 +45,9 @@ function daysLabel(days: number): string {
 }
 
 function OpenBillsReport() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+  const ownStore = user?.storeId ?? "";
   const today = todayIso();
 
   const [stores, setStores] = useState<Store[]>([]);
@@ -55,7 +59,7 @@ function OpenBillsReport() {
   const [scope, setScope] = useState<Scope>("a_vencer");
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(addDays(today, 30));
-  const [storeId, setStoreId] = useState("all");
+  const [storeId, setStoreId] = useState(isAdmin || !ownStore ? "all" : ownStore);
   const [supplierFilter, setSupplierFilter] = useState("");
 
   useEffect(() => {
@@ -189,9 +193,9 @@ function OpenBillsReport() {
             <span className="text-sm text-slate-400">até</span>
             <Input type="date" className="min-w-0" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="Vencimento até" />
           </div>
-          <Select value={storeId} onChange={(e) => setStoreId(e.target.value)}>
-            <option value="all">Todas as lojas</option>
-            {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <Select value={storeId} onChange={(e) => setStoreId(e.target.value)} disabled={!isAdmin && !!ownStore}>
+            {(isAdmin || !ownStore) && <option value="all">Todas as lojas</option>}
+            {stores.filter((s) => isAdmin || !ownStore || s.id === ownStore).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
           <Select value={supplierFilter} onChange={(e) => setSupplierFilter(e.target.value)} disabled={!fetched}>
             <option value="">Todos os fornecedores</option>
@@ -297,6 +301,9 @@ function historyState(b: HistoryBill, today: string): { label: string; className
 }
 
 function SupplierHistoryReport() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+  const ownStore = user?.storeId ?? "";
   const today = todayIso();
   const year = parts(today)[0];
 
@@ -311,7 +318,7 @@ function SupplierHistoryReport() {
   const [status, setStatus] = useState<HistoryStatus>("todos");
   const [dateFrom, setDateFrom] = useState(`${year}-01-01`);
   const [dateTo, setDateTo] = useState(`${year}-12-31`);
-  const [storeId, setStoreId] = useState("all");
+  const [storeId, setStoreId] = useState(isAdmin || !ownStore ? "all" : ownStore);
 
   useEffect(() => {
     if (!supabase) return;
@@ -444,9 +451,9 @@ function SupplierHistoryReport() {
             <span className="text-sm text-slate-400">até</span>
             <Input type="date" className="min-w-0" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="Vencimento até" />
           </div>
-          <Select value={storeId} onChange={(e) => setStoreId(e.target.value)}>
-            <option value="all">Todas as lojas</option>
-            {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <Select value={storeId} onChange={(e) => setStoreId(e.target.value)} disabled={!isAdmin && !!ownStore}>
+            {(isAdmin || !ownStore) && <option value="all">Todas as lojas</option>}
+            {stores.filter((s) => isAdmin || !ownStore || s.id === ownStore).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </div>
         {error && <p className="mt-4 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</p>}
