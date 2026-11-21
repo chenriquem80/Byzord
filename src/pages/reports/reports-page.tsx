@@ -461,34 +461,51 @@ function BelowMinimumReport() {
     setLoading(true);
     setQueryError(null);
     const effectiveStoreId = lockedStoreId ?? storeId;
-    let q = supabase
-      .from("product_store_inventory")
-      .select("*, stores(id, name), product_manufacturers(manufacturer, products(name, glass_type, feature, brand))")
-      .gt("min_quantity", 0);
-    if (effectiveStoreId !== "all") q = q.eq("store_id", effectiveStoreId);
-    const { data, error } = await q;
-    if (error) {
-      console.error(error);
-      setQueryError(`Erro ao consultar: ${error.message}`);
-      setLoading(false);
-      return;
+    // Busca todos os registros (em páginas de 1000) — o estoque de todos os fabricantes conta no grupo
+    const data: any[] = [];
+    for (let from = 0; ; from += 1000) {
+      let q = supabase
+        .from("product_store_inventory")
+        .select("*, stores(id, name), product_manufacturers(manufacturer, products(name, glass_type, feature, brand))")
+        .order("id")
+        .range(from, from + 999);
+      if (effectiveStoreId !== "all") q = q.eq("store_id", effectiveStoreId);
+      const { data: page, error } = await q;
+      if (error) {
+        console.error(error);
+        setQueryError(`Erro ao consultar: ${error.message}`);
+        setLoading(false);
+        return;
+      }
+      data.push(...(page ?? []));
+      if (!page || page.length < 1000) break;
     }
-    const mapped: MinStockRow[] = (data ?? [])
-      // Só entra quem está abaixo do mínimo cadastrado; igual ou acima fica de fora
-      .filter((r: any) => (r.stock ?? 0) < (r.min_quantity ?? 0))
-      .map((r: any) => ({
-        product_name: r.product_manufacturers?.products?.name ?? "—",
-        manufacturer: r.product_manufacturers?.manufacturer ?? "—",
-        brand: r.product_manufacturers?.products?.brand ?? "—",
-        glass_type: r.product_manufacturers?.products?.glass_type ?? "—",
-        feature: r.product_manufacturers?.products?.feature ?? "—",
-        location: r.location || "—",
-        stock: r.stock ?? 0,
-        min_quantity: r.min_quantity ?? 0,
+
+    // Agrupa por loja + produto + tipo + característica (+ condição/lado), ignorando o fabricante:
+    // estoque = soma de todos os fabricantes; mínimo = o maior mínimo cadastrado no grupo
+    const groups = new Map<string, MinStockRow & { locations: Set<string> }>();
+    for (const r of data) {
+      const p = r.product_manufacturers?.products;
+      const row = {
+        product_name: p?.name ?? "—",
+        glass_type: p?.glass_type ?? "—",
+        feature: p?.feature ?? "—",
         store_name: r.stores?.name ?? "—",
         lado: r.lado ?? "",
         special_condition: r.special_condition ?? "",
-      }))
+      };
+      const key = [row.store_name, row.product_name, row.glass_type, row.feature, row.special_condition, row.lado]
+        .map((v) => String(v).trim().toLocaleUpperCase("pt-BR")).join("|");
+      const g = groups.get(key) ?? { ...row, manufacturer: "", brand: "", location: "", stock: 0, min_quantity: 0, locations: new Set<string>() };
+      g.stock += r.stock ?? 0;
+      g.min_quantity = Math.max(g.min_quantity, r.min_quantity ?? 0);
+      if (r.location) g.locations.add(String(r.location).trim());
+      groups.set(key, g);
+    }
+    const mapped: MinStockRow[] = [...groups.values()]
+      // Mínimo 0 não entra; só entra quem está abaixo do mínimo (igual ou acima fica de fora)
+      .filter((g) => g.min_quantity > 0 && g.stock < g.min_quantity)
+      .map(({ locations, ...g }) => ({ ...g, location: [...locations].join(", ") || "—" }))
       // Maior falta primeiro
       .sort((a: MinStockRow, b: MinStockRow) =>
         (b.min_quantity - b.stock) - (a.min_quantity - a.stock) || a.product_name.localeCompare(b.product_name, "pt-BR"));
@@ -503,7 +520,7 @@ function BelowMinimumReport() {
   const totalMissing = useMemo(() => filteredRows.reduce((sum, r) => sum + (r.min_quantity - r.stock), 0), [filteredRows]);
   const variant = (r: MinStockRow) => [r.special_condition, r.lado].filter(Boolean).join(" ") || "—";
 
-  const HEAD = ["Loja", "Produto", "Fabricante", "Tipo", "Característica", "Cond./Lado", "Localização", "Estoque", "Mínimo", "Faltam"];
+  const HEAD = ["Loja", "Produto", "Tipo", "Característica", "Cond./Lado", "Localização", "Estoque", "Mínimo", "Faltam"];
 
   function exportPdf() {
     const doc = new jsPDF({ orientation: "landscape" });
@@ -522,8 +539,8 @@ function BelowMinimumReport() {
       startY: 28,
       head: [HEAD],
       body: [
-        ...filteredRows.map((r) => [r.store_name, r.product_name, r.manufacturer, r.glass_type, r.feature, variant(r), r.location, r.stock, r.min_quantity, r.min_quantity - r.stock]),
-        ["", "", "", "", "", "", "", "", "TOTAL", totalMissing],
+        ...filteredRows.map((r) => [r.store_name, r.product_name, r.glass_type, r.feature, variant(r), r.location, r.stock, r.min_quantity, r.min_quantity - r.stock]),
+        ["", "", "", "", "", "", "", "TOTAL", totalMissing],
       ],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: "bold" },
@@ -533,7 +550,7 @@ function BelowMinimumReport() {
         if (isTotal) {
           data.cell.styles.fontStyle = "bold";
           data.cell.styles.fillColor = [241, 245, 249];
-        } else if (data.section === "body" && (data.column.index === 7 || data.column.index === 9)) {
+        } else if (data.section === "body" && (data.column.index === 6 || data.column.index === 8)) {
           data.cell.styles.textColor = [220, 38, 38];
           data.cell.styles.fontStyle = "bold";
         }
@@ -591,7 +608,6 @@ function BelowMinimumReport() {
                   <tr key={i} className="hover:bg-slate-50">
                     <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.store_name}</td>
                     <td className="px-3 py-2 font-medium text-slate-900">{r.product_name}</td>
-                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.manufacturer}</td>
                     <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.glass_type}</td>
                     <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.feature}</td>
                     <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{variant(r)}</td>
@@ -604,7 +620,7 @@ function BelowMinimumReport() {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-300 bg-slate-50">
-                  <td colSpan={9} className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <td colSpan={8} className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Total — {filteredRows.length} item{filteredRows.length !== 1 ? "s" : ""} abaixo do mínimo
                   </td>
                   <td className="px-3 py-2.5 text-base font-bold text-rose-600">{totalMissing}</td>
