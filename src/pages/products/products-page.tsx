@@ -1249,13 +1249,6 @@ export function ProductsPage() {
                           placeholder="Ex: Celta"
                         />
                       </FormField>
-                      <FormField label="Versão">
-                        <Input
-                          value={editVehicleForm.version}
-                          onChange={(e) => setEditVehicleForm((f) => ({ ...f, version: e.target.value }))}
-                          placeholder="Ex: 2p / 4p"
-                        />
-                      </FormField>
                       <FormField label="Ano inicial">
                         <Input
                           type="number"
@@ -1354,13 +1347,6 @@ export function ProductsPage() {
                         value={vehicleForm.model}
                         onChange={(e) => setVehicleForm((f) => ({ ...f, model: e.target.value }))}
                         placeholder="Ex: Celta"
-                      />
-                    </FormField>
-                    <FormField label="Versão">
-                      <Input
-                        value={vehicleForm.version}
-                        onChange={(e) => setVehicleForm((f) => ({ ...f, version: e.target.value }))}
-                        placeholder="Ex: 2p / 4p"
                       />
                     </FormField>
                     <FormField label="Ano inicial">
