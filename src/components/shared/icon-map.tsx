@@ -17,6 +17,8 @@ import {
   Paintbrush,
   Printer,
   QrCode,
+  Receipt,
+  Wallet,
   RefreshCcw,
   Search,
   Settings,
@@ -54,6 +56,8 @@ const icons: Record<string, LucideIcon> = {
   UserCog,
   Paintbrush,
   Printer,
+  Receipt,
+  Wallet,
   Wrench,
 };
 

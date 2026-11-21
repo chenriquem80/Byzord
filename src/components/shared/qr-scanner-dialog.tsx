@@ -16,15 +16,35 @@ function safeStop(scanner: Html5Qrcode) {
   }
 }
 
+const DEFAULT_FORMATS = [
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+];
+
 /** Diálogo com a câmera traseira lendo QR code / código de barras. Chama onScan uma vez por leitura. */
 export function QrScannerDialog({
   open,
   onClose,
   onScan,
+  title = "Ler QR code",
+  hint = "Aponte a câmera para o QR code da etiqueta",
+  formats = DEFAULT_FORMATS,
+  wide = false,
+  accept,
 }: {
   open: boolean;
   onClose: () => void;
   onScan: (code: string) => void;
+  title?: string;
+  hint?: string;
+  formats?: Html5QrcodeSupportedFormats[];
+  /** Área de leitura larga (código de barras comprido, ex: boleto) */
+  wide?: boolean;
+  /** Aceita a leitura só se passar neste teste (leituras parciais são ignoradas) */
+  accept?: (code: string) => boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -44,13 +64,7 @@ export function QrScannerDialog({
       try {
         const scanner = new Html5Qrcode(READER_ID, {
           verbose: false,
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-          ],
+          formatsToSupport: formats,
         });
         scannerRef.current = scanner;
         await scanner.start(
@@ -58,12 +72,14 @@ export function QrScannerDialog({
           {
             fps: 15,
             qrbox: (w: number, h: number) => {
+              if (wide) return { width: Math.floor(w * 0.95), height: Math.max(60, Math.floor(h * 0.3)) };
               const side = Math.floor(Math.min(w, h) * 0.75);
               return { width: side, height: side };
             },
           },
           (code) => {
             if (cancelled || done) return;
+            if (accept && !accept(code)) return;
             done = true;
             onScanRef.current(code);
           },
@@ -97,7 +113,7 @@ export function QrScannerDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Camera className="size-5" />
-            Ler QR code
+            {title}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
@@ -105,7 +121,7 @@ export function QrScannerDialog({
           {error ? (
             <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>
           ) : (
-            <p className="text-center text-sm text-slate-500">Aponte a câmera para o QR code da etiqueta</p>
+            <p className="text-center text-sm text-slate-500">{hint}</p>
           )}
           <Button variant="outline" className="w-full" onClick={onClose}>
             <X className="size-4" />

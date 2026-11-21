@@ -51,6 +51,15 @@ const menuItems: MenuItem[] = [
       { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
     ],
   },
+  {
+    title: "Financeiro",
+    route: "/app/financeiro",
+    icon: "Wallet",
+    children: [
+      { title: "Funcionários", route: "/app/financeiro/funcionarios", icon: "Users" },
+      { title: "Boletos", route: "/app/financeiro/boletos", icon: "Receipt" },
+    ],
+  },
   { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3" },
   { title: "Usuários", route: "/app/usuarios", icon: "UserCog" },
   { title: "Sair", route: "/login", icon: "LogOut" },
@@ -60,6 +69,7 @@ const menuItems: MenuItem[] = [
 const groupChildRoutes: Record<string, string[]> = {
   "/app/agenda": ["/app/agenda", "/app/imprimir-orcamento", "/app/encomenda", "/app/recibo-franquia", "/app/agenda-consulta"],
   "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/orcamento", "/app/pedido"],
+  "/app/financeiro": ["/app/financeiro/funcionarios", "/app/financeiro/boletos"],
   "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia", "/app/produtos", "/app/etiquetagem", "/app/reposicao"],
 };
 

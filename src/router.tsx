@@ -30,6 +30,8 @@ const UserManagementPage = lazy(() => import("@/pages/settings/user-management-p
 const TransferPage = lazy(() => import("@/pages/transfer/transfer-page").then((module) => ({ default: module.TransferPage })));
 const RegisterPage = lazy(() => import("@/pages/register-page").then((module) => ({ default: module.RegisterPage })));
 const PartOrdersPage = lazy(() => import("@/pages/part-orders/part-orders-page").then((module) => ({ default: module.PartOrdersPage })));
+const EmployeesPage = lazy(() => import("@/pages/finance/employees-page").then((module) => ({ default: module.EmployeesPage })));
+const BillsPage = lazy(() => import("@/pages/finance/bills-page").then((module) => ({ default: module.BillsPage })));
 const FranchiseReceiptPage = lazy(() => import("@/pages/franchise-receipt/franchise-receipt-page").then((module) => ({ default: module.FranchiseReceiptPage })));
 
 function withSuspense(component: ReactNode) {
@@ -168,6 +170,8 @@ export const router = createBrowserRouter([
       { path: "transferencia",element: withSuspense(<AuthGuard page="/app/transferencia"><TransferPage /></AuthGuard>) },
       { path: "encomenda",        element: withSuspense(<AuthGuard page="/app/encomenda"><PartOrdersPage /></AuthGuard>) },
       { path: "recibo-franquia",  element: withSuspense(<AuthGuard page="/app/recibo-franquia"><FranchiseReceiptPage /></AuthGuard>) },
+      { path: "financeiro/funcionarios", element: withSuspense(<AuthGuard page="/app/financeiro/funcionarios"><EmployeesPage /></AuthGuard>) },
+      { path: "financeiro/boletos",      element: withSuspense(<AuthGuard page="/app/financeiro/boletos"><BillsPage /></AuthGuard>) },
     ],
   },
   {

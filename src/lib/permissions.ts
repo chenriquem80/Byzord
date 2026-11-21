@@ -32,6 +32,8 @@ export type AppPage =
   | "/app/registro"
   | "/app/encomenda"
   | "/app/recibo-franquia"
+  | "/app/financeiro/funcionarios"
+  | "/app/financeiro/boletos"
   | "/app/usuarios";
 
 export const PAGE_LABELS: Record<AppPage, string> = {
@@ -64,6 +66,8 @@ export const PAGE_LABELS: Record<AppPage, string> = {
   "/app/registro":              "Registro",
   "/app/encomenda":             "Encomenda de Peça",
   "/app/recibo-franquia":       "Recibo de Franquia",
+  "/app/financeiro/funcionarios": "Financeiro — Funcionários",
+  "/app/financeiro/boletos":    "Financeiro — Boletos",
   "/app/usuarios":              "Usuários",
 };
 
@@ -83,6 +87,10 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
     { page: "/app/atendimento", label: "Novo atendimento" },
     { page: "/app/atendimento-consulta", label: "Consulta" },
     { page: "/app/orcamento", label: "Orçamento" },
+  ] },
+  { title: "Financeiro", pages: [
+    { page: "/app/financeiro/funcionarios", label: "Funcionários" },
+    { page: "/app/financeiro/boletos",      label: "Boletos" },
   ] },
   { title: "Estoque", pages: [
     { page: "/app/estoque", label: "Consulta" },
@@ -140,6 +148,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/registro":              "write",
     "/app/encomenda":             "write",
     "/app/recibo-franquia":       "write",
+    "/app/financeiro/funcionarios": "write",
+    "/app/financeiro/boletos":    "write",
     "/app/usuarios":              "write",
   },
   // Acesso total, exceto cadastro de usuários
@@ -173,6 +183,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/registro":              "write",
     "/app/encomenda":             "write",
     "/app/recibo-franquia":       "write",
+    "/app/financeiro/funcionarios": "none",
+    "/app/financeiro/boletos":    "none",
     "/app/usuarios":              "none",
   },
   // Atendimento (write) + Orçamento (somente leitura) + Clientes (leitura)
@@ -206,6 +218,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/registro":              "none",
     "/app/encomenda":             "write",
     "/app/recibo-franquia":       "write",
+    "/app/financeiro/funcionarios": "none",
+    "/app/financeiro/boletos":    "none",
     "/app/usuarios":              "none",
   },
   // Área de estoque completa (write), sem acesso a atendimento/orçamento
@@ -239,6 +253,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, RolePermissionMap> = {
     "/app/registro":              "read",
     "/app/encomenda":             "write",
     "/app/recibo-franquia":       "none",
+    "/app/financeiro/funcionarios": "none",
+    "/app/financeiro/boletos":    "none",
     "/app/usuarios":              "none",
   },
 };
