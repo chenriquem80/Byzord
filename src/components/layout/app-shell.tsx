@@ -11,6 +11,8 @@ interface MenuItem {
   title: string;
   route: string;
   icon: string;
+  /** Permissão que libera o item (quando difere da rota) */
+  page?: AppPage;
   children?: MenuItem[];
 }
 
@@ -58,6 +60,8 @@ const menuItems: MenuItem[] = [
     children: [
       { title: "Funcionários", route: "/app/financeiro/funcionarios", icon: "Users" },
       { title: "Boletos", route: "/app/financeiro/boletos", icon: "Receipt" },
+      // Relatório usa os dados dos boletos: liberado para quem acessa Boletos
+      { title: "Relatório", route: "/app/financeiro/relatorio", icon: "BarChart3", page: "/app/financeiro/boletos" },
     ],
   },
   { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3" },
@@ -69,7 +73,7 @@ const menuItems: MenuItem[] = [
 const groupChildRoutes: Record<string, string[]> = {
   "/app/agenda": ["/app/agenda", "/app/imprimir-orcamento", "/app/encomenda", "/app/recibo-franquia", "/app/agenda-consulta"],
   "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/orcamento", "/app/pedido"],
-  "/app/financeiro": ["/app/financeiro/funcionarios", "/app/financeiro/boletos"],
+  "/app/financeiro": ["/app/financeiro/funcionarios", "/app/financeiro/boletos", "/app/financeiro/relatorio"],
   "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia", "/app/produtos", "/app/etiquetagem", "/app/reposicao"],
 };
 
@@ -82,10 +86,10 @@ export function AppShell() {
 
   const filteredMenuItems = useMemo(() => {
     // Mostra apenas as páginas liberadas nas permissões do usuário
-    const allowed = (route: string) => route === "/login" || (!!user && canAccessPage(user, route as AppPage));
+    const allowed = (item: MenuItem) => item.route === "/login" || (!!user && canAccessPage(user, (item.page ?? item.route) as AppPage));
     return menuItems
-      .map(item => item.children ? { ...item, children: item.children.filter(child => allowed(child.route)) } : item)
-      .filter(item => item.children ? item.children.length > 0 : allowed(item.route));
+      .map(item => item.children ? { ...item, children: item.children.filter(child => allowed(child)) } : item)
+      .filter(item => item.children ? item.children.length > 0 : allowed(item));
   }, [user]);
 
   function toggleMenu(route: string) {
