@@ -22,7 +22,7 @@ const menuItems: MenuItem[] = [
     icon: "CalendarDays",
     children: [
       { title: "Registro", route: "/app/agenda", icon: "PlusCircle" },
-      { title: "Imprimir orçamento", route: "/app/imprimir-orcamento", icon: "Printer" },
+      { title: "Enviar orçamento", route: "/app/imprimir-orcamento", icon: "Printer" },
       { title: "Encomenda de Peça", route: "/app/encomenda", icon: "PackageSearch" },
       { title: "Recibo de Franquia", route: "/app/recibo-franquia", icon: "Receipt" },
       { title: "Consulta", route: "/app/agenda-consulta", icon: "Search" },

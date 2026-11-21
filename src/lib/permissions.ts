@@ -45,7 +45,7 @@ export const PAGE_LABELS: Record<AppPage, string> = {
   "/app/saida":                 "Saída",
   "/app/orcamento":             "Orçamento",
   "/app/pintura":               "Pintura",
-  "/app/imprimir-orcamento":    "Imprimir orçamento",
+  "/app/imprimir-orcamento":    "Enviar orçamento",
   "/app/pedido":                "Pedido",
   "/app/etiquetagem":           "Etiquetagem",
   "/app/reposicao":             "Reposição",
@@ -74,7 +74,7 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
   { title: "Inicial", pages: [{ page: "/app", label: "Inicial" }] },
   { title: "Agenda", pages: [
     { page: "/app/agenda", label: "Registro" },
-    { page: "/app/imprimir-orcamento", label: "Imprimir orçamento" },
+    { page: "/app/imprimir-orcamento", label: "Enviar orçamento" },
     { page: "/app/encomenda", label: "Encomenda de Peça" },
     { page: "/app/recibo-franquia", label: "Recibo de Franquia" },
     { page: "/app/agenda-consulta", label: "Consulta" },
