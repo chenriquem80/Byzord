@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pencil, Plus, Search, UserMinus, UserCheck, Shield, ShieldCheck, KeyRound, UserCog, Lock, Trash2 } from "lucide-react";
-import { supabase, supabaseAdmin } from "@/lib/database";
+import { supabase, callAdminUsers } from "@/lib/database";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,11 +159,12 @@ export function UserManagementPage() {
         .select(`*, stores (name)`);
       if (error) throw error;
 
-      // Se o cliente admin estiver disponível, busca todos os usuários do Auth
-      // e cruza com os profiles — garante que usuários sem profile apareçam na lista
-      if (supabaseAdmin) {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-        if (!authError && authData?.users) {
+      // Busca todos os usuários do Auth (via servidor, só administrador) e cruza com os
+      // profiles — garante que usuários sem profile apareçam na lista
+      const authData = await callAdminUsers<{ users: { id: string; email: string; user_metadata: any }[] }>("list")
+        .catch((err) => { console.warn("Lista do Auth indisponível:", err?.message); return null; });
+      {
+        if (authData?.users) {
           const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
           setUsers(
             authData.users.map((authUser) => {
@@ -233,28 +234,22 @@ export function UserManagementPage() {
     setIsSubmitting(true);
     const internalEmail = makeInternalEmail(newName);
     try {
-      if (supabaseAdmin) {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      let created = false;
+      try {
+        await callAdminUsers("create", {
           email: internalEmail,
           password: newPassword,
-          email_confirm: true,
-          user_metadata: { name: newName },
-        });
-        if (authError) throw authError;
-        if (!authData.user) throw new Error("Usuário não foi criado.");
-
-        const { error: profileError } = await supabase.from("profiles").upsert({
-          id: authData.user.id,
           name: newName,
-          email: internalEmail,
           role: newRole,
-          store_id: newStoreId,
-          allow_cost_view: newRole === "ADMIN" || newRole === "GERENTE",
-          status: "ativo",
-          must_change_password: false,
-        }, { onConflict: "id" });
-        if (profileError) throw profileError;
-      } else {
+          storeId: newStoreId,
+          allowCostView: newRole === "ADMIN" || newRole === "GERENTE",
+        });
+        created = true;
+      } catch (err: any) {
+        // Função do servidor indisponível: usa o cadastro comum abaixo; outros erros sobem
+        if (!/Failed to fetch|404|NOT_FOUND/i.test(err?.message ?? "")) throw err;
+      }
+      if (!created) {
         const tempClient = (await import("@supabase/supabase-js")).createClient(
           import.meta.env.VITE_SUPABASE_URL,
           import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -289,7 +284,7 @@ export function UserManagementPage() {
     } catch (err: any) {
       const msg = err.message ?? "";
       if (msg.includes("rate limit")) {
-        setCreateError("Limite de cadastros atingido. Desative 'Confirm email' em Supabase → Authentication → Providers → Email, ou configure a VITE_SUPABASE_SERVICE_ROLE_KEY na Vercel.");
+        setCreateError("Limite de cadastros atingido. Desative 'Confirm email' em Supabase → Authentication → Providers → Email.");
       } else if (msg.includes("already registered") || msg.includes("already been registered")) {
         setCreateError("Já existe um usuário com este nome.");
       } else {
@@ -336,10 +331,6 @@ export function UserManagementPage() {
 
   async function handleSetPassword() {
     if (!setPasswordUser) return;
-    if (!supabaseAdmin) {
-      setSetPasswordError("Operação requer a chave de serviço (VITE_SUPABASE_SERVICE_ROLE_KEY) configurada no ambiente.");
-      return;
-    }
     if (adminPassword.length < 6) {
       setSetPasswordError("A senha deve ter pelo menos 6 caracteres.");
       return;
@@ -347,8 +338,7 @@ export function UserManagementPage() {
     setSetPasswordSaving(true);
     setSetPasswordError(null);
     try {
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(setPasswordUser.id, { password: adminPassword });
-      if (error) throw error;
+      await callAdminUsers("set-password", { userId: setPasswordUser.id, password: adminPassword });
       setSetPasswordUser(null);
     } catch (err: any) {
       setSetPasswordError(err.message || "Erro ao definir senha.");
@@ -410,7 +400,7 @@ export function UserManagementPage() {
   }
 
   async function savePermissions() {
-    const client = supabaseAdmin ?? supabase;
+    const client = supabase;
     if (!permissionsUser || !permissionsMap || !client) return;
     // Grava só o que difere do padrão do perfil; sem diferenças, volta a seguir o perfil
     const roleDefaults = getRolePermissions(permissionsUser.role);
