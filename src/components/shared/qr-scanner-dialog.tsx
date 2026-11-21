@@ -34,7 +34,7 @@ export function QrScannerDialog({
   formats = DEFAULT_FORMATS,
   wide = false,
   accept,
-  frameDecoder,
+  videoDecoder,
   photoDecoder,
 }: {
   open: boolean;
@@ -48,7 +48,7 @@ export function QrScannerDialog({
   /** Aceita a leitura só se passar neste teste (leituras parciais são ignoradas) */
   accept?: (code: string) => boolean;
   /** Leitor extra aplicado aos quadros do vídeo em resolução cheia */
-  frameDecoder?: (img: ImageData) => string | null;
+  videoDecoder?: (video: HTMLVideoElement, canvas: HTMLCanvasElement) => string | null;
   /** Leitura a partir de uma foto (mostra o botão "Tirar foto do código") */
   photoDecoder?: (file: File) => Promise<string | null>;
 }) {
@@ -91,7 +91,8 @@ export function QrScannerDialog({
         await scanner.start(
           { facingMode: "environment" },
           {
-            fps: wide ? 10 : 15,
+            // no boleto o leitor próprio (videoDecoder) faz o trabalho pesado; o padrão roda devagar
+            fps: wide ? 3 : 15,
             qrbox: (w: number, h: number) => {
               if (wide) return { width: Math.floor(w * 0.95), height: Math.max(60, Math.floor(h * 0.3)) };
               const side = Math.floor(Math.min(w, h) * 0.75);
@@ -101,8 +102,8 @@ export function QrScannerDialog({
             ...(wide ? {
               videoConstraints: {
                 facingMode: "environment",
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
+                width: { ideal: 3840 },
+                height: { ideal: 2160 },
                 advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet],
               },
             } : {}),
@@ -112,20 +113,18 @@ export function QrScannerDialog({
         );
 
         // Leitor extra nos quadros do vídeo em resolução cheia
-        if (frameDecoder) {
+        if (videoDecoder) {
           const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d", { willReadFrequently: true });
           const tick = () => {
             if (cancelled || doneRef.current) return;
             const video = document.querySelector<HTMLVideoElement>(`#${READER_ID} video`);
-            if (ctx && video && video.videoWidth > 0) {
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
-              ctx.drawImage(video, 0, 0);
-              const found = frameDecoder(ctx.getImageData(0, 0, canvas.width, canvas.height));
-              if (found) { deliver(found); return; }
+            if (video && video.videoWidth > 0) {
+              try {
+                const found = videoDecoder(video, canvas);
+                if (found) { deliver(found); return; }
+              } catch { /* quadro inválido: tenta no próximo */ }
             }
-            frameTimer = window.setTimeout(tick, 250);
+            frameTimer = window.setTimeout(tick, 120);
           };
           frameTimer = window.setTimeout(tick, 500);
         }
