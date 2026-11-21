@@ -48,9 +48,9 @@ const menuItems: MenuItem[] = [
     children: [
       { title: "Novo atendimento", route: "/app/atendimento", icon: "PlusCircle" },
       { title: "Consulta", route: "/app/atendimento-consulta", icon: "Search" },
+      { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
     ],
   },
-  { title: "Orçamento", route: "/app/orcamento", icon: "Calculator" },
   { title: "Relatórios", route: "/app/relatorios", icon: "BarChart3" },
   { title: "Usuários", route: "/app/usuarios", icon: "UserCog" },
   { title: "Sair", route: "/login", icon: "LogOut" },
@@ -59,7 +59,7 @@ const menuItems: MenuItem[] = [
 // Routes that belong to each group (for auto-expand on navigation)
 const groupChildRoutes: Record<string, string[]> = {
   "/app/agenda": ["/app/agenda", "/app/imprimir-orcamento", "/app/encomenda", "/app/recibo-franquia", "/app/agenda-consulta"],
-  "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/pedido"],
+  "/app/atendimento": ["/app/atendimento", "/app/atendimento-consulta", "/app/orcamento", "/app/pedido"],
   "/app/estoque": ["/app/estoque", "/app/entrada", "/app/saida", "/app/transferencia", "/app/produtos", "/app/etiquetagem", "/app/reposicao"],
 };
 

@@ -82,8 +82,8 @@ export const SIDEBAR_PAGE_GROUPS: { title: string; pages: { page: AppPage; label
   { title: "Atendimento", pages: [
     { page: "/app/atendimento", label: "Novo atendimento" },
     { page: "/app/atendimento-consulta", label: "Consulta" },
+    { page: "/app/orcamento", label: "Orçamento" },
   ] },
-  { title: "Orçamento", pages: [{ page: "/app/orcamento", label: "Orçamento" }] },
   { title: "Estoque", pages: [
     { page: "/app/estoque", label: "Consulta" },
     { page: "/app/entrada", label: "Entrada" },
