@@ -183,14 +183,14 @@ export function BillsReportPage() {
           </div>
         }
       >
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <Select value={scope} onChange={(e) => changeScope(e.target.value as Scope)}>
             {(Object.keys(SCOPE_LABELS) as Scope[]).map((s) => <option key={s} value={s}>{SCOPE_LABELS[s]}</option>)}
           </Select>
-          <div className="flex items-center gap-2">
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="Vencimento a partir de" />
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+            <Input type="date" className="min-w-0" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="Vencimento a partir de" />
             <span className="text-sm text-slate-400">até</span>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="Vencimento até" />
+            <Input type="date" className="min-w-0" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="Vencimento até" />
           </div>
           <Select value={storeId} onChange={(e) => setStoreId(e.target.value)} disabled={!isAdmin && !!ownStore}>
             {(isAdmin || !ownStore) && <option value="all">Todas as lojas</option>}
