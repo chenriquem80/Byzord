@@ -428,6 +428,19 @@ export function EntryPage() {
     setNewSupplier("");
   }
 
+  // Fecha o diálogo ao imprimir; com vários itens, só depois da última etiqueta
+  const printedKeys = useRef(new Set<string>());
+  function handleLabelPrinted(key: string) {
+    printedKeys.current.add(key);
+    if (entryItems.every((item) => printedKeys.current.has(item.key))) closePrintDialog();
+  }
+
+  function closePrintDialog() {
+    printedKeys.current.clear();
+    setShowPrintDialog(false);
+    handleCancel();
+  }
+
   async function handleSaveEntry() {
     if (!supabase || entryItems.length === 0) return;
     const ambiguousItem = entryItems.find((item) => resolveLado(item).ambiguous);
@@ -984,7 +997,7 @@ export function EntryPage() {
       </SectionCard>
 
       {/* Diálogo pós-entrada: imprimir etiqueta */}
-      <Dialog open={showPrintDialog} onOpenChange={(open) => { if (!open) { setShowPrintDialog(false); handleCancel(); } }}>
+      <Dialog open={showPrintDialog} onOpenChange={(open) => { if (!open) closePrintDialog(); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Entrada registrada!</DialogTitle>
@@ -1011,10 +1024,10 @@ export function EntryPage() {
                 purchaseSummary: `${item.cost} - ${dateLabel}`,
                 specialCondition: isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null,
               };
-              return <LabelCard key={item.key} label={labelData} />;
+              return <LabelCard key={item.key} label={labelData} onPrint={() => handleLabelPrinted(item.key)} />;
             })}
           </div>
-          <Button variant="outline" className="mt-4 w-full" onClick={() => { setShowPrintDialog(false); handleCancel(); }}>
+          <Button variant="outline" className="mt-4 w-full" onClick={closePrintDialog}>
             Fechar sem imprimir
           </Button>
         </DialogContent>

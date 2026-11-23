@@ -92,7 +92,12 @@ export function parseLabelQr(raw: string): ParsedLabelQr | null {
   };
 }
 
-export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapperClassName?: string }) {
+export function LabelCard({ label, wrapperClassName, onPrint }: {
+  label: LabelData;
+  wrapperClassName?: string;
+  /** Chamado quando a impressão é aberta (não é chamado se o navegador bloquear a janela) */
+  onPrint?: () => void;
+}) {
   const qrWrapRef = useRef<HTMLDivElement>(null);
   const bcWrapRef = useRef<HTMLDivElement>(null);
 
@@ -165,6 +170,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
       };
       if (img) { img.onload = doPrint; img.onerror = doPrint; setTimeout(doPrint, 1500); }
       else { setTimeout(doPrint, 300); }
+      onPrint?.();
       return;
     }
 
@@ -176,6 +182,7 @@ export function LabelCard({ label, wrapperClassName }: { label: LabelData; wrapp
     pw.focus();
     pw.addEventListener("afterprint", () => pw.close());
     setTimeout(() => pw.print(), 500);
+    onPrint?.();
   }
 
   return (

@@ -1577,7 +1577,7 @@ export function ProductsPage() {
           <p className="text-sm text-slate-500">Deseja imprimir a etiqueta agora?</p>
           {pendingLabelData && (
             <div className="flex justify-center py-2">
-              <LabelCard label={pendingLabelData} />
+              <LabelCard label={pendingLabelData} onPrint={closeLabelDialog} />
             </div>
           )}
           <Button variant="outline" className="w-full" onClick={closeLabelDialog}>
