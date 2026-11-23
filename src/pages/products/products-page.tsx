@@ -282,7 +282,7 @@ export function ProductsPage() {
           id: pData.id,
           supplierCode: pData.supplier_code ?? "",
           barcode: pData.barcode ?? "",
-          name: pData.name ?? "",
+          name: (pData.name ?? "").trim(),
           glassType: pData.glass_type as Product["glassType"],
           feature: pData.feature as Product["feature"],
           lado: pData.lado ?? null,

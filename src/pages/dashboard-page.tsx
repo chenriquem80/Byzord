@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { normText } from "@/lib/product-match";
 import { supabase } from "@/lib/database";
 import { useAuth } from "@/contexts/auth-context";
 import { canAccessPage, type AppPage } from "@/lib/permissions";
@@ -184,8 +185,7 @@ export function DashboardPage() {
         .from("product_store_inventory")
         .select("id, stock, lado, special_condition, product_manufacturers!inner(manufacturer, products!inner(name, glass_type, feature))")
         .eq("store_id", store.id)
-        .eq("product_manufacturers.manufacturer", movement.manufacturer)
-        .eq("product_manufacturers.products.name", movement.product_name);
+        .eq("product_manufacturers.manufacturer", movement.manufacturer);
       if (invErr) { alert("Erro ao buscar estoque: " + invErr.message); return; }
       const fromNote = (label: string) =>
         (movement.note ?? "").match(new RegExp(`(?:^|[|] )${label}: ([^|]+)`))?.[1].trim() || null;
@@ -193,7 +193,9 @@ export function DashboardPage() {
       const cond = fromNote("Condição");
       const candidates = (invRows ?? []).filter((inv: any) => {
         const p = inv.product_manufacturers?.products;
-        return (!movement.glass_type || p?.glass_type === movement.glass_type)
+        // A saída guarda o nome da época, que pode ter espaço sobrando
+        return normText(p?.name) === normText(movement.product_name)
+          && (!movement.glass_type || p?.glass_type === movement.glass_type)
           && (!movement.feature || p?.feature === movement.feature)
           && (inv.special_condition ?? null) === cond;
       });

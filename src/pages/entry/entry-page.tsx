@@ -143,7 +143,7 @@ export function EntryPage() {
             id: p.id,
             supplierCode: "",
             barcode: p.barcode ?? "",
-            name: p.name ?? "",
+            name: (p.name ?? "").trim(),
             glassType: p.glass_type ?? "",
             feature: p.feature ?? "",
             lado: p.lado ?? null,

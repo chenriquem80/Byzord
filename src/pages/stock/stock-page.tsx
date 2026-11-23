@@ -252,7 +252,7 @@ export function StockPage() {
     // Agrupa product_ids por nome de produto
     const nameToIds = new Map<string, string[]>();
     rawProducts.forEach((p: any) => {
-      const name = (p.name ?? "") as string;
+      const name = ((p.name ?? "") as string).trim();
       if (!nameToIds.has(name)) nameToIds.set(name, []);
       nameToIds.get(name)!.push(p.id);
     });
@@ -261,7 +261,7 @@ export function StockPage() {
     // Nomes que possuem pelo menos uma foto
     const photoIds = new Set((photosResp.data ?? []).map((ph: any) => ph.product_id as string));
     const namesWithPhotos = new Set<string>();
-    rawProducts.forEach((p: any) => { if (photoIds.has(p.id)) namesWithPhotos.add(p.name ?? ""); });
+    rawProducts.forEach((p: any) => { if (photoIds.has(p.id)) namesWithPhotos.add((p.name ?? "").trim()); });
     setProductsWithPhotos(namesWithPhotos);
 
     setDbStores(stores);
@@ -307,7 +307,7 @@ export function StockPage() {
         id: p.id,
         supplierCode: "",
         barcode: p.barcode ?? "",
-        name: p.name ?? "",
+        name: (p.name ?? "").trim(),
         glassType: p.glass_type ?? "",
         feature: p.feature ?? "",
         lado: p.lado ?? null,

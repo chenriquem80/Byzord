@@ -6,6 +6,7 @@ import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { normText } from "@/lib/product-match";
 import { supabase } from "@/lib/database";
 import { useAuth } from "@/contexts/auth-context";
 import { canAccessPage } from "@/lib/permissions";
@@ -54,7 +55,7 @@ function StockByStoreReport() {
     const { data, error } = await q;
     if (error) { console.error(error); setLoading(false); return; }
     const mapped: StockRow[] = (data ?? []).map((r: any) => ({
-      product_name: r.product_manufacturers?.products?.name ?? "—",
+      product_name: r.product_manufacturers?.products?.name?.trim() ?? "—",
       manufacturer: r.product_manufacturers?.manufacturer ?? "—",
       brand: r.product_manufacturers?.products?.brand ?? "—",
       glass_type: r.product_manufacturers?.products?.glass_type ?? "—",
@@ -255,7 +256,7 @@ function StockAvailableReport() {
     const { data, error } = await q;
     if (error) { console.error(error); setLoading(false); return; }
     const mapped: StockRow[] = (data ?? []).map((r: any) => ({
-      product_name: r.product_manufacturers?.products?.name ?? "—",
+      product_name: r.product_manufacturers?.products?.name?.trim() ?? "—",
       manufacturer: r.product_manufacturers?.manufacturer ?? "—",
       brand: r.product_manufacturers?.products?.brand ?? "—",
       glass_type: r.product_manufacturers?.products?.glass_type ?? "—",
@@ -487,7 +488,7 @@ function BelowMinimumReport() {
     for (const r of data) {
       const p = r.product_manufacturers?.products;
       const row = {
-        product_name: p?.name ?? "—",
+        product_name: p?.name?.trim() ?? "—",
         glass_type: p?.glass_type ?? "—",
         feature: p?.feature ?? "—",
         store_name: r.stores?.name ?? "—",
@@ -1116,16 +1117,15 @@ function ItemChangeReport() {
     const movements = data ?? [];
 
     // glass_type pode estar nulo nos movimentos antigos — enriquece via tabela products
-    const nullNames = [...new Set(movements.filter((m) => !m.glass_type).map((m) => m.product_name))];
+    const nullNames = [...new Set(movements.filter((m) => !m.glass_type).map((m) => normText(m.product_name)))];
     let glassMap: Record<string, string> = {};
     if (nullNames.length > 0) {
       const { data: prods } = await supabase
         .from("products")
-        .select("name, glass_type")
-        .in("name", nullNames);
-      glassMap = Object.fromEntries((prods ?? []).map((p: any) => [p.name, p.glass_type ?? ""]));
+        .select("name, glass_type");
+      glassMap = Object.fromEntries((prods ?? []).map((p: any) => [normText(p.name), p.glass_type ?? ""]));
     }
-    setRows(movements.map((m) => ({ ...m, glass_type: m.glass_type || glassMap[m.product_name] || null })));
+    setRows(movements.map((m) => ({ ...m, glass_type: m.glass_type || glassMap[normText(m.product_name)] || null })));
     setFetched(true);
     setLoading(false);
   }

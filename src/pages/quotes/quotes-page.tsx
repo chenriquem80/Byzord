@@ -40,7 +40,7 @@ export function QuotesPage() {
         id: p.id,
         supplierCode: p.supplier_code ?? "",
         barcode: p.barcode ?? "",
-        name: p.name ?? "",
+        name: (p.name ?? "").trim(),
         glassType: p.glass_type ?? "",
         feature: p.feature ?? "",
         brand: p.brand ?? "",
