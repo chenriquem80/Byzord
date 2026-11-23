@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, X } from "lucide-react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { SectionCard } from "@/components/shared/section-card";
+import { isSameItem } from "@/lib/product-match";
 import { parseLabelQr } from "@/components/shared/label-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -365,7 +366,9 @@ export function ExitPage() {
       return !!parsed && !bc && norm(p.name) === norm(code);
     });
     // Lados cadastrados como produtos separados: prefere o que tem o fabricante e o lado da etiqueta
-    const found = candidates.find((p) => parsed && p.manufacturers.some((m) =>
+    // e procura também nos outros cadastros do mesmo item
+    const sameItems = allProducts.filter((p) => !candidates.includes(p) && candidates.some((c) => isSameItem(c, p)));
+    const found = [...candidates, ...sameItems].find((p) => parsed && p.manufacturers.some((m) =>
       norm(m.manufacturer) === norm(parsed.manufacturer) && m.inventories.some((inv) => norm(inv.lado) === norm(parsed.lado)),
     )) ?? candidates[0];
     if (found && found.manufacturers.length > 0) {

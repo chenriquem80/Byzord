@@ -5,6 +5,7 @@ import { canWriteStore } from "@/lib/permissions";
 import { Camera, Check, Plus, QrCode, X } from "lucide-react";
 import { SectionCard } from "@/components/shared/section-card";
 import { LabelCard, parseLabelQr, type LabelData } from "@/components/shared/label-card";
+import { isSameItem, normText } from "@/lib/product-match";
 import { QrScannerDialog } from "@/components/shared/qr-scanner-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,6 +33,8 @@ type EntryItem = {
   mf: Manufacturer;
   quantities: Record<string, string>;
   locations: Record<string, string>;
+  /** Lojas em que a localização foi digitada nesta entrada */
+  editedLocations?: Record<string, boolean>;
   cost: number;
 };
 
@@ -178,13 +181,14 @@ export function EntryPage() {
    * está recebendo quantidade; senão qualquer uma preenchida), e só então a já cadastrada.
    */
   function labelLocation(item: EntryItem): string {
-    const typed = (storeId: string) => (item.locations[storeId] ?? "").trim();
+    const typed = (storeId: string) => locationFor(item, storeId).trim();
     if (selectedStoreId !== "all" && typed(selectedStoreId)) return typed(selectedStoreId);
     const receiving = stores.find((s: any) => Number(item.quantities[s.id] ?? 0) > 0 && typed(s.id));
     if (receiving) return typed(receiving.id);
     const anyTyped = stores.find((s: any) => typed(s.id));
     if (anyTyped) return typed(anyTyped.id);
-    return (item.mf.inventories.find((inv) => inv.storeId === selectedStoreId) ?? item.mf.inventories[0])?.location ?? "";
+    const inventories = targetOf(item).mf?.inventories ?? item.mf.inventories;
+    return (inventories.find((inv) => inv.storeId === selectedStoreId) ?? inventories[0])?.location ?? "";
   }
 
   const chosenLado: string | null = [isLadoA && "A", isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
@@ -195,13 +199,38 @@ export function EntryPage() {
     return lados.length > 0 ? lados : [product.lado ?? null];
   }
 
+  /**
+   * Registro que recebe a entrada. Com outro fabricante escolhido, usa o já cadastrado neste
+   * produto ou em outro cadastro do mesmo item ("PALIO" e "PALIO "), para não abrir uma
+   * segunda linha no Estoque. Sem mf, o fabricante ainda não existe e será criado.
+   */
+  function targetOf(item: EntryItem): { product: Product; mf?: Manufacturer } {
+    const wanted = normText(selectedManufacturer);
+    if (!wanted || wanted === normText(item.mf.manufacturer)) return { product: item.product, mf: item.mf };
+    const own = item.product.manufacturers.find((m) => normText(m.manufacturer) === wanted);
+    if (own) return { product: item.product, mf: own };
+    const lados = chosenLado ? [chosenLado] : ladosOf(item.product, item.mf);
+    for (const product of products) {
+      if (product.id === item.product.id || !isSameItem(product, item.product)) continue;
+      const mf = product.manufacturers.find((m) => normText(m.manufacturer) === wanted);
+      if (mf && ladosOf(product, mf).some((l) => lados.includes(l))) return { product, mf };
+    }
+    return { product: item.product };
+  }
+
+  /** Localização da loja: a digitada; senão a do registro que vai receber a entrada. */
+  function locationFor(item: EntryItem, storeId: string): string {
+    const typed = item.locations[storeId] ?? "";
+    const { mf } = targetOf(item);
+    if (item.editedLocations?.[storeId] || !mf || mf.id === item.mf.id) return typed;
+    return mf.inventories.find((inv) => inv.storeId === storeId)?.location || typed;
+  }
+
   /** Lado que recebe a entrada: o marcado na tela; senão o do próprio item, se não houver dúvida. */
   function resolveLado(item: EntryItem): { lado: string | null; ambiguous: boolean } {
     if (chosenLado) return { lado: chosenLado, ambiguous: false };
-    const targetMf = selectedManufacturer && selectedManufacturer !== item.mf.manufacturer
-      ? item.product.manufacturers.find((m) => m.manufacturer === selectedManufacturer)
-      : item.mf;
-    const lados = ladosOf(item.product, targetMf);
+    const target = targetOf(item);
+    const lados = ladosOf(target.product, target.mf);
     if (lados.length === 1) return { lado: lados[0], ambiguous: false };
     return { lado: null, ambiguous: !lados.includes(null) };
   }
@@ -298,7 +327,9 @@ export function EntryPage() {
     });
     // Lados cadastrados como produtos separados: prefere o que tem o fabricante e o lado da etiqueta
     const matchesLado = (p: Product, mf: Manufacturer) => ladosOf(p, mf).some((l) => norm(l) === norm(parsed?.lado));
-    const found = candidates.find((p) => parsed && p.manufacturers.some((m) => norm(m.manufacturer) === norm(parsed.manufacturer) && matchesLado(p, m)))
+    // e procura também nos outros cadastros do mesmo item
+    const sameItems = products.filter((p) => !candidates.includes(p) && candidates.some((c) => isSameItem(c, p)));
+    const found = [...candidates, ...sameItems].find((p) => parsed && p.manufacturers.some((m) => norm(m.manufacturer) === norm(parsed.manufacturer) && matchesLado(p, m)))
       ?? candidates.find((p) => parsed && p.manufacturers.some((m) => matchesLado(p, m)))
       ?? candidates[0];
     if (!found) {
@@ -359,7 +390,7 @@ export function EntryPage() {
     setEntryItems((prev) =>
       prev.map((item) =>
         item.key === key
-          ? { ...item, locations: { ...item.locations, [storeId]: value } }
+          ? { ...item, locations: { ...item.locations, [storeId]: value }, editedLocations: { ...item.editedLocations, [storeId]: true } }
           : item,
       ),
     );
@@ -454,50 +485,38 @@ export function EntryPage() {
     try {
       for (const item of entryItems) {
         const itemLado = resolveLado(item).lado;
-        const isDifferentMf = selectedManufacturer && selectedManufacturer !== item.mf.manufacturer;
+        const existingMf = targetOf(item).mf;
 
-        if (!isDifferentMf) {
-          for (const store of stores) {
-            const qty = Number(item.quantities[store.id] ?? 0);
-            if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
-            await upsertInventory(item.mf.id, store.id, itemLado, qty, item.locations[store.id]);
-          }
+        let mfId: string;
+        if (existingMf) {
+          mfId = existingMf.id;
+        } else {
+          const { data: newMfData, error: mfErr } = await supabase
+            .from("product_manufacturers")
+            .insert({
+              product_id: item.product.id,
+              manufacturer: selectedManufacturer,
+              cost: item.cost,
+              price: item.mf.price,
+              supplier: selectedSupplier,
+              last_purchase_date: purchaseDate || null,
+            })
+            .select()
+            .single();
+          if (mfErr) throw mfErr;
+          mfId = newMfData.id;
+        }
+
+        for (const store of stores) {
+          const qty = Number(item.quantities[store.id] ?? 0);
+          if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
+          await upsertInventory(mfId, store.id, itemLado, qty, locationFor(item, store.id));
+        }
+
+        if (existingMf) {
           await supabase.from("product_manufacturers")
             .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
-            .eq("id", item.mf.id);
-        } else {
-          const existingMf = item.product.manufacturers.find((m) => m.manufacturer === selectedManufacturer);
-
-          if (existingMf) {
-            for (const store of stores) {
-              const qty = Number(item.quantities[store.id] ?? 0);
-              if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
-              await upsertInventory(existingMf.id, store.id, itemLado, qty, item.locations[store.id]);
-            }
-            await supabase.from("product_manufacturers")
-              .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
-              .eq("id", existingMf.id);
-          } else {
-            const { data: newMfData, error: mfErr } = await supabase
-              .from("product_manufacturers")
-              .insert({
-                product_id: item.product.id,
-                manufacturer: selectedManufacturer,
-                cost: item.cost,
-                price: item.mf.price,
-                supplier: selectedSupplier,
-                last_purchase_date: purchaseDate || null,
-              })
-              .select()
-              .single();
-            if (mfErr) throw mfErr;
-
-            for (const store of stores) {
-              const qty = Number(item.quantities[store.id] ?? 0);
-              if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
-              await upsertInventory(newMfData.id, store.id, itemLado, qty, item.locations[store.id]);
-            }
-          }
+            .eq("id", mfId);
         }
       }
       // Registra movimentação no log
@@ -515,7 +534,7 @@ export function EntryPage() {
           ].filter(Boolean);
           const { error: mvErr } = await supabase.from("stock_movements").insert({
             type: "Entrada",
-            product_name: item.product.name,
+            product_name: targetOf(item).product.name,
             store_name: store.name,
             manufacturer: mfName,
             user_name: authUser?.name ?? "",
@@ -854,7 +873,7 @@ export function EntryPage() {
                         <div className="divide-y divide-border">
                           {stores.filter((store: any) => selectedStoreId === "all" || store.id === selectedStoreId).map((store) => {
                             const inventory =
-                              item.mf.inventories.find((inv) => inv.storeId === store.id);
+                              targetOf(item).mf?.inventories.find((inv) => inv.storeId === store.id);
                             return (
                               <div
                                 key={store.id}
@@ -878,7 +897,7 @@ export function EntryPage() {
                                 <div>
                                   <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Localização</p>
                                   <Input
-                                    value={item.locations[store.id] ?? ""}
+                                    value={locationFor(item, store.id)}
                                     onChange={(e) => updateItemLocation(item.key, store.id, e.target.value)}
                                     placeholder="Ex: 45B"
                                   />
@@ -943,7 +962,7 @@ export function EntryPage() {
                 <div className="rounded-3xl border border-dashed border-border bg-slate-100 p-5">
                   <LabelCard
                     label={{
-                      productCode: lastItem.product.barcode || lastItem.product.name,
+                      productCode: targetOf(lastItem).product.barcode || lastItem.product.name,
                       vehicleLabel: currentLabel.vehicleLabel,
                       yearRange: currentLabel.yearRange,
                       feature: currentLabel.feature,
@@ -980,7 +999,7 @@ export function EntryPage() {
                 ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
                 : "";
               const labelData: LabelData = {
-                productCode: item.product.barcode || item.product.name,
+                productCode: targetOf(item).product.barcode || item.product.name,
                 vehicleLabel,
                 yearRange,
                 feature: item.product.feature,

@@ -626,6 +626,18 @@ export function ProductsPage() {
     return { error: uErr?.message ?? null };
   }
 
+  // Clique duplo em Salvar gravava o mesmo item duas vezes
+  const savingRef = useRef(false);
+  async function handleSaveOnce(values: ProductFormValues) {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    try {
+      await handleSave(values);
+    } finally {
+      savingRef.current = false;
+    }
+  }
+
   async function handleSave(values: ProductFormValues) {
     setSaveError(null);
 
@@ -1002,7 +1014,7 @@ export function ProductsPage() {
               <span className="text-sm font-medium text-rose-600">{saveError}</span>
             )}
             {!isReadOnly && (
-              <Button size="lg" onClick={form.handleSubmit(handleSave as any, handleValidationError as any)}>
+              <Button size="lg" disabled={form.formState.isSubmitting} onClick={form.handleSubmit(handleSaveOnce as any, handleValidationError as any)}>
                 Salvar produto
               </Button>
             )}
@@ -1546,7 +1558,8 @@ export function ProductsPage() {
           <Button
             size="lg"
             className="w-full sm:w-auto"
-            onClick={form.handleSubmit(handleSave as any, handleValidationError as any)}
+            disabled={form.formState.isSubmitting}
+            onClick={form.handleSubmit(handleSaveOnce as any, handleValidationError as any)}
           >
             {isEditing ? "Salvar alterações" : "Salvar item no estoque"}
           </Button>

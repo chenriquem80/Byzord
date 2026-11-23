@@ -3,7 +3,8 @@ import { z } from "zod";
 export const productSchema = z.object({
   supplierCode: z.string().default(""),
   barcode: z.string().min(8, "Informe o código de barras."),
-  name: z.string().min(3, "Informe o nome do produto."),
+  // Espaço sobrando faz o mesmo item virar dois ("PALIO " e "PALIO")
+  name: z.string().trim().min(3, "Informe o nome do produto."),
   isTypeB: z.boolean().optional().default(false),
   isTypeR: z.boolean().optional().default(false),
   ladoD: z.boolean().optional().default(false),
