@@ -19,9 +19,11 @@ import {
 interface DataTableProps<TData> {
   columns: ColumnDef<TData>[];
   data: TData[];
+  /** Letra e espaçamento menores, para tabelas com muitas colunas caberem na tela */
+  compact?: boolean;
 }
 
-export function DataTable<TData>({ columns, data }: DataTableProps<TData>) {
+export function DataTable<TData>({ columns, data, compact = false }: DataTableProps<TData>) {
   const table = useReactTable({
     data,
     columns,
@@ -68,7 +70,7 @@ export function DataTable<TData>({ columns, data }: DataTableProps<TData>) {
       </div>
 
       <div className="hidden overflow-x-auto rounded-2xl border border-border bg-white md:block">
-        <Table>
+        <Table className={compact ? "text-xs" : undefined}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -76,7 +78,7 @@ export function DataTable<TData>({ columns, data }: DataTableProps<TData>) {
                   <TableHead
                     key={header.id}
                     style={header.column.columnDef.size ? { width: header.column.columnDef.size } : undefined}
-                    className="px-2"
+                    className={compact ? "px-1 text-[10px] leading-tight tracking-normal min-[1500px]:px-2 min-[1500px]:text-[11px]" : "px-2"}
                   >
                     {header.isPlaceholder
                       ? null
@@ -97,7 +99,7 @@ export function DataTable<TData>({ columns, data }: DataTableProps<TData>) {
                     <TableCell
                       key={cell.id}
                       style={cell.column.columnDef.size ? { width: cell.column.columnDef.size } : undefined}
-                      className="px-2 py-2"
+                      className={compact ? "px-1 py-2 min-[1500px]:px-2" : "px-2 py-2"}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>

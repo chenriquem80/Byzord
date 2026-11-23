@@ -27,10 +27,11 @@ function CompatPopup({ compatibilities }: { compatibilities: Product["compatibil
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-primary hover:text-primary"
+        title={`${compatibilities.length} veículo${compatibilities.length !== 1 ? "s" : ""} compatíve${compatibilities.length !== 1 ? "is" : "l"}`}
+        className="flex items-center gap-1 rounded-lg border border-border bg-white px-2 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-primary hover:text-primary"
       >
-        <Car className="size-3.5" />
-        {compatibilities.length} veículo{compatibilities.length !== 1 ? "s" : ""}
+        <Car className="size-3.5 shrink-0" />
+        {compatibilities.length}
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
@@ -449,7 +450,7 @@ export function StockPage() {
       {
         accessorKey: "productName",
         header: "Produto",
-        size: 260,
+        size: 170,
         cell: ({ row }) => (
           <span
             onContextMenu={(e) => handleContextMenu(e, row.original)}
@@ -468,7 +469,7 @@ export function StockPage() {
       {
         accessorKey: "characteristic",
         header: () => <span className="block text-center">Característica</span>,
-        size: 120,
+        size: 110,
         cell: ({ row }) => (
           <div className="text-center">
             <button
@@ -481,9 +482,15 @@ export function StockPage() {
         ),
       },
       {
+        id: "glassType",
+        header: "Tipo",
+        size: 100,
+        cell: ({ row }) => row.original.product.glassType,
+      },
+      {
         accessorKey: "lado",
         header: () => <span className="block text-center">Lado</span>,
-        size: 60,
+        size: 40,
         cell: ({ row }) => (
           <div className="text-center">
             <button
@@ -501,7 +508,7 @@ export function StockPage() {
       {
         id: "specialCondition",
         header: "Cond.",
-        size: 90,
+        size: 45,
         cell: ({ row }) => {
           const { store1Special, store2Special } = row.original;
           const hasSpecial = store1Special > 0 || store2Special > 0;
@@ -509,7 +516,7 @@ export function StockPage() {
           return (
             <button
               type="button"
-              className="space-y-0.5 text-left text-xs text-slate-600 underline-offset-2 hover:text-primary hover:underline"
+              className="space-y-0.5 whitespace-nowrap text-left text-xs text-slate-600 underline-offset-2 hover:text-primary hover:underline"
               onClick={() => {
                 const mf = row.original.product.manufacturers.find(m => m.id === row.original.manufacturerId);
                 const items = (mf?.inventories ?? [])
@@ -528,22 +535,25 @@ export function StockPage() {
           );
         },
       },
-      { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1", size: 60 },
-      { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2", size: 60 },
-      { accessorKey: "manufacturer", header: "Fabricante" },
+      { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1", size: 35 },
+      { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2", size: 35 },
+      { accessorKey: "manufacturer", header: "Fabricante", size: 100 },
       ...(showCostPrice ? [{
         accessorKey: "cost",
         header: "Preço compra",
-        cell: ({ row }: any) => formatCurrency(row.original.cost),
+        size: 75,
+        cell: ({ row }: any) => <span className="whitespace-nowrap">{formatCurrency(row.original.cost)}</span>,
       }] : []),
       {
         accessorKey: "lastPurchaseDate",
         header: "Última compra",
+        size: 60,
         cell: ({ row }) => formatMonthYear(row.original.lastPurchaseDate),
       },
       {
         id: "location",
         header: "Localização",
+        size: 85,
         cell: ({ row }) => {
           const { store1Location, store2Location } = row.original;
           if (!store1Location && !store2Location) return <span className="text-slate-300">—</span>;
@@ -558,32 +568,35 @@ export function StockPage() {
       {
         id: "photos",
         header: "Foto",
+        size: 40,
         cell: ({ row }) => productsWithPhotos.has(row.original.product.name) ? (
           <button
             type="button"
             title="Ver fotos"
             onClick={() => openPhotoDialog(row.original.product)}
-            className="flex items-center justify-center rounded-lg border border-border bg-white p-2 text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
+            className="flex size-7 items-center justify-center rounded-lg border border-border bg-white text-slate-500 shadow-sm transition-colors hover:border-primary hover:text-primary"
           >
-            <Images className="size-4" />
+            <Images className="size-3.5" />
           </button>
         ) : null,
       },
       {
         id: "compat",
-        header: "Compatíveis",
+        header: "Compat.",
+        size: 55,
         cell: ({ row }) => <CompatPopup compatibilities={productNameCompats.get(row.original.product.name) ?? row.original.product.compatibilities} />,
       },
       {
         id: "actions",
         header: "",
+        size: 70,
         cell: ({ row }) => readOnly ? null : (
-          <div className="flex gap-1.5">
+          <div className="flex gap-1">
             <button
               type="button"
               title="Alterar produto"
               onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}&lado=${encodeURIComponent(row.original.lado ?? "")}`)}
-              className="flex size-8 items-center justify-center rounded-lg border border-border text-slate-500 transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
+              className="flex size-7 items-center justify-center rounded-lg border border-border text-slate-500 transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
             >
               <Pencil className="size-3.5" />
             </button>
@@ -591,7 +604,7 @@ export function StockPage() {
               type="button"
               title="Excluir produto"
               onClick={() => setDeleteDialog({ open: true, row: row.original, deleting: false })}
-              className="flex size-8 items-center justify-center rounded-lg border border-red-200 text-red-400 transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-600"
+              className="flex size-7 items-center justify-center rounded-lg border border-red-200 text-red-400 transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-600"
             >
               <Trash2 className="size-3.5" />
             </button>
@@ -738,7 +751,7 @@ export function StockPage() {
 
             {/* Tabela completa — apenas desktop */}
             <div className="hidden lg:block">
-              <DataTable columns={columns} data={sortedRows} />
+              <DataTable compact columns={columns} data={sortedRows} />
             </div>
           </>
         )}
