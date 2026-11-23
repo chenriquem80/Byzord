@@ -84,7 +84,7 @@ function getEmptyFormValues(): ProductFormValues {
   };
 }
 
-function buildFormValues(p: Product, mfId?: string | null, storeId?: string | null, specialCondition?: string | null): ProductFormValues {
+function buildFormValues(p: Product, mfId?: string | null, storeId?: string | null, specialCondition?: string | null, lado: string | null = p.lado ?? null): ProductFormValues {
   const mf = (mfId ? p.manufacturers.find((m) => m.id === mfId) : null) ?? p.manufacturers[0];
   const inventory = storeId
     ? (mf?.inventories.find((i) => i.storeId === storeId) ?? mf?.inventories[0])
@@ -95,9 +95,9 @@ function buildFormValues(p: Product, mfId?: string | null, storeId?: string | nu
     name: p.name,
     isTypeB: specialCondition === "B" || specialCondition === "BR",
     isTypeR: specialCondition === "R" || specialCondition === "BR",
-    ladoD: p.lado?.includes("D") ?? false,
-    ladoE: p.lado?.includes("E") ?? false,
-    ladoA: p.lado?.includes("A") ?? false,
+    ladoD: lado?.includes("D") ?? false,
+    ladoE: lado?.includes("E") ?? false,
+    ladoA: lado?.includes("A") ?? false,
     glassType: p.glassType,
     feature: p.feature,
     manufacturer: mf?.manufacturer ?? "",
@@ -132,6 +132,8 @@ export function ProductsPage() {
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("id");
   const manufacturerId = searchParams.get("mf");
+  // Lado do item escolhido no estoque (?lado= vazio = sem lado; ausente = primeiro lado do fabricante)
+  const ladoParam = searchParams.get("lado");
   const viewOnly = searchParams.get("view") === "1";
   const isReadOnly = readOnly || viewOnly;
   const [savedMessage, setSavedMessage] = useState(false);
@@ -218,6 +220,8 @@ export function ProductsPage() {
   }, []);
 
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
+  // Lado dos registros de estoque que estão sendo editados
+  const [editingLado, setEditingLado] = useState<string | null>(null);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -263,7 +267,16 @@ export function ProductsPage() {
 
         const storesList = storesData ?? [];
         const mfs = mfData ?? [];
-        const allInvs = invData ?? [];
+        const mfIdToEdit = manufacturerId ?? mfs[0]?.id;
+        const rawMfInvs = (invData ?? []).filter((inv: any) => inv.manufacturer_id === mfIdToEdit);
+        const ladoToEdit: string | null = ladoParam !== null
+          ? ladoParam || null
+          : rawMfInvs.length > 0 ? rawMfInvs[0].lado ?? null : pData.lado ?? null;
+        // No fabricante em edição entra só o estoque do lado escolhido, para não misturar D e E
+        const allInvs = (invData ?? []).filter(
+          (inv: any) => inv.manufacturer_id !== mfIdToEdit || (inv.lado ?? null) === ladoToEdit,
+        );
+        setEditingLado(ladoToEdit);
 
         const product: Product = {
           id: pData.id,
@@ -336,7 +349,7 @@ export function ProductsPage() {
         const matchingRawInv =
           allInvs.find((inv: any) => inv.manufacturer_id === activeMfIdForLoad && inv.store_id === targetStoreForLoad && !inv.special_condition) ??
           allInvs.find((inv: any) => inv.manufacturer_id === activeMfIdForLoad && inv.store_id === targetStoreForLoad);
-        form.reset(buildFormValues(product, manufacturerId, firstInv?.storeId ?? null, matchingRawInv?.special_condition ?? null));
+        form.reset(buildFormValues(product, manufacturerId, firstInv?.storeId ?? null, matchingRawInv?.special_condition ?? null, ladoToEdit));
 
         // Carrega fotos do produto
         const { data: photosData } = await supabase
@@ -360,7 +373,7 @@ export function ProductsPage() {
     }
 
     fetchProduct();
-  }, [productId, manufacturerId]);
+  }, [productId, manufacturerId, ladoParam]);
 
 
   const fieldLabels: Partial<Record<keyof ProductFormValues, string>> = {
@@ -621,6 +634,26 @@ export function ProductsPage() {
         if (isEditing) {
           const ladoValue = [values.ladoA && "A", values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
           const specialCond: string | null = values.isTypeB && values.isTypeR ? "BR" : values.isTypeB ? "B" : values.isTypeR ? "R" : null;
+          const activeMfId = manufacturerId ?? currentProduct.manufacturers[0]?.id ?? null;
+
+          // Lado trocado: só deixa se não juntar com o estoque que já existe no outro lado
+          let ladoInvIds: string[] = [];
+          if (ladoValue !== editingLado && activeMfId) {
+            const { data: mfInvs, error: invErr } = await supabase
+              .from("product_store_inventory")
+              .select("id, lado")
+              .eq("manufacturer_id", activeMfId);
+            if (invErr) throw new Error(`Erro ao buscar estoque: ${invErr.message}`);
+            if ((mfInvs ?? []).some((inv: any) => (inv.lado ?? null) === ladoValue)) {
+              throw new Error(`Este item já tem estoque ${ladoValue ? `do lado ${ladoValue}` : "sem lado"}. Edite esse registro no Estoque em vez de trocar o lado deste.`);
+            }
+            ladoInvIds = (mfInvs ?? []).filter((inv: any) => (inv.lado ?? null) === editingLado).map((inv: any) => inv.id);
+          }
+          // Lado padrão do produto só muda quando o item editado é o único fabricante e usa esse lado
+          const productLado = currentProduct.manufacturers.length <= 1 && (currentProduct.lado ?? null) === editingLado
+            ? ladoValue
+            : currentProduct.lado ?? null;
+
           const { error } = await supabase
             .from("products")
             .update({
@@ -629,7 +662,7 @@ export function ProductsPage() {
               name: values.name,
               glass_type: values.glassType,
               feature: values.feature,
-              lado: ladoValue,
+              lado: productLado,
               brand: values.brand,
               description: values.description ?? "",
               status: values.status,
@@ -639,7 +672,6 @@ export function ProductsPage() {
           if (error) { console.error("Supabase update error:", error); throw error; }
 
           // Atualiza fabricante: nome, custo, preço, fornecedor e data de compra
-          const activeMfId = manufacturerId ?? currentProduct.manufacturers[0]?.id ?? null;
           if (activeMfId) {
             const { error: mfError } = await supabase
               .from("product_manufacturers")
@@ -654,7 +686,15 @@ export function ProductsPage() {
             if (mfError) console.error("Erro ao atualizar fabricante:", mfError);
           }
 
-          // Atualiza estoque da loja selecionada usando manufacturer_id + store_id como filtro
+          if (ladoInvIds.length > 0) {
+            const { error: ladoErr } = await supabase
+              .from("product_store_inventory")
+              .update({ lado: ladoValue })
+              .in("id", ladoInvIds);
+            if (ladoErr) throw new Error(`Erro ao salvar o lado: ${ladoErr.message}`);
+          }
+
+          // Atualiza estoque da loja selecionada usando manufacturer_id + store_id + lado como filtro
           const storeId = selectedStoreId || dbStores[0]?.id;
           if (storeId && activeMfId && canWriteStore(authUser, storeId)) {
             // Tenta UPDATE filtrando pela condição especial correta; se não afetar nenhuma linha, faz INSERT
@@ -666,6 +706,10 @@ export function ProductsPage() {
             invUpQ = specialCond
               ? (invUpQ as any).eq("special_condition", specialCond)
               : (invUpQ as any).is("special_condition", null);
+            // Sem este filtro a edição de um lado sobrescreve o saldo do outro
+            invUpQ = ladoValue
+              ? (invUpQ as any).eq("lado", ladoValue)
+              : (invUpQ as any).is("lado", null);
             const { data: updated, error: upErr } = await (invUpQ as any).select("id");
 
             if (upErr) throw new Error(`Erro ao salvar estoque: ${upErr.message}`);
@@ -679,6 +723,7 @@ export function ProductsPage() {
                 location: invLocation,
               };
               if (specialCond) insertRow.special_condition = specialCond;
+              if (ladoValue) insertRow.lado = ladoValue;
               const { error: insErr } = await supabase
                 .from("product_store_inventory")
                 .insert(insertRow);
@@ -694,6 +739,8 @@ export function ProductsPage() {
               if (syncErr) throw new Error(`Mínimo salvo neste item, mas falhou nos itens iguais: ${syncErr}`);
             }
           }
+          setEditingLado(ladoValue);
+          setCurrentProduct((prev) => (prev ? { ...prev, lado: productLado } : prev));
         } else {
           const ladoValue = [values.ladoA && "A", values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
           const specialCond: string | null = values.isTypeB && values.isTypeR ? "BR" : values.isTypeB ? "B" : values.isTypeR ? "R" : null;
@@ -744,6 +791,7 @@ export function ProductsPage() {
                 min_quantity: Math.max(0, invMinimum),
               };
               if (specialCond) row.special_condition = specialCond;
+              if (ladoValue) row.lado = ladoValue;
               return row;
             });
             const { error: invError } = await supabase
@@ -782,7 +830,7 @@ export function ProductsPage() {
             manufacturer: values.manufacturer,
             user_name: authUser?.name ?? "",
             quantity: 0,
-            note: `Novo produto cadastrado`,
+            note: ladoValue ? `Novo produto cadastrado | Lado: ${ladoValue}` : "Novo produto cadastrado",
           }).then(({ error }) => { if (error) console.warn("audit log:", error.message); });
 
           // Estoque inicial do cadastro conta como entrada no dashboard
@@ -796,7 +844,7 @@ export function ProductsPage() {
               manufacturer: values.manufacturer,
               user_name: authUser?.name ?? "",
               quantity: initialQty,
-              note: "Estoque inicial (cadastro de produto)",
+              note: ladoValue ? `Estoque inicial (cadastro de produto) | Lado: ${ladoValue}` : "Estoque inicial (cadastro de produto)",
             });
             if (mvErr) console.error("Erro ao registrar movimentação de entrada:", mvErr.message);
           }
@@ -891,6 +939,7 @@ export function ProductsPage() {
         chk("Nome", currentProduct.name, values.name);
         chk("Tipo", currentProduct.glassType, values.glassType);
         chk("Característica", currentProduct.feature, values.feature);
+        chk("Lado", editingLado, [values.ladoA && "A", values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/"));
         chk("Marca", currentProduct.brand, values.brand);
         chk("Status", currentProduct.status, values.status);
         chk("Descrição", currentProduct.description, values.description);

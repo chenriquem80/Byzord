@@ -66,6 +66,9 @@ export interface StoreInventory {
   location: string;
   stock: number;
   minQuantity: number;
+  specialCondition?: string | null;
+  /** Lado do item neste registro de estoque (D, E, A, D/E) — é o lado que vale em todo o sistema */
+  lado?: string | null;
 }
 
 export interface Product {

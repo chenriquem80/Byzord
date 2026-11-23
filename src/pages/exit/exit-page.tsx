@@ -142,6 +142,7 @@ export function ExitPage() {
             name: p.name ?? "",
             glassType: p.glass_type ?? "",
             feature: p.feature ?? "",
+            lado: p.lado ?? null,
             brand: p.brand ?? "",
             description: p.description ?? "",
             photos: [],
@@ -357,12 +358,16 @@ export function ExitPage() {
     const parsed = parseLabelQr(clean);
     const code = parsed ? parsed.productCode.replace(/[^\x20-\x7E]/g, "").trim() : clean;
     const norm = (v?: string | null) => (v ?? "").trim().toLocaleUpperCase("pt-BR");
-    const found = allProducts.find((p) => {
+    const candidates = allProducts.filter((p) => {
       const bc = (p.barcode ?? "").replace(/[^\x20-\x7E]/g, "").trim();
       if (bc && (bc === code || code.endsWith(bc) || bc.endsWith(code))) return true;
       // Produto sem código de barras: a etiqueta usa o nome como código
       return !!parsed && !bc && norm(p.name) === norm(code);
     });
+    // Lados cadastrados como produtos separados: prefere o que tem o fabricante e o lado da etiqueta
+    const found = candidates.find((p) => parsed && p.manufacturers.some((m) =>
+      norm(m.manufacturer) === norm(parsed.manufacturer) && m.inventories.some((inv) => norm(inv.lado) === norm(parsed.lado)),
+    )) ?? candidates[0];
     if (found && found.manufacturers.length > 0) {
       const storeId = form.getValues("storeId");
       const hasStockInStore = (mf: (typeof found.manufacturers)[number]) =>
@@ -543,6 +548,15 @@ export function ExitPage() {
                       </div>
                       <p className="text-sm text-slate-500">
                         {row.product.glassType} • {row.product.brand}
+                        {(() => {
+                          const selStore = form.watch("storeId");
+                          const lados = [...new Set(
+                            row.mf.inventories
+                              .filter((inv) => inv.lado && inv.stock > 0 && (!selStore || inv.storeId === selStore))
+                              .map((inv) => inv.lado as string),
+                          )];
+                          return lados.length > 0 ? ` • Lado ${lados.join(" e ")}` : "";
+                        })()}
                       </p>
                       <p className="mt-0.5 text-xs font-medium text-slate-400">
                         Fabricante: {row.mf.manufacturer} • Preço: {formatCurrency(row.mf.price)}
@@ -629,7 +643,7 @@ export function ExitPage() {
               >
                 <option value="">Selecione um produto...</option>
                 {allProducts.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
+                  <option key={item.id} value={item.id}>{item.name}{item.lado ? ` — Lado ${item.lado}` : ""}</option>
                 ))}
               </Select>
             </FormField>

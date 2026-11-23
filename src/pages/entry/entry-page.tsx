@@ -130,6 +130,8 @@ export function EntryPage() {
                   location: inv.location ?? "",
                   stock: inv.stock ?? inv.stock_quantity ?? 0,
                   minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
+                  specialCondition: inv.special_condition ?? null,
+                  lado: inv.lado ?? null,
                 };
               }),
             };
@@ -141,6 +143,7 @@ export function EntryPage() {
             name: p.name ?? "",
             glassType: p.glass_type ?? "",
             feature: p.feature ?? "",
+            lado: p.lado ?? null,
             brand: p.brand ?? "",
             description: p.description ?? "",
             photos: [],
@@ -184,6 +187,25 @@ export function EntryPage() {
     return (item.mf.inventories.find((inv) => inv.storeId === selectedStoreId) ?? item.mf.inventories[0])?.location ?? "";
   }
 
+  const chosenLado: string | null = [isLadoA && "A", isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
+
+  /** Lados já cadastrados no item (usa o lado do produto quando o fabricante ainda não tem estoque). */
+  function ladosOf(product: Product, mf?: Manufacturer): (string | null)[] {
+    const lados = [...new Set((mf?.inventories ?? []).map((inv) => inv.lado ?? null))];
+    return lados.length > 0 ? lados : [product.lado ?? null];
+  }
+
+  /** Lado que recebe a entrada: o marcado na tela; senão o do próprio item, se não houver dúvida. */
+  function resolveLado(item: EntryItem): { lado: string | null; ambiguous: boolean } {
+    if (chosenLado) return { lado: chosenLado, ambiguous: false };
+    const targetMf = selectedManufacturer && selectedManufacturer !== item.mf.manufacturer
+      ? item.product.manufacturers.find((m) => m.manufacturer === selectedManufacturer)
+      : item.mf;
+    const lados = ladosOf(item.product, targetMf);
+    if (lados.length === 1) return { lado: lados[0], ambiguous: false };
+    return { lado: null, ambiguous: !lados.includes(null) };
+  }
+
   const currentLabel = useMemo(() => {
     if (!lastItem) return null;
     const compat = lastItem.product.compatibilities[0];
@@ -194,13 +216,12 @@ export function EntryPage() {
     const dateLabel = purchaseDate
       ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
       : "";
-    const ladoValue = [isLadoA && "A", isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
     return {
       vehicleLabel,
       yearRange,
       feature: lastItem.product.feature,
       glassType: lastItem.product.glassType,
-      lado: ladoValue ?? lastItem.product.lado ?? null,
+      lado: resolveLado(lastItem).lado,
       manufacturer: selectedManufacturer || lastItem.mf.manufacturer,
       supplier: selectedSupplier,
       location: labelLocation(lastItem),
@@ -269,12 +290,17 @@ export function EntryPage() {
     const parsed = parseLabelQr(clean);
     const code = parsed ? parsed.productCode.replace(/[^ -~]/g, "").trim() : clean;
     const norm = (v?: string | null) => (v ?? "").trim().toLocaleUpperCase("pt-BR");
-    const found = products.find((p) => {
+    const candidates = products.filter((p) => {
       const bc = (p.barcode ?? "").replace(/[^ -~]/g, "").trim();
       if (bc && (bc === code || code.endsWith(bc) || bc.endsWith(code))) return true;
       // Produto sem código de barras: a etiqueta usa o nome como código
       return !bc && norm(p.name) === norm(code);
     });
+    // Lados cadastrados como produtos separados: prefere o que tem o fabricante e o lado da etiqueta
+    const matchesLado = (p: Product, mf: Manufacturer) => ladosOf(p, mf).some((l) => norm(l) === norm(parsed?.lado));
+    const found = candidates.find((p) => parsed && p.manufacturers.some((m) => norm(m.manufacturer) === norm(parsed.manufacturer) && matchesLado(p, m)))
+      ?? candidates.find((p) => parsed && p.manufacturers.some((m) => matchesLado(p, m)))
+      ?? candidates[0];
     if (!found) {
       setScanMessage({ type: "error", text: `Produto não encontrado para o código "${code}". Busque pelo nome ou cadastre em Novo Item.` });
       return;
@@ -373,11 +399,15 @@ export function EntryPage() {
 
   async function handleSaveEntry() {
     if (!supabase || entryItems.length === 0) return;
+    const ambiguousItem = entryItems.find((item) => resolveLado(item).ambiguous);
+    if (ambiguousItem) {
+      setSaveError(`${ambiguousItem.product.name} tem estoque em mais de um lado. Marque o lado (D, E ou A) antes de salvar.`);
+      return;
+    }
     setSaving(true);
     const specialCond: string | null = isTypeB && isTypeR ? "BR" : isTypeB ? "B" : isTypeR ? "R" : null;
-    const ladoValue: string | null = [isLadoA && "A", isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
 
-    async function upsertInventory(mfId: string, storeId: string, qty: number, location?: string) {
+    async function upsertInventory(mfId: string, storeId: string, ladoValue: string | null, qty: number, location?: string) {
       let q = supabase!
         .from("product_store_inventory")
         .select("id, stock")
@@ -390,7 +420,8 @@ export function EntryPage() {
       if (ladoValue) q = q.eq("lado", ladoValue);
       else q = q.is("lado", null);
 
-      const { data: existing, error: selErr } = await (q as any).maybeSingle();
+      // limit(1): registros repetidos do mesmo lado não podem travar a entrada
+      const { data: existing, error: selErr } = await (q as any).order("id").limit(1).maybeSingle();
       if (selErr) throw new Error(`Erro ao buscar inventário: ${selErr.message}`);
 
       if (existing) {
@@ -422,13 +453,14 @@ export function EntryPage() {
 
     try {
       for (const item of entryItems) {
+        const itemLado = resolveLado(item).lado;
         const isDifferentMf = selectedManufacturer && selectedManufacturer !== item.mf.manufacturer;
 
         if (!isDifferentMf) {
           for (const store of stores) {
             const qty = Number(item.quantities[store.id] ?? 0);
             if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
-            await upsertInventory(item.mf.id, store.id, qty, item.locations[store.id]);
+            await upsertInventory(item.mf.id, store.id, itemLado, qty, item.locations[store.id]);
           }
           await supabase.from("product_manufacturers")
             .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
@@ -440,7 +472,7 @@ export function EntryPage() {
             for (const store of stores) {
               const qty = Number(item.quantities[store.id] ?? 0);
               if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
-              await upsertInventory(existingMf.id, store.id, qty, item.locations[store.id]);
+              await upsertInventory(existingMf.id, store.id, itemLado, qty, item.locations[store.id]);
             }
             await supabase.from("product_manufacturers")
               .update({ supplier: selectedSupplier, last_purchase_date: purchaseDate || null })
@@ -463,7 +495,7 @@ export function EntryPage() {
             for (const store of stores) {
               const qty = Number(item.quantities[store.id] ?? 0);
               if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
-              await upsertInventory(newMfData.id, store.id, qty, item.locations[store.id]);
+              await upsertInventory(newMfData.id, store.id, itemLado, qty, item.locations[store.id]);
             }
           }
         }
@@ -471,11 +503,12 @@ export function EntryPage() {
       // Registra movimentação no log
       for (const item of entryItems) {
         const mfName = selectedManufacturer || item.mf.manufacturer;
+        const itemLado = resolveLado(item).lado;
         for (const store of stores) {
           const qty = Number(item.quantities[store.id] ?? 0);
           if (qty <= 0 || !canWriteStore(authUser, store.id)) continue;
           const noteParts = [
-            ladoValue ? `Lado: ${ladoValue}` : null,
+            itemLado ? `Lado: ${itemLado}` : null,
             specialCond ? `Condição: ${specialCond}` : null,
             invoiceNumber ? `NF: ${invoiceNumber}` : null,
             note || null,
@@ -607,7 +640,7 @@ export function EntryPage() {
                                 </span>
                               </div>
                               <p className="text-sm text-slate-500">
-                                {row.product.glassType} • {row.product.brand}
+                                {row.product.glassType} • {row.product.brand}{ladosOf(row.product, row.mf).some(Boolean) ? ` • Lado ${ladosOf(row.product, row.mf).filter(Boolean).join(" e ")}` : ""}
                               </p>
                               <p className="mt-0.5 text-xs font-medium text-slate-400">
                                 Fabricante: {row.mf.manufacturer}{showCostPrice ? ` • Custo: ${formatCurrency(row.mf.cost)}` : ""}
@@ -806,7 +839,7 @@ export function EntryPage() {
                               {item.product.name}
                             </p>
                             <p className="text-sm text-slate-500">
-                              {item.product.glassType} • {item.product.feature} • Fabricante: {item.mf.manufacturer}{showCostPrice ? ` • Custo: ${formatCurrency(item.mf.cost)}` : ""}
+                              {item.product.glassType} • {item.product.feature}{resolveLado(item).lado ? ` • Lado ${resolveLado(item).lado}` : ""} • Fabricante: {item.mf.manufacturer}{showCostPrice ? ` • Custo: ${formatCurrency(item.mf.cost)}` : ""}
                             </p>
                           </div>
                           <button
@@ -946,14 +979,13 @@ export function EntryPage() {
               const dateLabel = purchaseDate
                 ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
                 : "";
-              const ladoValue = [isLadoA && "A", isLadoD && "D", isLadoE && "E"].filter(Boolean).join("/") || null;
               const labelData: LabelData = {
                 productCode: item.product.barcode || item.product.name,
                 vehicleLabel,
                 yearRange,
                 feature: item.product.feature,
                 glassType: item.product.glassType,
-                lado: ladoValue ?? (item.product as any).lado ?? null,
+                lado: resolveLado(item).lado,
                 manufacturer: selectedManufacturer || item.mf.manufacturer,
                 supplier: selectedSupplier,
                 location: labelLocation(item),

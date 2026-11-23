@@ -15,6 +15,10 @@ import type { Product } from "@/types/domain";
 
 type Manufacturer = Product["manufacturers"][0];
 
+// Cada lado + condição especial tem saldo próprio e é transferido separadamente
+const variantKey = (inv: { lado?: string | null; specialCondition?: string | null }) =>
+  `${inv.lado ?? ""}|${inv.specialCondition ?? ""}`;
+
 export function TransferPage() {
   const { user: authUser } = useAuth();
   const { readOnly } = usePermissions();
@@ -23,6 +27,7 @@ export function TransferPage() {
   const [glassTypeFilter, setGlassTypeFilter] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedManufacturerId, setSelectedManufacturerId] = useState("");
+  const [selectedVariant, setSelectedVariant] = useState("");
   const [fromStoreId, setFromStoreId] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [saving, setSaving] = useState(false);
@@ -83,6 +88,8 @@ export function TransferPage() {
                 location: inv.location ?? "",
                 stock: inv.stock ?? inv.stock_quantity ?? 0,
                 minQuantity: inv.min_quantity ?? inv.minimum_quantity ?? 0,
+                specialCondition: inv.special_condition ?? null,
+                lado: inv.lado ?? null,
               };
             }),
           };
@@ -94,6 +101,7 @@ export function TransferPage() {
           name: p.name ?? "",
           glassType: p.glass_type ?? "",
           feature: p.feature ?? "",
+          lado: p.lado ?? null,
           brand: p.brand ?? "",
           description: p.description ?? "",
           photos: [],
@@ -157,12 +165,37 @@ export function TransferPage() {
     (m) => m.id === selectedManufacturerId,
   );
 
-  const fromStock = selectedManufacturer?.inventories.find((i) => i.storeId === fromStoreId)?.stock ?? 0;
-  const toStock = selectedManufacturer?.inventories.find((i) => i.storeId === toStoreId)?.stock ?? 0;
+  const variants = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; fromStock: number }>();
+    for (const inv of selectedManufacturer?.inventories ?? []) {
+      const key = variantKey(inv);
+      const v = map.get(key) ?? {
+        key,
+        label: [inv.lado ? `Lado ${inv.lado}` : "Sem lado", inv.specialCondition ? `Condição ${inv.specialCondition}` : null].filter(Boolean).join(" • "),
+        fromStock: 0,
+      };
+      if (inv.storeId === fromStoreId) v.fromStock += inv.stock;
+      map.set(key, v);
+    }
+    return [...map.values()];
+  }, [selectedManufacturer, fromStoreId]);
+
+  // Variação ativa: a escolhida; senão a primeira com saldo na origem
+  const activeVariant = variants.find((v) => v.key === selectedVariant)
+    ?? variants.find((v) => v.fromStock > 0)
+    ?? variants[0];
+
+  const stockIn = (storeId: string) =>
+    (selectedManufacturer?.inventories ?? [])
+      .filter((i) => i.storeId === storeId && variantKey(i) === activeVariant?.key)
+      .reduce((s, i) => s + i.stock, 0);
+  const fromStock = stockIn(fromStoreId);
+  const toStock = stockIn(toStoreId);
 
   function handleSelectProduct(product: Product) {
     setSelectedProduct(product);
     setSelectedManufacturerId(product.manufacturers[0]?.id ?? "");
+    setSelectedVariant("");
     setQuery(product.name);
     setSuccessMessage(null);
     setErrorMessage(null);
@@ -198,12 +231,17 @@ export function TransferPage() {
       // Busca dados frescos do banco para evitar usar estado desatualizado
       const { data: freshInvData, error: fetchErr } = await supabase
         .from("product_store_inventory")
-        .select("id, stock, store_id, manufacturer_id")
+        .select("id, stock, store_id, manufacturer_id, lado, special_condition")
         .eq("manufacturer_id", mfId);
       if (fetchErr) throw fetchErr;
 
-      const freshFrom = (freshInvData ?? []).find((i: any) => i.store_id === fromStoreId);
-      const freshTo   = (freshInvData ?? []).find((i: any) => i.store_id === toStoreId);
+      // Só o mesmo lado e a mesma condição especial, na origem e no destino
+      const sameVariant = (freshInvData ?? []).filter((i: any) =>
+        variantKey({ lado: i.lado, specialCondition: i.special_condition }) === activeVariant?.key,
+      );
+      const fromRows = sameVariant.filter((i: any) => i.store_id === fromStoreId);
+      const freshFrom = fromRows.find((i: any) => i.stock >= qty) ?? fromRows[0];
+      const freshTo   = sameVariant.find((i: any) => i.store_id === toStoreId);
 
       if (!freshFrom) throw new Error(`Inventário de origem não encontrado em ${fromStore?.name}.`);
       if (freshFrom.stock < qty)
@@ -231,6 +269,8 @@ export function TransferPage() {
             store_id: toStoreId,
             stock: qty,
             min_quantity: 0,
+            lado: freshFrom.lado ?? null,
+            special_condition: freshFrom.special_condition ?? null,
           });
         if (err2) throw err2;
       }
@@ -248,8 +288,7 @@ export function TransferPage() {
         manufacturer: selectedManufacturer?.manufacturer ?? "",
         user_name: authUser?.name ?? "",
         quantity: qty,
-        note: `Transferência de ${fromStore?.name} para ${toStore?.name}`,
-        special_condition: null,
+        note: `Transferência de ${fromStore?.name} para ${toStore?.name}${freshFrom.lado ? ` | Lado: ${freshFrom.lado}` : ""}${freshFrom.special_condition ? ` | Condição: ${freshFrom.special_condition}` : ""}`,
       });
       if (mvErr) console.error("Erro ao registrar movimentação de transferência:", mvErr.message);
 
@@ -323,6 +362,10 @@ export function TransferPage() {
                         <p className="font-semibold text-slate-900">{product.name}</p>
                         <p className="text-sm text-slate-500">
                           {product.glassType} • {product.feature} • {product.brand}
+                          {(() => {
+                            const lados = [...new Set(product.manufacturers.flatMap((m) => m.inventories.map((i) => i.lado)).filter(Boolean))];
+                            return lados.length > 0 ? ` • Lado ${lados.join(" e ")}` : "";
+                          })()}
                         </p>
                         {mfNames.length > 0 && (
                           <p className="mt-0.5 text-xs text-primary font-medium">
@@ -360,7 +403,7 @@ export function TransferPage() {
                 <FormField label="Fabricante">
                   <Select
                     value={selectedManufacturerId}
-                    onChange={(e) => setSelectedManufacturerId(e.target.value)}
+                    onChange={(e) => { setSelectedManufacturerId(e.target.value); setSelectedVariant(""); }}
                   >
                     {selectedProduct.manufacturers.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -371,11 +414,22 @@ export function TransferPage() {
                 </FormField>
               )}
 
+              {variants.length > 1 ? (
+                <FormField label="Lado / condição">
+                  <Select value={activeVariant?.key ?? ""} onChange={(e) => setSelectedVariant(e.target.value)}>
+                    {variants.map((v) => (
+                      <option key={v.key} value={v.key}>{v.label} ({v.fromStock} un. em {fromStore?.name})</option>
+                    ))}
+                  </Select>
+                </FormField>
+              ) : activeVariant && activeVariant.key !== "|" ? (
+                <p className="text-sm font-medium text-primary">{activeVariant.label}</p>
+              ) : null}
+
               {/* Estoque atual */}
               <div className="grid gap-4 md:grid-cols-2">
                 {allStores.map((store) => {
-                  const stock =
-                    selectedManufacturer?.inventories.find((i) => i.storeId === store.id)?.stock ?? 0;
+                  const stock = stockIn(store.id);
                   return (
                     <div
                       key={store.id}

@@ -176,30 +176,33 @@ export function DashboardPage() {
     if (!window.confirm(`Cancelar saída de "${movement.product_name}"?\nRetornará ${movement.quantity} un. ao estoque de ${movement.store_name}.`)) return;
     setCancelling(true);
     try {
-      const [storeRes, productRes] = await Promise.all([
-        supabase.from("stores").select("id").eq("name", movement.store_name).single(),
-        supabase.from("products").select("id").eq("name", movement.product_name).single(),
-      ]);
-      const storeId = storeRes.data?.id;
-      const productId = productRes.data?.id;
-      if (!storeId || !productId) { alert("Loja ou produto não encontrado."); return; }
+      const { data: store } = await supabase.from("stores").select("id").eq("name", movement.store_name).single();
+      if (!store) { alert("Loja não encontrada."); return; }
 
-      const { data: mfData } = await supabase
-        .from("product_manufacturers")
-        .select("id")
-        .eq("product_id", productId)
-        .eq("manufacturer", movement.manufacturer)
-        .single();
-      const mfId = mfData?.id;
-      if (!mfId) { alert("Fabricante não encontrado."); return; }
-
-      const { data: invData } = await supabase
+      // Devolve para o mesmo produto, fabricante, lado e condição da saída
+      const { data: invRows, error: invErr } = await supabase
         .from("product_store_inventory")
-        .select("id, stock")
-        .eq("manufacturer_id", mfId)
-        .eq("store_id", storeId)
-        .single();
-      if (!invData) { alert("Registro de estoque não encontrado."); return; }
+        .select("id, stock, lado, special_condition, product_manufacturers!inner(manufacturer, products!inner(name, glass_type, feature))")
+        .eq("store_id", store.id)
+        .eq("product_manufacturers.manufacturer", movement.manufacturer)
+        .eq("product_manufacturers.products.name", movement.product_name);
+      if (invErr) { alert("Erro ao buscar estoque: " + invErr.message); return; }
+      const fromNote = (label: string) =>
+        (movement.note ?? "").match(new RegExp(`(?:^|[|] )${label}: ([^|]+)`))?.[1].trim() || null;
+      const lado = fromNote("Lado");
+      const cond = fromNote("Condição");
+      const candidates = (invRows ?? []).filter((inv: any) => {
+        const p = inv.product_manufacturers?.products;
+        return (!movement.glass_type || p?.glass_type === movement.glass_type)
+          && (!movement.feature || p?.feature === movement.feature)
+          && (inv.special_condition ?? null) === cond;
+      });
+      // Saída antiga não informa o lado: só cancela se houver um único registro possível
+      const exact = candidates.filter((inv: any) => (inv.lado ?? null) === lado);
+      const matches = exact.length > 0 ? exact : lado ? [] : candidates;
+      if (matches.length === 0) { alert("Registro de estoque não encontrado."); return; }
+      if (matches.length > 1) { alert("Há mais de um item igual no estoque (lado ou produto repetido). Ajuste a quantidade manualmente em Produtos."); return; }
+      const invData = matches[0];
 
       const { error: updErr } = await supabase
         .from("product_store_inventory")

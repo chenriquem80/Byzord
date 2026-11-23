@@ -133,18 +133,26 @@ export function StockPage() {
     row: StockRow | null;
     value: string;
     saving: boolean;
+    error?: string | null;
   }>({ open: false, row: null, value: "", saving: false });
 
   async function handleSaveLado() {
     if (!supabase || !ladoDialog.row) return;
-    setLadoDialog((d) => ({ ...d, saving: true }));
+    setLadoDialog((d) => ({ ...d, saving: true, error: null }));
     const mf = ladoDialog.row.product.manufacturers.find((m) => m.id === ladoDialog.row!.manufacturerId);
     const invIds = (mf?.inventories ?? [])
       .filter((i) => ((i as any).lado ?? null) === ladoDialog.row!.lado)
       .map((i) => i.id);
     const newLado = ladoDialog.value || null;
-    for (const id of invIds) {
-      await supabase.from("product_store_inventory").update({ lado: newLado }).eq("id", id);
+    const hasOther = (mf?.inventories ?? []).some((i) => (i.lado ?? null) === newLado);
+    if (newLado !== ladoDialog.row.lado && hasOther) {
+      setLadoDialog((d) => ({ ...d, saving: false, error: `Este item já tem um registro ${newLado ? `do lado ${newLado}` : "sem lado"} neste fabricante.` }));
+      return;
+    }
+    const { error } = await supabase.from("product_store_inventory").update({ lado: newLado }).in("id", invIds);
+    if (error) {
+      setLadoDialog((d) => ({ ...d, saving: false, error: `Erro ao salvar o lado: ${error.message}` }));
+      return;
     }
     setLadoDialog((d) => ({ ...d, open: false, saving: false }));
     fetchData();
@@ -450,7 +458,7 @@ export function StockPage() {
             <button
               type="button"
               className="text-left underline-offset-2 hover:underline hover:text-primary"
-              onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}&view=1`)}
+              onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}&lado=${encodeURIComponent(row.original.lado ?? "")}&view=1`)}
             >
               {row.original.productName}
             </button>
@@ -482,7 +490,7 @@ export function StockPage() {
               type="button"
               title={readOnly ? undefined : "Clique para editar o lado"}
               disabled={readOnly}
-              onClick={() => setLadoDialog({ open: true, row: row.original, value: row.original.lado ?? "", saving: false })}
+              onClick={() => setLadoDialog({ open: true, row: row.original, value: row.original.lado ?? "", saving: false, error: null })}
               className="rounded px-1.5 py-0.5 font-semibold transition enabled:hover:bg-slate-100"
             >
               {row.original.lado ?? <span className="text-slate-300">—</span>}
@@ -574,7 +582,7 @@ export function StockPage() {
             <button
               type="button"
               title="Alterar produto"
-              onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}`)}
+              onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}&lado=${encodeURIComponent(row.original.lado ?? "")}`)}
               className="flex size-8 items-center justify-center rounded-lg border border-border text-slate-500 transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
             >
               <Pencil className="size-3.5" />
@@ -753,7 +761,7 @@ export function StockPage() {
             Editar descrição
           </button>
           <button
-            onClick={() => { navigate(`/app/produtos?id=${ctxMenu.row!.product.id}&mf=${ctxMenu.row!.manufacturerId}`); setCtxMenu((m) => ({ ...m, visible: false })); }}
+            onClick={() => { navigate(`/app/produtos?id=${ctxMenu.row!.product.id}&mf=${ctxMenu.row!.manufacturerId}&lado=${encodeURIComponent(ctxMenu.row!.lado ?? "")}`); setCtxMenu((m) => ({ ...m, visible: false })); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
           >
             <Pencil className="size-3.5 text-slate-500" />
@@ -922,6 +930,7 @@ export function StockPage() {
               <option value="E">E — Esquerdo</option>
               <option value="D/E">D/E — Ambos</option>
             </Select>
+            {ladoDialog.error && <p className="text-sm text-rose-600">{ladoDialog.error}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setLadoDialog((d) => ({ ...d, open: false }))}>
                 <X className="size-3.5" /> Cancelar
@@ -950,7 +959,7 @@ export function StockPage() {
               </DialogHeader>
               <div className="mt-2 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  {(mf?.inventories ?? []).map((inv) => (
+                  {(mf?.inventories ?? []).filter((inv) => (inv.lado ?? null) === row.lado).map((inv) => (
                     <div key={inv.id} className="rounded-xl border border-border bg-slate-50 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{inv.storeName}</p>
                       <p className="mt-1 text-2xl font-bold text-slate-900">{inv.stock} <span className="text-sm font-normal text-slate-400">un.</span></p>
@@ -994,7 +1003,7 @@ export function StockPage() {
           <DialogHeader>
             <DialogTitle>Excluir produto</DialogTitle>
             <DialogDescription>
-              <strong>{deleteDialog.row?.productName}</strong> será excluído permanentemente, incluindo todos os registros de estoque e fabricantes. Esta ação não pode ser desfeita.
+              <strong>{deleteDialog.row?.productName}</strong> será excluído permanentemente, incluindo todos os registros de estoque, lados e fabricantes. Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           {deleteBlocked && (
