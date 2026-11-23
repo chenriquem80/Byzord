@@ -11,7 +11,7 @@ export function formatDate(value: string) {
 
 export function formatMonthYear(value: string) {
   // "AAAA-MM" ou "AAAA-MM-DD": lê direto, sem converter fuso (dia 1º viraria o mês anterior)
-  const match = /^(d{4})-(d{2})/.exec(value ?? "");
+  const match = /^(\d{4})-(\d{2})/.exec(value ?? "");
   if (match) return `${match[2]}/${match[1]}`;
   if (!value) return "—";
   return new Intl.DateTimeFormat("pt-BR", {

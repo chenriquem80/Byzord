@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { normText } from "@/lib/product-match";
 import { formatCurrency, formatMonthYear } from "@/lib/format";
 import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
 import { supabase } from "@/lib/database";
@@ -351,6 +352,9 @@ export function StockPage() {
   // Mostra dados do banco se disponíveis; caso contrário, usa mock
   const products = dbProducts ?? mockProducts;
 
+  // Itens zerados nas duas lojas ficam fora da busca, a menos que o usuário peça
+  const [showEmpty, setShowEmpty] = useState(false);
+
   const rows = useMemo<StockRow[]>(() => {
     const seen = new Set<string>();
     return products
@@ -417,22 +421,30 @@ export function StockPage() {
         const key = `${row.product.id}-${row.manufacturer}-${row.cost}-${row.lado ?? ""}`;
         if (seen.has(key)) return false;
         seen.add(key);
-        return true;
+        return showEmpty || row.totalQuantity + row.store1Special + row.store2Special > 0;
       });
-  }, [glassType, query, products, stores]);
+  }, [glassType, query, products, stores, showEmpty]);
 
   const sortedRows = useMemo(() => {
+    const cmp = (a?: string | null, b?: string | null) => (a ?? "").localeCompare(b ?? "", "pt-BR", { numeric: true });
+    // Nome; no mesmo nome, agrupa característica, tipo, lado e fabricante
+    const byName = (a: StockRow, b: StockRow) =>
+      cmp(normText(a.productName), normText(b.productName))
+      || cmp(a.characteristic, b.characteristic)
+      || cmp(a.product.glassType, b.product.glassType)
+      || cmp(a.lado, b.lado)
+      || cmp(a.manufacturer, b.manufacturer);
     if (sortBy === "localizacao") {
       return [...rows].sort((a, b) => {
         const locA = (a.store1Location || a.store2Location || "").toLowerCase();
         const locB = (b.store1Location || b.store2Location || "").toLowerCase();
-        if (!locA && !locB) return 0;
+        if (!locA && !locB) return byName(a, b);
         if (!locA) return 1;
         if (!locB) return -1;
-        return locA.localeCompare(locB, "pt-BR", { numeric: true });
+        return cmp(locA, locB) || byName(a, b);
       });
     }
-    return rows;
+    return [...rows].sort(byName);
   }, [rows, sortBy]);
 
   const locationGroups = useMemo<[string, StockRow[]][]>(() => {
@@ -644,7 +656,11 @@ export function StockPage() {
         title="Resultado"
         description="Clique na característica para abrir o detalhamento por loja e fabricante."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500">
+              <input type="checkbox" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} className="size-3.5 accent-primary" />
+              Mostrar sem estoque
+            </label>
             <div className="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
               <button
                 type="button"
@@ -674,7 +690,7 @@ export function StockPage() {
         ) : !glassType ? (
           <p className="py-8 text-center text-sm text-slate-500">Selecione o tipo do item para ver o estoque.</p>
         ) : rows.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">Nenhum produto encontrado.</p>
+          <p className="py-8 text-center text-sm text-slate-500">{showEmpty ? "Nenhum produto encontrado." : "Nenhum produto com estoque encontrado."}</p>
         ) : (
           <>
             {/* Lista compacta — apenas mobile */}
