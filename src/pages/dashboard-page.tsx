@@ -321,11 +321,11 @@ export function DashboardPage() {
         </SectionCard>
       </div>
 
-      <div className={`grid gap-6 ${hasRightPanel ? "xl:grid-cols-[1.25fr_0.75fr]" : ""}`}>
+      <div className={`grid grid-cols-1 gap-6 ${hasRightPanel ? "xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]" : ""}`}>
         {/* Movimentações do dia */}
         <SectionCard
           title="Movimentações do dia"
-          description={`${movements.length} movimentação${movements.length !== 1 ? "ões" : ""} registrada${movements.length !== 1 ? "s" : ""} hoje — ${entries.length} entrada${entries.length !== 1 ? "s" : ""}, ${exits.length} saída${exits.length !== 1 ? "s" : ""}.`}
+          description={`${movements.length} ${movements.length !== 1 ? "movimentações" : "movimentação"} registrada${movements.length !== 1 ? "s" : ""} hoje — ${entries.length} entrada${entries.length !== 1 ? "s" : ""}, ${exits.length} saída${exits.length !== 1 ? "s" : ""}.`}
           action={
             <Button size="sm" variant="outline" onClick={fetchMovements} disabled={loadingMovements}>
               <RefreshCw className={`size-3.5 ${loadingMovements ? "animate-spin" : ""}`} />
@@ -348,10 +348,10 @@ export function DashboardPage() {
                     key={item.id}
                     onContextMenu={(e) => handleContextMenu(e, item)}
                     onClick={() => handleMobileTap(item)}
-                    className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : isCancelled ? "border-slate-200 bg-slate-50 opacity-70" : "border-amber-100 bg-amber-50/40"} ${canCancel ? "cursor-pointer lg:cursor-context-menu" : ""}`}
+                    className={`flex items-start justify-between gap-2 rounded-2xl border p-3 lg:items-center lg:gap-4 lg:p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : isCancelled ? "border-slate-200 bg-slate-50 opacity-70" : "border-amber-100 bg-amber-50/40"} ${canCancel ? "cursor-pointer lg:cursor-context-menu" : ""}`}
                     title={canCancel ? "Clique com o botão direito para cancelar esta baixa" : undefined}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex min-w-0 flex-1 items-start gap-2.5 lg:items-center lg:gap-3">
                       <div className={`shrink-0 rounded-xl p-2 ${isEntry ? "bg-violet-100" : "bg-amber-100"}`}>
                         {isEntry
                           ? <PackagePlus className="size-4 text-violet-600" />
@@ -359,21 +359,20 @@ export function DashboardPage() {
                         }
                       </div>
                       <div className="min-w-0">
-                        <p className={`font-semibold text-slate-900 truncate ${isCancelled ? "line-through" : ""}`}>{item.product_name}</p>
-                        <p className="mt-0.5 text-sm text-slate-500">
-                          {item.store_name} • {item.manufacturer}
-                          {item.user_name ? ` • ${item.user_name}` : ""}
+                        <p className={`break-words text-sm font-semibold text-slate-900 lg:truncate lg:text-base ${isCancelled ? "line-through" : ""}`}>{item.product_name}</p>
+                        <p className="mt-0.5 break-words text-xs text-slate-500 lg:text-sm">
+                          {[item.store_name, item.manufacturer, item.user_name].filter(Boolean).join(" • ")}
                         </p>
                         {(item.glass_type || item.feature) && (
                           <p className="mt-0.5 text-xs text-slate-500">
                             {[item.glass_type, item.feature].filter(Boolean).join(" • ")}
                           </p>
                         )}
-                        {item.note && <p className="mt-0.5 text-xs text-slate-400">{item.note}</p>}
+                        {item.note && <p className="mt-0.5 break-words text-xs text-slate-400">{item.note}</p>}
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
-                      <Badge className={isEntry ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700"}>
+                      <Badge className={`whitespace-nowrap ${isEntry ? "bg-violet-100 text-violet-700" : isCancelled ? "bg-slate-200 text-slate-600" : "bg-amber-100 text-amber-700"}`}>
                         {isEntry ? "+" : ""}{Math.abs(item.quantity)} un.
                       </Badge>
                       <p className="mt-1 text-xs text-slate-400">
@@ -381,7 +380,7 @@ export function DashboardPage() {
                       </p>
                       {isCancelled && <p className="mt-1 text-xs font-semibold text-rose-500">Cancelada</p>}
                       {canCancel && (
-                        <p className="mt-1 text-[10px] text-rose-400 lg:hidden">toque p/ cancelar</p>
+                        <p className="mt-1 text-[10px] leading-tight text-rose-500 lg:hidden">toque p/<br />cancelar</p>
                       )}
                     </div>
                   </div>
@@ -411,7 +410,7 @@ export function DashboardPage() {
               ) : (
                 agendaItems.map((item) => (
                   <div key={item.id} className="rounded-2xl border border-border bg-white p-4">
-                    <p className="whitespace-pre-wrap text-sm text-slate-800">{item.description}</p>
+                    <p className="whitespace-pre-wrap break-words text-sm text-slate-800">{item.description}</p>
                     {item.user_name && (
                       <p className="mt-2 text-xs text-slate-400">{item.user_name}</p>
                     )}
@@ -447,7 +446,7 @@ export function DashboardPage() {
                         <AlertTriangle className="size-4 text-amber-600" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 truncate">{item.productName}</p>
+                        <p className="break-words text-sm font-semibold text-slate-900 lg:truncate lg:text-base">{item.productName}</p>
                         <p className="mt-0.5 text-sm text-slate-500">
                           {item.manufacturer}
                           {item.glassType ? ` • ${item.glassType}` : ""}
