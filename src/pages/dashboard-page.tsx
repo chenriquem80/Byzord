@@ -1,11 +1,13 @@
 import { AlertTriangle, PackageMinus, PackagePlus, RefreshCw, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { normText } from "@/lib/product-match";
+import { CANCEL_TYPE, CANCELLED_EXIT_TYPE, cancelIdOf, markCancelled } from "@/lib/stock-cancel";
 import { supabase } from "@/lib/database";
 import { useAuth } from "@/contexts/auth-context";
 import { canAccessPage, type AppPage } from "@/lib/permissions";
@@ -94,7 +96,9 @@ export function DashboardPage() {
     const { data, error } = await movQuery;
     if (error) { console.error("stock_movements:", error.message); }
     const todayOnly = (data ?? []).filter((m) => m.created_at && isTodayLocal(m.created_at));
-    setMovements(todayOnly);
+    // Saída cancelada continua na lista, marcada; o registro do cancelamento não vira outra linha
+    const cancelledIds = new Set(todayOnly.filter((m) => m.type === CANCEL_TYPE).map((m) => cancelIdOf(m.id)));
+    setMovements(markCancelled(todayOnly, cancelledIds).filter((m) => m.type !== CANCEL_TYPE));
     setLoadingMovements(false);
   }
 
@@ -169,12 +173,15 @@ export function DashboardPage() {
   function handleContextMenu(e: React.MouseEvent, movement: StockMovement) {
     if (!isAdmin) return;
     e.preventDefault();
-    setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, movement });
+    // Não deixa o menu sair da tela
+    const x = Math.max(8, Math.min(e.clientX, window.innerWidth - 300));
+    const y = Math.max(8, Math.min(e.clientY, window.innerHeight - 170));
+    setCtxMenu({ visible: true, x, y, movement });
   }
 
   async function doCancelExit(movement: StockMovement) {
-    if (!supabase) return;
-    if (!window.confirm(`Cancelar saída de "${movement.product_name}"?\nRetornará ${movement.quantity} un. ao estoque de ${movement.store_name}.`)) return;
+    if (!supabase || cancelling) return;
+    if (!window.confirm(`Cancelar baixa de "${movement.product_name}"?\nRetornará ${movement.quantity} un. ao estoque de ${movement.store_name}.`)) return;
     setCancelling(true);
     try {
       const { data: store } = await supabase.from("stores").select("id").eq("name", movement.store_name).single();
@@ -206,15 +213,43 @@ export function DashboardPage() {
       if (matches.length > 1) { alert("Há mais de um item igual no estoque (lado ou produto repetido). Ajuste a quantidade manualmente em Produtos."); return; }
       const invData = matches[0];
 
-      const { error: updErr } = await supabase
-        .from("product_store_inventory")
-        .update({ stock: invData.stock + movement.quantity })
-        .eq("id", invData.id);
-      if (updErr) { alert("Erro ao atualizar estoque: " + updErr.message); return; }
+      // Grava o cancelamento antes de devolver: o id único impede cancelar a mesma saída duas vezes
+      const exitTime = new Date(movement.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      const { error: cancelErr } = await supabase.from("stock_movements").insert({
+        id: cancelIdOf(movement.id),
+        type: CANCEL_TYPE,
+        product_name: movement.product_name,
+        store_name: movement.store_name,
+        manufacturer: movement.manufacturer,
+        user_name: user?.name ?? "",
+        quantity: movement.quantity,
+        note: [`Saída de ${exitTime} cancelada${movement.user_name ? ` (baixa de ${movement.user_name})` : ""}`, movement.note].filter(Boolean).join(" | "),
+        glass_type: movement.glass_type ?? null,
+        feature: movement.feature ?? null,
+      });
+      if (cancelErr?.code === "23505") { alert("Esta saída já foi cancelada."); fetchMovements(); return; }
+      if (cancelErr) { alert("Erro ao cancelar saída: " + cancelErr.message); return; }
 
-      const { error: delErr } = await supabase.from("stock_movements").delete().eq("id", movement.id);
-      if (delErr) { alert("Erro ao cancelar saída: " + delErr.message); return; }
-      setMovements((prev) => prev.filter((m) => m.id !== movement.id));
+      // Só grava se o saldo não mudou desde a leitura; senão lê de novo e repete
+      let stock: number = invData.stock;
+      let returned = false;
+      for (let attempt = 0; attempt < 5 && !returned; attempt++) {
+        const { data: updated, error: updErr } = await supabase
+          .from("product_store_inventory")
+          .update({ stock: stock + movement.quantity })
+          .eq("id", invData.id)
+          .eq("stock", stock)
+          .select("id");
+        if (updErr) break;
+        if ((updated ?? []).length > 0) { returned = true; break; }
+        const { data: fresh } = await supabase.from("product_store_inventory").select("stock").eq("id", invData.id).maybeSingle();
+        if (!fresh) break;
+        stock = fresh.stock;
+      }
+      if (!returned) {
+        alert(`A saída foi marcada como cancelada, mas o estoque não foi devolvido. Some ${movement.quantity} un. de "${movement.product_name}" (${movement.manufacturer}) em ${movement.store_name} pela tela de Estoque.`);
+      }
+      setMovements((prev) => prev.map((m) => (m.id === movement.id ? { ...m, type: CANCELLED_EXIT_TYPE } : m)));
     } finally {
       setCancelling(false);
     }
@@ -227,7 +262,8 @@ export function DashboardPage() {
   }
 
   function handleMobileTap(item: StockMovement) {
-    if (!isAdmin) return;
+    // No computador o cancelamento é só pelo botão direito
+    if (!isAdmin || window.matchMedia("(min-width: 1024px)").matches) return;
     const isExit = item.type === "Saída" || item.type === "saida" || item.type === "Saida";
     if (!isExit) return;
     doCancelExit(item);
@@ -305,12 +341,15 @@ export function DashboardPage() {
             ) : (
               movements.map((item) => {
                 const isEntry = item.type === "Entrada";
+                const isCancelled = item.type === CANCELLED_EXIT_TYPE;
+                const canCancel = isAdmin && item.type.toLowerCase().replace("í", "i") === "saida";
                 return (
                   <div
                     key={item.id}
                     onContextMenu={(e) => handleContextMenu(e, item)}
                     onClick={() => handleMobileTap(item)}
-                    className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : "border-amber-100 bg-amber-50/40"} ${isAdmin && !isEntry ? "cursor-context-menu lg:cursor-context-menu cursor-pointer" : ""}`}
+                    className={`flex items-center justify-between gap-4 rounded-2xl border p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : isCancelled ? "border-slate-200 bg-slate-50 opacity-70" : "border-amber-100 bg-amber-50/40"} ${canCancel ? "cursor-pointer lg:cursor-context-menu" : ""}`}
+                    title={canCancel ? "Clique com o botão direito para cancelar esta baixa" : undefined}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`shrink-0 rounded-xl p-2 ${isEntry ? "bg-violet-100" : "bg-amber-100"}`}>
@@ -320,7 +359,7 @@ export function DashboardPage() {
                         }
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 truncate">{item.product_name}</p>
+                        <p className={`font-semibold text-slate-900 truncate ${isCancelled ? "line-through" : ""}`}>{item.product_name}</p>
                         <p className="mt-0.5 text-sm text-slate-500">
                           {item.store_name} • {item.manufacturer}
                           {item.user_name ? ` • ${item.user_name}` : ""}
@@ -340,7 +379,8 @@ export function DashboardPage() {
                       <p className="mt-1 text-xs text-slate-400">
                         {new Date(item.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                       </p>
-                      {isAdmin && !isEntry && (
+                      {isCancelled && <p className="mt-1 text-xs font-semibold text-rose-500">Cancelada</p>}
+                      {canCancel && (
                         <p className="mt-1 text-[10px] text-rose-400 lg:hidden">toque p/ cancelar</p>
                       )}
                     </div>
@@ -431,7 +471,7 @@ export function DashboardPage() {
       </div>
 
       {/* Menu de contexto — cancelar saída (admin) */}
-      {ctxMenu.visible && ctxMenu.movement && (
+      {ctxMenu.visible && ctxMenu.movement && createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setCtxMenu((c) => ({ ...c, visible: false }))} />
           <div
@@ -450,10 +490,10 @@ export function DashboardPage() {
                 className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors"
               >
                 <XCircle className="size-4 shrink-0" />
-                {cancelling ? "Cancelando..." : "Cancelar saída e devolver ao estoque"}
+                {cancelling ? "Cancelando..." : "Cancelar baixa e devolver ao estoque"}
               </button>
             ) : (
-              <p className="px-4 py-2.5 text-sm text-slate-400">Cancelamento disponível apenas para saídas.</p>
+              <p className="px-4 py-2.5 text-sm text-slate-400">{ctxMenu.movement.type === CANCELLED_EXIT_TYPE ? "Esta baixa já foi cancelada." : "Cancelamento disponível apenas para saídas."}</p>
             )}
             <button
               type="button"
@@ -463,7 +503,8 @@ export function DashboardPage() {
               Fechar
             </button>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );

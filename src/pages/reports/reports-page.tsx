@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { normText } from "@/lib/product-match";
+import { CANCEL_TYPE, fetchCancelledExitIds, markCancelled, signedQuantity } from "@/lib/stock-cancel";
 import { supabase } from "@/lib/database";
 import { useAuth } from "@/contexts/auth-context";
 import { canAccessPage } from "@/lib/permissions";
@@ -685,7 +686,7 @@ function MovementByStoreReport() {
     const end = new Date(dateTo + "T23:59:59.999");
     let q = supabase
       .from("stock_movements")
-      .select("created_at, type, product_name, manufacturer, store_name, quantity, user_name, note, glass_type, feature")
+      .select("id, created_at, type, product_name, manufacturer, store_name, quantity, user_name, note, glass_type, feature")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("created_at", { ascending: false });
@@ -700,12 +701,14 @@ function MovementByStoreReport() {
       q = q.eq("store_name", storeName);
     }
     if (typeFilter !== "all") q = q.eq("type", typeFilter);
-    const { data, error } = await q;
-    if (error) {
-      console.error(error);
-      setQueryError(`Erro ao consultar: ${error.message}`);
+    const [{ data, error }, cancelled] = await Promise.all([q, fetchCancelledExitIds(start)]);
+    const errorMessage = error?.message ?? cancelled.error;
+    if (errorMessage) {
+      console.error(errorMessage);
+      setQueryError(`Erro ao consultar: ${errorMessage}`);
     }
-    setRows(data ?? []);
+    // A saída cancelada já aparece marcada; o registro do cancelamento fica em Ações por usuário
+    setRows(markCancelled(data ?? [], cancelled.ids).filter((r) => r.type !== CANCEL_TYPE));
     setFetched(true);
     setLoading(false);
   }
@@ -734,7 +737,7 @@ function MovementByStoreReport() {
           d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
           r.type, r.store_name, r.product_name, r.manufacturer,
           r.glass_type || "—", r.feature || "—",
-          (r.type === "Entrada" ? "+" : "-") + r.quantity,
+          signedQuantity(r),
           r.user_name || "—", r.note || "—",
         ];
       }),
@@ -831,7 +834,7 @@ function MovementByStoreReport() {
                       <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.glass_type || "—"}</td>
                       <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.feature || "—"}</td>
                       <td className={`px-3 py-2 font-semibold whitespace-nowrap ${isEntry ? "text-violet-700" : "text-amber-700"}`}>
-                        {isEntry ? "+" : "-"}{r.quantity}
+                        {signedQuantity(r)}
                       </td>
                       <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.user_name || "—"}</td>
                       <td className="px-3 py-2 text-slate-400">{r.note || "—"}</td>
@@ -903,16 +906,17 @@ function UserActionReport() {
     const end = new Date(dateTo + "T23:59:59.999");
     let q = supabase
       .from("stock_movements")
-      .select("created_at, type, product_name, store_name, manufacturer, quantity, user_name, note, glass_type, feature")
+      .select("id, created_at, type, product_name, store_name, manufacturer, quantity, user_name, note, glass_type, feature")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("user_name", { ascending: true })
       .order("created_at", { ascending: false });
     if (selectedUser !== "all") q = q.eq("user_name", selectedUser);
     if (typeFilter !== "all") q = q.eq("type", typeFilter);
-    const { data, error } = await q;
-    if (error) { console.error(error); setQueryError(`Erro ao consultar: ${error.message}`); }
-    setRows(data ?? []);
+    const [{ data, error }, cancelled] = await Promise.all([q, fetchCancelledExitIds(start)]);
+    const errorMessage = error?.message ?? cancelled.error;
+    if (errorMessage) { console.error(errorMessage); setQueryError(`Erro ao consultar: ${errorMessage}`); }
+    setRows(markCancelled(data ?? [], cancelled.ids));
     setFetched(true);
     setLoading(false);
   }
@@ -943,7 +947,7 @@ function UserActionReport() {
           d.toLocaleDateString("pt-BR"),
           d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
           r.type, r.store_name, r.product_name, r.manufacturer,
-          (r.type === "Entrada" ? "+" : "-") + r.quantity,
+          signedQuantity(r),
           r.note || "—",
         ];
       }),
@@ -1051,7 +1055,7 @@ function UserActionReport() {
                             <td className="px-3 py-2 font-medium text-slate-900">{r.product_name}</td>
                             <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.manufacturer}</td>
                             <td className={`px-3 py-2 font-semibold whitespace-nowrap ${isEntry ? "text-violet-700" : "text-amber-700"}`}>
-                              {isEntry ? "+" : "-"}{r.quantity}
+                              {signedQuantity(r)}
                             </td>
                             <td className="px-3 py-2 text-slate-400">{r.note || "—"}</td>
                           </tr>
