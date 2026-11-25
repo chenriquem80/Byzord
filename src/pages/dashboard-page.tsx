@@ -104,7 +104,7 @@ export function DashboardPage() {
 
   async function fetchStores() {
     if (!supabase) return;
-    const { data } = await supabase.from("stores").select("id, name, city");
+    const { data } = await supabase.from("stores").select("id, name, city").order("id");
     if (data) setDbStores(data);
   }
 
@@ -167,8 +167,23 @@ export function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const entries = movements.filter((m) => m.type === "Entrada" || m.type === "entrada");
-  const exits   = movements.filter((m) => m.type === "Saída" || m.type === "saida" || m.type === "Saida");
+  const isEntryType = (m: StockMovement) => m.type === "Entrada" || m.type === "entrada";
+  const isExitType = (m: StockMovement) => m.type === "Saída" || m.type === "saida" || m.type === "Saida";
+  const plural = (n: number, word: string) => `${n} ${word}${n !== 1 ? "s" : ""}`;
+  const entries = movements.filter(isEntryType);
+  const exits   = movements.filter(isExitType);
+
+  // Uma seção por loja; transferências envolvem as duas e edições de cadastro não têm loja
+  const storeNames = dbStores.filter((store) => seeAllStores || store.id === user?.storeId).map((store) => store.name);
+  const groupNameOf = (m: StockMovement) =>
+    storeNames.includes(m.store_name) ? m.store_name
+      : m.type === "Transferência" ? "Transferências entre lojas"
+      : m.store_name || "Cadastros e edições";
+  const movementGroups = [...new Set([...storeNames, ...movements.map(groupNameOf)])].map((name) => ({
+    name,
+    isStore: storeNames.includes(name),
+    items: movements.filter((m) => groupNameOf(m) === name),
+  }));
 
   function handleContextMenu(e: React.MouseEvent, movement: StockMovement) {
     if (!isAdmin) return;
@@ -269,6 +284,54 @@ export function DashboardPage() {
     doCancelExit(item);
   }
 
+  function renderMovement(item: StockMovement) {
+    const isEntry = item.type === "Entrada";
+    const isCancelled = item.type === CANCELLED_EXIT_TYPE;
+    const canCancel = isAdmin && item.type.toLowerCase().replace("í", "i") === "saida";
+    return (
+      <div
+        key={item.id}
+        onContextMenu={(e) => handleContextMenu(e, item)}
+        onClick={() => handleMobileTap(item)}
+        className={`flex items-start justify-between gap-2 rounded-2xl border p-3 lg:items-center lg:gap-4 lg:p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : isCancelled ? "border-slate-200 bg-slate-50 opacity-70" : "border-amber-100 bg-amber-50/40"} ${canCancel ? "cursor-pointer lg:cursor-context-menu" : ""}`}
+        title={canCancel ? "Clique com o botão direito para cancelar esta baixa" : undefined}
+      >
+        <div className="flex min-w-0 flex-1 items-start gap-2.5 lg:items-center lg:gap-3">
+          <div className={`shrink-0 rounded-xl p-2 ${isEntry ? "bg-violet-100" : "bg-amber-100"}`}>
+            {isEntry
+              ? <PackagePlus className="size-4 text-violet-600" />
+              : <PackageMinus className="size-4 text-amber-600" />
+            }
+          </div>
+          <div className="min-w-0">
+            <p className={`break-words text-sm font-semibold text-slate-900 lg:truncate lg:text-base ${isCancelled ? "line-through" : ""}`}>{item.product_name}</p>
+            <p className="mt-0.5 break-words text-xs text-slate-500 lg:text-sm">
+              {[item.type === "Transferência" ? item.store_name : "", item.manufacturer, item.user_name].filter(Boolean).join(" • ")}
+            </p>
+            {(item.glass_type || item.feature) && (
+              <p className="mt-0.5 text-xs text-slate-500">
+                {[item.glass_type, item.feature].filter(Boolean).join(" • ")}
+              </p>
+            )}
+            {item.note && <p className="mt-0.5 break-words text-xs text-slate-400">{item.note}</p>}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <Badge className={`whitespace-nowrap ${isEntry ? "bg-violet-100 text-violet-700" : isCancelled ? "bg-slate-200 text-slate-600" : "bg-amber-100 text-amber-700"}`}>
+            {isEntry ? "+" : ""}{Math.abs(item.quantity)} un.
+          </Badge>
+          <p className="mt-1 text-xs text-slate-400">
+            {new Date(item.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          </p>
+          {isCancelled && <p className="mt-1 text-xs font-semibold text-rose-500">Cancelada</p>}
+          {canCancel && (
+            <p className="mt-1 text-[10px] leading-tight text-rose-500 lg:hidden">toque p/<br />cancelar</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6" onClick={() => ctxMenu.visible && setCtxMenu((c) => ({ ...c, visible: false }))}>
       {/* Atalhos de navegação — apenas mobile */}
@@ -339,53 +402,26 @@ export function DashboardPage() {
             ) : movements.length === 0 ? (
               <p className="py-6 text-center text-sm text-slate-400">Nenhuma movimentação registrada hoje.</p>
             ) : (
-              movements.map((item) => {
-                const isEntry = item.type === "Entrada";
-                const isCancelled = item.type === CANCELLED_EXIT_TYPE;
-                const canCancel = isAdmin && item.type.toLowerCase().replace("í", "i") === "saida";
-                return (
-                  <div
-                    key={item.id}
-                    onContextMenu={(e) => handleContextMenu(e, item)}
-                    onClick={() => handleMobileTap(item)}
-                    className={`flex items-start justify-between gap-2 rounded-2xl border p-3 lg:items-center lg:gap-4 lg:p-4 ${isEntry ? "border-violet-100 bg-violet-50/40" : isCancelled ? "border-slate-200 bg-slate-50 opacity-70" : "border-amber-100 bg-amber-50/40"} ${canCancel ? "cursor-pointer lg:cursor-context-menu" : ""}`}
-                    title={canCancel ? "Clique com o botão direito para cancelar esta baixa" : undefined}
-                  >
-                    <div className="flex min-w-0 flex-1 items-start gap-2.5 lg:items-center lg:gap-3">
-                      <div className={`shrink-0 rounded-xl p-2 ${isEntry ? "bg-violet-100" : "bg-amber-100"}`}>
-                        {isEntry
-                          ? <PackagePlus className="size-4 text-violet-600" />
-                          : <PackageMinus className="size-4 text-amber-600" />
-                        }
-                      </div>
-                      <div className="min-w-0">
-                        <p className={`break-words text-sm font-semibold text-slate-900 lg:truncate lg:text-base ${isCancelled ? "line-through" : ""}`}>{item.product_name}</p>
-                        <p className="mt-0.5 break-words text-xs text-slate-500 lg:text-sm">
-                          {[item.store_name, item.manufacturer, item.user_name].filter(Boolean).join(" • ")}
-                        </p>
-                        {(item.glass_type || item.feature) && (
-                          <p className="mt-0.5 text-xs text-slate-500">
-                            {[item.glass_type, item.feature].filter(Boolean).join(" • ")}
-                          </p>
-                        )}
-                        {item.note && <p className="mt-0.5 break-words text-xs text-slate-400">{item.note}</p>}
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <Badge className={`whitespace-nowrap ${isEntry ? "bg-violet-100 text-violet-700" : isCancelled ? "bg-slate-200 text-slate-600" : "bg-amber-100 text-amber-700"}`}>
-                        {isEntry ? "+" : ""}{Math.abs(item.quantity)} un.
-                      </Badge>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {new Date(item.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                      {isCancelled && <p className="mt-1 text-xs font-semibold text-rose-500">Cancelada</p>}
-                      {canCancel && (
-                        <p className="mt-1 text-[10px] leading-tight text-rose-500 lg:hidden">toque p/<br />cancelar</p>
-                      )}
-                    </div>
+              movementGroups.map((group) => (
+                <section key={group.name} className="space-y-3 pt-2 first:pt-0">
+                  <div className="flex flex-wrap items-center gap-2 border-b border-border pb-2">
+                    <h4 className="mr-auto text-sm font-semibold uppercase tracking-wide text-slate-700">{group.name}</h4>
+                    {group.isStore ? (
+                      <>
+                        <Badge className="bg-violet-100 text-violet-700">{plural(group.items.filter(isEntryType).length, "entrada")}</Badge>
+                        <Badge className="bg-amber-100 text-amber-700">{plural(group.items.filter(isExitType).length, "saída")}</Badge>
+                      </>
+                    ) : (
+                      <Badge className="bg-slate-100 text-slate-600">{plural(group.items.length, "registro")}</Badge>
+                    )}
                   </div>
-                );
-              })
+                  {group.items.length === 0 ? (
+                    <p className="py-2 text-center text-sm text-slate-400">Nenhuma movimentação hoje.</p>
+                  ) : (
+                    group.items.map(renderMovement)
+                  )}
+                </section>
+              ))
             )}
           </div>
         </SectionCard>
