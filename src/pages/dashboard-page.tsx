@@ -347,6 +347,27 @@ export function DashboardPage() {
         ))}
       </div>
 
+      {/* Resumo simplificado por loja — mobile, administrador e gerente */}
+      {seeAllStores && dbStores.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 lg:hidden">
+          {dbStores.map((store) => (
+            <div key={store.id} className="min-w-0 rounded-2xl border border-border bg-white p-3">
+              <p className="truncate text-center text-sm font-semibold text-slate-900">{store.name}</p>
+              <div className="mt-2 grid grid-cols-2 gap-1.5 text-center">
+                <div className="rounded-xl bg-violet-50 px-1 py-2">
+                  <p className="text-xl font-bold leading-none text-violet-700">{entries.filter((m) => m.store_name === store.name).length}</p>
+                  <p className="mt-1 text-[11px] text-violet-600">Entradas</p>
+                </div>
+                <div className="rounded-xl bg-amber-50 px-1 py-2">
+                  <p className="text-xl font-bold leading-none text-amber-700">{exits.filter((m) => m.store_name === store.name).length}</p>
+                  <p className="mt-1 text-[11px] text-amber-600">Saídas</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Resumo por loja — admin/gerente veem todas; estoquista vê só a sua */}
       <div className={`${seeAllStores || isEstoquista ? "hidden lg:block" : "hidden"}`}>
         <SectionCard
