@@ -74,6 +74,43 @@ interface StockRow {
   cost: number;
   price: number;
   lastPurchaseDate: string;
+  /** Linha que junta o mesmo produto, característica e tipo de fabricantes diferentes */
+  members?: StockRow[];
+  costMax?: number;
+}
+
+/** Junta as linhas de mesmo produto, característica e tipo (fabricantes e lados diferentes). */
+function groupSameItems(list: StockRow[]): StockRow[] {
+  const groups = new Map<string, StockRow[]>();
+  for (const row of list) {
+    const key = [row.productName, row.characteristic, row.product.glassType].map(normText).join("|");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(row);
+  }
+  return [...groups.values()].map((items) => {
+    if (items.length === 1) return items[0];
+    const sum = (pick: (r: StockRow) => number) => items.reduce((total, r) => total + pick(r), 0);
+    const uniq = (values: string[]) => [...new Set(values.flatMap((v) => v.split(", ")).map((v) => v.trim()).filter(Boolean))].join(", ");
+    const lados = [...new Set(items.map((r) => r.lado).filter(Boolean))] as string[];
+    const costs = items.map((r) => r.cost);
+    const makers = [...new Set(items.map((r) => r.manufacturer))];
+    return {
+      ...items[0],
+      lado: lados.length > 0 ? lados.join(", ") : null,
+      store1Quantity: sum((r) => r.store1Quantity),
+      store2Quantity: sum((r) => r.store2Quantity),
+      store1Special: sum((r) => r.store1Special),
+      store2Special: sum((r) => r.store2Special),
+      store1Location: uniq(items.map((r) => r.store1Location)),
+      store2Location: uniq(items.map((r) => r.store2Location)),
+      totalQuantity: sum((r) => r.totalQuantity),
+      manufacturer: makers.length > 1 ? `${makers.length} fabricantes` : `${makers[0]} (${items.length} lados)`,
+      cost: Math.min(...costs),
+      costMax: Math.max(...costs),
+      lastPurchaseDate: items.map((r) => r.lastPurchaseDate).filter(Boolean).sort().pop() ?? "",
+      members: items,
+    };
+  });
 }
 
 interface ContextMenu {
@@ -92,7 +129,8 @@ export function StockPage() {
   const { user: authUser } = useAuth();
   const [query, setQuery] = useState("");
   const [glassType, setGlassType] = useState("");
-  const [selectedCharGroup, setSelectedCharGroup] = useState<string | null>(null);
+  // Fabricantes de um item, abertos ao clicar na linha agrupada ou na característica
+  const [selectedGroup, setSelectedGroup] = useState<StockRow[] | null>(null);
   const [dbProducts, setDbProducts] = useState<Product[] | null>(null);
   const [dbStores, setDbStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -458,6 +496,10 @@ export function StockPage() {
     return [...map.entries()];
   }, [sortedRows, sortBy]);
 
+  // Modo Produto: mesmo produto, característica e tipo numa linha só (a localização continua por item)
+  const displayRows = useMemo(() => (sortBy === "produto" ? groupSameItems(sortedRows) : sortedRows), [sortedRows, sortBy]);
+  const openGroup = (row: StockRow) => setSelectedGroup(row.members ?? [row]);
+
   const columns: ColumnDef<StockRow>[] = [
       {
         accessorKey: "productName",
@@ -465,13 +507,15 @@ export function StockPage() {
         size: 170,
         cell: ({ row }) => (
           <span
-            onContextMenu={(e) => handleContextMenu(e, row.original)}
+            onContextMenu={(e) => row.original.members ? e.preventDefault() : handleContextMenu(e, row.original)}
             className="cursor-context-menu select-none"
           >
             <button
               type="button"
               className="text-left underline-offset-2 hover:underline hover:text-primary"
-              onClick={() => navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}&lado=${encodeURIComponent(row.original.lado ?? "")}&view=1`)}
+              onClick={() => row.original.members
+                ? openGroup(row.original)
+                : navigate(`/app/produtos?id=${row.original.product.id}&mf=${row.original.manufacturerId}&lado=${encodeURIComponent(row.original.lado ?? "")}&view=1`)}
             >
               {row.original.productName}
             </button>
@@ -486,7 +530,7 @@ export function StockPage() {
           <div className="text-center">
             <button
               className="font-semibold text-primary underline-offset-4 hover:underline"
-              onClick={() => setSelectedCharGroup(row.original.characteristic)}
+              onClick={() => openGroup(row.original)}
             >
               {row.original.characteristic}
             </button>
@@ -503,7 +547,9 @@ export function StockPage() {
         accessorKey: "lado",
         header: () => <span className="block text-center">Lado</span>,
         size: 40,
-        cell: ({ row }) => (
+        cell: ({ row }) => row.original.members ? (
+          <div className="text-center font-semibold">{row.original.lado ?? <span className="text-slate-300">—</span>}</div>
+        ) : (
           <div className="text-center">
             <button
               type="button"
@@ -530,6 +576,7 @@ export function StockPage() {
               type="button"
               className="space-y-0.5 whitespace-nowrap text-left text-xs text-slate-600 underline-offset-2 hover:text-primary hover:underline"
               onClick={() => {
+                if (row.original.members) { openGroup(row.original); return; }
                 const mf = row.original.product.manufacturers.find(m => m.id === row.original.manufacturerId);
                 const items = (mf?.inventories ?? [])
                   .filter((i) => (i as any).specialCondition)
@@ -549,12 +596,31 @@ export function StockPage() {
       },
       { accessorKey: "store1Quantity", header: stores[0]?.code ?? "Loja 1", size: 35 },
       { accessorKey: "store2Quantity", header: stores[1]?.code ?? "Loja 2", size: 35 },
-      { accessorKey: "manufacturer", header: "Fabricante", size: 100 },
+      {
+        accessorKey: "manufacturer",
+        header: "Fabricante",
+        size: 100,
+        cell: ({ row }) => row.original.members ? (
+          <button
+            type="button"
+            title={row.original.members.map((m) => m.manufacturer).join(", ")}
+            onClick={() => openGroup(row.original)}
+            className="whitespace-nowrap font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            {row.original.manufacturer}
+          </button>
+        ) : row.original.manufacturer,
+      },
       ...(showCostPrice ? [{
         accessorKey: "cost",
         header: "Preço compra",
         size: 75,
-        cell: ({ row }: any) => <span className="whitespace-nowrap">{formatCurrency(row.original.cost)}</span>,
+        cell: ({ row }: any) => row.original.members && row.original.costMax !== row.original.cost ? (
+          <div className="whitespace-nowrap text-xs leading-tight">
+            <div>{formatCurrency(row.original.cost)}</div>
+            <div className="text-slate-400">a {formatCurrency(row.original.costMax)}</div>
+          </div>
+        ) : <span className="whitespace-nowrap">{formatCurrency(row.original.cost)}</span>,
       }] : []),
       {
         accessorKey: "lastPurchaseDate",
@@ -602,7 +668,16 @@ export function StockPage() {
         id: "actions",
         header: "",
         size: 70,
-        cell: ({ row }) => readOnly ? null : (
+        cell: ({ row }) => readOnly ? null : row.original.members ? (
+          <button
+            type="button"
+            title="Ver e alterar cada fabricante"
+            onClick={() => openGroup(row.original)}
+            className="whitespace-nowrap rounded-lg border border-border px-2 py-1 text-xs font-semibold text-slate-600 transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
+          >
+            Ver itens
+          </button>
+        ) : (
           <div className="flex gap-1">
             <button
               type="button"
@@ -654,7 +729,7 @@ export function StockPage() {
 
       <SectionCard
         title="Resultado"
-        description="Clique na característica para abrir o detalhamento por loja e fabricante."
+        description="Itens iguais de fabricantes diferentes aparecem juntos: clique no item para ver cada fabricante e loja."
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500">
@@ -712,7 +787,7 @@ export function StockPage() {
                             <button
                               key={i}
                               type="button"
-                              onClick={() => setMobileDetail(row)}
+                              onClick={() => (row.members ? openGroup(row) : setMobileDetail(row))}
                               className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3 text-left transition active:bg-slate-50"
                             >
                               <div className="min-w-0">
@@ -737,13 +812,13 @@ export function StockPage() {
               ) : (
                 // Lista por produto (padrão)
                 <div className="space-y-2">
-                  {sortedRows.map((row, i) => {
+                  {displayRows.map((row, i) => {
                     const showLado = !/parabrisa|vigia/i.test(row.product.glassType);
                     return (
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setMobileDetail(row)}
+                        onClick={() => (row.members ? openGroup(row) : setMobileDetail(row))}
                         className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3 text-left transition active:bg-slate-50"
                       >
                         <div className="min-w-0">
@@ -767,7 +842,7 @@ export function StockPage() {
 
             {/* Tabela completa — apenas desktop */}
             <div className="hidden lg:block">
-              <DataTable compact columns={columns} data={sortedRows} />
+              <DataTable compact columns={columns} data={displayRows} />
             </div>
           </>
         )}
@@ -826,28 +901,44 @@ export function StockPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!selectedCharGroup} onOpenChange={(open) => !open && setSelectedCharGroup(null)}>
-        {selectedCharGroup ? (() => {
-          const groupRows = rows.filter((r) => r.characteristic === selectedCharGroup);
+      <Dialog open={!!selectedGroup} onOpenChange={(open) => !open && setSelectedGroup(null)}>
+        {selectedGroup ? (() => {
+          const groupRows = selectedGroup;
+          const first = groupRows[0];
           return (
             <DialogContent className="max-w-3xl">
               <DialogHeader>
-                <DialogTitle>Característica: {selectedCharGroup}</DialogTitle>
+                <DialogTitle>{first.productName}</DialogTitle>
                 <DialogDescription>
-                  {groupRows.length} produto{groupRows.length !== 1 ? "s" : ""} com esta característica — estoque por loja e fabricante.
+                  {first.characteristic} · {first.product.glassType} — {groupRows.length} fabricante{groupRows.length !== 1 ? "s" : ""}, estoque por loja.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-4 space-y-4 overflow-y-auto max-h-[60vh]">
                 {groupRows.map((row) => (
-                  <div key={`${row.product.id}-${row.manufacturerId}`} className="rounded-2xl border border-border overflow-hidden">
-                    <div className="bg-slate-50 px-4 py-2 flex items-center justify-between">
-                      <div>
-                        <span className="font-semibold text-slate-900 text-sm">{row.productName}</span>
-                        <span className="ml-2 text-xs text-slate-500">{row.manufacturer}</span>
+                  <div key={`${row.product.id}-${row.manufacturerId}-${row.lado ?? ""}`} className="rounded-2xl border border-border overflow-hidden">
+                    <div className="bg-slate-50 px-4 py-2 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className="font-semibold text-slate-900 text-sm">{row.manufacturer}</span>
+                        {row.lado && <span className="rounded border border-slate-300 px-1.5 text-xs font-semibold text-slate-600">Lado {row.lado}</span>}
+                        {(row.store1Special + row.store2Special) > 0 && <span className="rounded bg-amber-100 px-1.5 text-xs font-semibold text-amber-700">{row.store1Special + row.store2Special} cond. especial</span>}
                       </div>
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${(row.store1Quantity + row.store2Quantity) > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                        {row.store1Quantity + row.store2Quantity} un.
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${(row.store1Quantity + row.store2Quantity) > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                          {row.store1Quantity + row.store2Quantity} un.
+                        </span>
+                        {!readOnly && (
+                          <>
+                            <button
+                              type="button"
+                              title="Alterar este fabricante"
+                              onClick={() => navigate(`/app/produtos?id=${row.product.id}&mf=${row.manufacturerId}&lado=${encodeURIComponent(row.lado ?? "")}`)}
+                              className="flex size-7 items-center justify-center rounded-lg border border-border bg-white text-slate-500 transition-colors hover:border-primary hover:text-primary"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <table className="w-full text-sm">
                       <thead className="bg-white border-b border-border">
@@ -862,7 +953,7 @@ export function StockPage() {
                       <tbody>
                         {row.product.manufacturers
                           .find((m) => m.id === row.manufacturerId)
-                          ?.inventories.map((inv) => (
+                          ?.inventories.filter((inv) => (inv.lado ?? null) === row.lado).map((inv) => (
                             <tr key={inv.id} className="border-t border-border">
                               <td className="px-4 py-2">{inv.storeName}</td>
                               <td className="px-4 py-2">{inv.stock}</td>
