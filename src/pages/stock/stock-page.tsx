@@ -104,7 +104,10 @@ function groupSameItems(list: StockRow[]): StockRow[] {
       store1Location: uniq(items.map((r) => r.store1Location)),
       store2Location: uniq(items.map((r) => r.store2Location)),
       totalQuantity: sum((r) => r.totalQuantity),
-      manufacturer: makers.length > 1 ? `${makers.length} fabricantes` : `${makers[0]} (${items.length} lados)`,
+      // Mesmo fabricante: "lados" só quando os lados são diferentes; senão são cadastros repetidos
+      manufacturer: makers.length > 1
+        ? `${makers.length} fabricantes`
+        : `${makers[0]} (${items.length} ${lados.length === items.length ? "lados" : "cadastros"})`,
       cost: Math.min(...costs),
       costMax: Math.max(...costs),
       lastPurchaseDate: items.map((r) => r.lastPurchaseDate).filter(Boolean).sort().pop() ?? "",
