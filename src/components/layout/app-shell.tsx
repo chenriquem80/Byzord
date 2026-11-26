@@ -213,11 +213,14 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       <div className="rounded-[28px] bg-white p-5 shadow-panel">
-        <img
-          src="/logo.png"
-          alt="Byzord Auto Vitrais"
-          className="mx-auto w-full max-w-[220px] object-contain"
-        />
+        {/* Abre a página de links usados no dia a dia (public/site) */}
+        <a href="/site/Inicial.html" target="_blank" rel="noopener noreferrer" title="Abrir links dos sites utilizados">
+          <img
+            src="/logo.png"
+            alt="Byzord Auto Vitrais"
+            className="mx-auto w-full max-w-[220px] object-contain"
+          />
+        </a>
         {(user?.name || user?.storeName) && (
           <p className="mt-3 text-center text-xs text-slate-400">
             {[user?.storeName, user?.name].filter(Boolean).join(" · ")}
