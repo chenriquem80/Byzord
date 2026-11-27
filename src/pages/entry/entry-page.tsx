@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { products as mockProducts, stores as mockStores, suppliers } from "@/data/mock-data";
 import { useAuth } from "@/contexts/auth-context";
 import { formatCurrency } from "@/lib/format";
-import { supabase } from "@/lib/database";
+import { supabase, selectAll } from "@/lib/database";
 import type { Product } from "@/types/domain";
 
 type Manufacturer = Product["manufacturers"][0];
@@ -83,9 +83,9 @@ export function EntryPage() {
       if (!supabase) return;
       const [storesResp, productsResp, mfResp, invResp, compatResp] = await Promise.all([
         supabase.from("stores").select("*"),
-        supabase.from("products").select("*"),
-        supabase.from("product_manufacturers").select("*"),
-        supabase.from("product_store_inventory").select("*"),
+        selectAll("products"),
+        selectAll("product_manufacturers"),
+        selectAll("product_store_inventory"),
         supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
       ]);
       const dbStores = storesResp.data ?? [];

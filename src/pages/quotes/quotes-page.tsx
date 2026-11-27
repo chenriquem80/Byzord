@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { products as mockProducts } from "@/data/mock-data";
 import { formatCurrency } from "@/lib/format";
 import { MarketPriceComparison } from "@/components/shared/market-price-comparison";
-import { supabase } from "@/lib/database";
+import { supabase, selectAll } from "@/lib/database";
 import type { Product } from "@/types/domain";
 import { Search, Calculator, Eye, EyeOff, X } from "lucide-react";
 
@@ -31,7 +31,7 @@ export function QuotesPage() {
       if (!supabase) return;
       const [{ data: pData }, { data: mfData }, { data: compatData }] = await Promise.all([
         supabase.from("products").select("*").eq("status", "ativo"),
-        supabase.from("product_manufacturers").select("*"),
+        selectAll("product_manufacturers"),
         supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
       ]);
       if (!pData || !mfData) return;

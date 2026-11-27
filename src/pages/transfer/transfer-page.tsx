@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
 import { useAuth } from "@/contexts/auth-context";
-import { supabase } from "@/lib/database";
+import { supabase, selectAll } from "@/lib/database";
 import { usePermissions } from "@/hooks/use-permissions";
 import { canWriteStore } from "@/lib/permissions";
 import { ReadOnlyNotice } from "@/components/shared/read-only-notice";
@@ -41,9 +41,9 @@ export function TransferPage() {
     if (!supabase) return [];
     const [storesResp, productsResp, mfResp, invResp, compatResp] = await Promise.all([
       supabase.from("stores").select("*"),
-      supabase.from("products").select("*"),
-      supabase.from("product_manufacturers").select("*"),
-      supabase.from("product_store_inventory").select("*"),
+      selectAll("products"),
+      selectAll("product_manufacturers"),
+      selectAll("product_store_inventory"),
       supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
     ]);
     const stores = storesResp.data ?? [];

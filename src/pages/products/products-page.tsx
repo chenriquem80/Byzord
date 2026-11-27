@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { formatCurrency, formatMonthYear } from "@/lib/format";
 import { ImagePlus, Pencil, Trash2, X } from "lucide-react";
 import { ContextMenuDropdown } from "@/components/shared/context-menu-dropdown";
-import { supabase } from "@/lib/database";
+import { supabase, selectAll } from "@/lib/database";
 import { compatKey, dedupeCompatibilities } from "@/lib/compatibility";
 import { productSchema } from "@/lib/schemas";
 import { normText } from "@/lib/product-match";
@@ -255,7 +255,7 @@ export function ProductsPage() {
           await Promise.all([
             supabase.from("products").select("*").eq("id", productId).single(),
             supabase.from("product_manufacturers").select("*").eq("product_id", productId),
-            supabase.from("product_store_inventory").select("*"),
+            selectAll("product_store_inventory"),
             supabase.from("stores").select("*"),
             supabase.from("product_vehicle_compatibility").select("*, vehicles(*)").eq("product_id", productId),
           ]);

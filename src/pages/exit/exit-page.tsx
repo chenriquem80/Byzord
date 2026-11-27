@@ -24,7 +24,7 @@ import { products as mockProducts, stores as mockStores } from "@/data/mock-data
 import { useAuth } from "@/contexts/auth-context";
 import { formatCurrency } from "@/lib/format";
 import { saleSchema } from "@/lib/schemas";
-import { supabase } from "@/lib/database";
+import { supabase, selectAll } from "@/lib/database";
 import type { Product } from "@/types/domain";
 
 type SaleFormValues = {
@@ -88,9 +88,9 @@ export function ExitPage() {
       if (!supabase) return;
       const [storesResp, productsResp, mfResp, invResp, compatResp] = await Promise.all([
         supabase.from("stores").select("*"),
-        supabase.from("products").select("*"),
-        supabase.from("product_manufacturers").select("*"),
-        supabase.from("product_store_inventory").select("*"),
+        selectAll("products"),
+        selectAll("product_manufacturers"),
+        selectAll("product_store_inventory"),
         supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
       ]);
       const stores = storesResp.data ?? [];

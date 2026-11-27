@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/select";
 import { normText } from "@/lib/product-match";
 import { formatCurrency, formatMonthYear } from "@/lib/format";
 import { products as mockProducts, stores as mockStores } from "@/data/mock-data";
-import { supabase } from "@/lib/database";
+import { supabase, selectAll } from "@/lib/database";
 import { dedupeCompatibilities } from "@/lib/compatibility";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useAuth } from "@/contexts/auth-context";
@@ -296,9 +296,9 @@ export function StockPage() {
 
     const [storesResp, productsResp, mfResp, invResp, compatResp, photosResp] = await Promise.all([
       supabase.from("stores").select("*"),
-      supabase.from("products").select("*"),
-      supabase.from("product_manufacturers").select("*"),
-      supabase.from("product_store_inventory").select("*"),
+      selectAll("products"),
+      selectAll("product_manufacturers"),
+      selectAll("product_store_inventory"),
       supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
       supabase.from("product_photos").select("product_id"),
     ]);

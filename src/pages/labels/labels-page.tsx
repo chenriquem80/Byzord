@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { LabelCard } from "@/components/shared/label-card";
 import { products as mockProducts } from "@/data/mock-data";
 import { formatMonthYear } from "@/lib/format";
-import { supabase } from "@/lib/database";
+import { supabase, selectAll } from "@/lib/database";
 import type { Product } from "@/types/domain";
 
 type Manufacturer = Product["manufacturers"][0];
@@ -20,9 +20,9 @@ export function LabelsPage() {
     async function fetchData() {
       if (!supabase) return;
       const [productsResp, mfResp, invResp, compatResp] = await Promise.all([
-        supabase.from("products").select("*"),
-        supabase.from("product_manufacturers").select("*"),
-        supabase.from("product_store_inventory").select("*"),
+        selectAll("products"),
+        selectAll("product_manufacturers"),
+        selectAll("product_store_inventory"),
         supabase.from("product_vehicle_compatibility").select("*, vehicles(*)"),
       ]);
       const rawProducts = productsResp.data ?? [];
