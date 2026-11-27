@@ -100,9 +100,9 @@ export function LabelsPage() {
   }, [query, allProducts]);
 
   function buildLabels(product: Product) {
-    const compat = product.compatibilities[0];
-    const vehicleLabel = compat ? compat.model : product.name;
-    const yearRange = compat ? `${compat.startYear}/${compat.endYear}` : "";
+    // A etiqueta leva o nome do produto (a lista de compatíveis pode ter outro veículo primeiro)
+    const vehicleLabel = product.name;
+    const yearRange = "";
 
     // Uma etiqueta por fabricante + lado + condição especial, para o QR identificar o item exato
     return product.manufacturers.flatMap((mf) => {

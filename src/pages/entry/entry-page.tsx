@@ -237,11 +237,9 @@ export function EntryPage() {
 
   const currentLabel = useMemo(() => {
     if (!lastItem) return null;
-    const compat = lastItem.product.compatibilities[0];
-    const vehicleLabel = compat ? compat.model : lastItem.product.name;
-    const yearRange = compat
-      ? `${compat.startYear}/${compat.endYear}`
-      : "";
+    // A etiqueta leva o nome do produto (a lista de compatíveis pode ter outro veículo primeiro)
+    const vehicleLabel = lastItem.product.name;
+    const yearRange = "";
     const dateLabel = purchaseDate
       ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
       : "";
@@ -1005,9 +1003,8 @@ export function EntryPage() {
           <p className="text-sm text-slate-600">Deseja imprimir a{entryItems.length > 1 ? "s" : ""} etiqueta{entryItems.length > 1 ? "s" : ""}?</p>
           <div className="mt-4 space-y-6">
             {entryItems.map((item) => {
-              const compat = item.product.compatibilities[0];
-              const vehicleLabel = compat ? compat.model : item.product.name;
-              const yearRange = compat ? `${compat.startYear}/${compat.endYear}` : "";
+              const vehicleLabel = item.product.name;
+              const yearRange = "";
               const dateLabel = purchaseDate
                 ? new Date(purchaseDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "numeric", year: "numeric" })
                 : "";
