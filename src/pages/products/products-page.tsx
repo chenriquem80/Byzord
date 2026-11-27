@@ -21,6 +21,7 @@ import { ContextMenuDropdown } from "@/components/shared/context-menu-dropdown";
 import { supabase } from "@/lib/database";
 import { compatKey, dedupeCompatibilities } from "@/lib/compatibility";
 import { productSchema } from "@/lib/schemas";
+import { normText } from "@/lib/product-match";
 import type { Product, VehicleCompatibility } from "@/types/domain";
 
 type ProductFormValues = {
@@ -756,6 +757,28 @@ export function ProductsPage() {
         } else {
           const ladoValue = [values.ladoA && "A", values.ladoD && "D", values.ladoE && "E"].filter(Boolean).join("/") || null;
           const specialCond: string | null = values.isTypeB && values.isTypeR ? "BR" : values.isTypeB ? "B" : values.isTypeR ? "R" : null;
+
+          // Um item só pode ter um cadastro: mesmo produto, característica, tipo, fabricante e lado
+          const { data: sameName, error: dupErr } = await supabase
+            .from("products")
+            .select("name, feature, glass_type, lado, product_manufacturers(manufacturer, product_store_inventory(lado))")
+            .ilike("name", values.name.trim().replace(/\s+/g, " ").replace(/[%_\\]/g, "\\$&") + "%");
+          if (dupErr) throw dupErr;
+          const existing = (sameName ?? []).find((p: any) =>
+            normText(p.name) === normText(values.name)
+            && normText(p.feature) === normText(values.feature)
+            && normText(p.glass_type) === normText(values.glassType)
+            && (p.product_manufacturers ?? []).some((m: any) => {
+              if (normText(m.manufacturer) !== normText(values.manufacturer)) return false;
+              const lados = new Set<string>([p.lado ?? "", ...(m.product_store_inventory ?? []).map((i: any) => i.lado ?? "")]);
+              return lados.has(ladoValue ?? "");
+            }));
+          if (existing) {
+            throw new Error(
+              `Este item já está cadastrado (${normText(values.name)} · ${normText(values.feature)} · ${normText(values.glassType)} · ${normText(values.manufacturer)}${ladoValue ? ` · lado ${ladoValue}` : ""}). Para somar ao estoque use a tela de Entrada.`,
+            );
+          }
+
           const { data: inserted, error: insertError } = await supabase
             .from("products")
             .insert({

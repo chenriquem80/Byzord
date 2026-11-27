@@ -65,6 +65,9 @@ interface StockRow {
   store2Quantity: number;
   store1Special: number;
   store2Special: number;
+  /** Condição especial por loja, ex.: "1 R, 2 B" */
+  store1SpecialText: string;
+  store2SpecialText: string;
   store1Location: string;
   store2Location: string;
   totalQuantity: number;
@@ -77,6 +80,19 @@ interface StockRow {
   /** Linha que junta o mesmo produto, característica e tipo de fabricantes diferentes */
   members?: StockRow[];
   costMax?: number;
+}
+
+/** Texto "qtd condição" por loja, somando a mesma condição: ["1 R", "1 R, 2 B"] -> "2 R, 2 B" */
+function specialText(list: { condition: string; stock: number }[]): string {
+  const totals = new Map<string, number>();
+  for (const { condition, stock } of list) if (stock > 0) totals.set(condition, (totals.get(condition) ?? 0) + stock);
+  return [...totals.entries()].map(([c, n]) => `${n} ${c}`).join(", ");
+}
+function mergeSpecialText(texts: string[]): string {
+  return specialText(texts.flatMap((t) => t.split(", ").filter(Boolean).map((part) => {
+    const [n, c] = part.split(" ");
+    return { condition: c, stock: Number(n) };
+  })));
 }
 
 /** Junta as linhas de mesmo produto, característica e tipo (fabricantes e lados diferentes). */
@@ -101,6 +117,8 @@ function groupSameItems(list: StockRow[]): StockRow[] {
       store2Quantity: sum((r) => r.store2Quantity),
       store1Special: sum((r) => r.store1Special),
       store2Special: sum((r) => r.store2Special),
+      store1SpecialText: mergeSpecialText(items.map((r) => r.store1SpecialText)),
+      store2SpecialText: mergeSpecialText(items.map((r) => r.store2SpecialText)),
       store1Location: uniq(items.map((r) => r.store1Location)),
       store2Location: uniq(items.map((r) => r.store2Location)),
       totalQuantity: sum((r) => r.totalQuantity),
@@ -445,6 +463,8 @@ export function StockPage() {
               store2Quantity,
               store1Special,
               store2Special,
+              store1SpecialText: specialText(specialInvs.filter((i) => i.storeId === stores[0]?.id).map((i) => ({ condition: (i as any).specialCondition, stock: i.stock }))),
+              store2SpecialText: specialText(specialInvs.filter((i) => i.storeId === stores[1]?.id).map((i) => ({ condition: (i as any).specialCondition, stock: i.stock }))),
               store1Location: locationOf(stores[0]?.id),
               store2Location: locationOf(stores[1]?.id),
               totalQuantity: store1Quantity + store2Quantity,
@@ -591,8 +611,9 @@ export function StockPage() {
                 setCondDialog({ open: true, productName: row.original.productName, manufacturer: row.original.manufacturer, items });
               }}
             >
-              <div>{stores[0]?.code ?? "L1"}: <span className="font-semibold">{store1Special}</span></div>
-              <div>{stores[1]?.code ?? "L2"}: <span className="font-semibold">{store2Special}</span></div>
+              {/* Quantidade com a letra da condição (B, R ou BR) */}
+              {store1Special > 0 && <div>{stores[0]?.code ?? "L1"}: <span className="font-semibold">{row.original.store1SpecialText}</span></div>}
+              {store2Special > 0 && <div>{stores[1]?.code ?? "L2"}: <span className="font-semibold">{row.original.store2SpecialText}</span></div>}
             </button>
           );
         },
@@ -923,7 +944,7 @@ export function StockPage() {
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <span className="font-semibold text-slate-900 text-sm">{row.manufacturer}</span>
                         {row.lado && <span className="rounded border border-slate-300 px-1.5 text-xs font-semibold text-slate-600">Lado {row.lado}</span>}
-                        {(row.store1Special + row.store2Special) > 0 && <span className="rounded bg-amber-100 px-1.5 text-xs font-semibold text-amber-700">{row.store1Special + row.store2Special} cond. especial</span>}
+                        {(row.store1Special + row.store2Special) > 0 && <span className="rounded bg-amber-100 px-1.5 text-xs font-semibold text-amber-700">Cond. especial: {mergeSpecialText([row.store1SpecialText, row.store2SpecialText])}</span>}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${(row.store1Quantity + row.store2Quantity) > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
