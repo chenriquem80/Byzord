@@ -33,15 +33,16 @@ export const PRINT_CSS = `
   .logo-wrap img { height: 1cm; width: auto; display: block; }
   .info { font-size: 10pt; line-height: 1.4; flex: 1; overflow: hidden; text-align: center; }
   .info p { margin: 0; }
+  .info .name { font-size: 13pt; font-weight: 700; line-height: 1.15; }
   .info .bold { font-weight: 700; }
   .info .sub { font-size: 8pt; color: #475569; }
-  .coded-row { font-size: 6pt; font-family: monospace; color: #64748b; flex-shrink: 0; text-align: center; }
+  .coded-row { font-size: 8pt; font-family: monospace; color: #64748b; flex-shrink: 0; text-align: center; }
   .variant-row { display: flex; gap: 0.12cm; justify-content: center; }
   .variant-tag { font-size: 11pt; font-weight: 700; line-height: 1; border: 1px solid #0f172a; border-radius: 3px; padding: 0.05cm 0.12cm; }
   .qr-box { display: flex; border: 1px solid #94a3b8; border-radius: 3px; padding: 0.07cm; }
   .qr-box svg { width: 2.4cm !important; height: 2.4cm !important; }
   .bc-box { flex-shrink: 0; align-self: stretch; }
-  .bc-box svg { width: 100% !important; height: 1.5cm !important; }
+  .bc-box svg { width: 100% !important; height: 1.3cm !important; }
 `;
 
 export type LabelData = {
@@ -137,7 +138,7 @@ export function LabelCard({ label, wrapperClassName, onPrint }: {
       <span class="code-value">${up(codeValue)}</span>
     </div>
     <div class="info">
-      <p>${up(label.vehicleLabel)}${yearRange}</p>
+      <p class="name">${up(label.vehicleLabel)}${yearRange}</p>
       ${featureLine ? `<p class="bold">${featureLine}</p>` : ""}
       ${supplierLine ? `<p class="sub">${supplierLine}</p>` : ""}
     </div>
@@ -199,7 +200,7 @@ export function LabelCard({ label, wrapperClassName, onPrint }: {
             <span className="break-all text-[11px] font-bold leading-tight">{up(codeValue)}</span>
           </div>
           <div className="flex-1 overflow-hidden text-center text-[10px] leading-snug text-slate-800 space-y-px w-full">
-            <p>{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
+            <p className="text-[13px] font-bold leading-tight">{up(label.vehicleLabel)}{label.yearRange ? ` ${up(label.yearRange)}` : ""}</p>
             {(label.feature || label.glassType) && (
               <p className="font-bold">
                 {[label.glassType, label.feature, label.manufacturer]
@@ -213,13 +214,13 @@ export function LabelCard({ label, wrapperClassName, onPrint }: {
             )}
           </div>
           {label.purchaseSummary && (
-            <div className="shrink-0 font-mono text-[6px] text-slate-400 text-center">
+            <div className="shrink-0 font-mono text-[8px] text-slate-500 text-center">
               {n1}\00\{up(label.purchaseSummary)}\00\{n2}
             </div>
           )}
           {codeValue && (
             <div ref={bcWrapRef} className="shrink-0 w-full">
-              <Barcode value={codeValue} format="CODE128" width={1.1} height={38} fontSize={6} margin={1} />
+              <Barcode value={codeValue} format="CODE128" width={1.1} height={32} fontSize={6} margin={1} />
             </div>
           )}
         </div>
