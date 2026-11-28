@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePermissions } from "@/hooks/use-permissions";
 import { canWriteStore } from "@/lib/permissions";
@@ -123,6 +123,9 @@ function monthToDate(value: string | undefined): string | null {
 
 const DRAFT_PREFIX = "draft-";
 
+/** Item já cadastrado: um fabricante de um produto, com os lados que tem em estoque */
+type ExistingItem = { productId: string; mfId: string; name: string; glassType: string; feature: string; manufacturer: string; lados: string[] };
+
 export function ProductsPage() {
   const { readOnly, showCostPrice } = usePermissions();
   const { user: authUser } = useAuth();
@@ -130,7 +133,7 @@ export function ProductsPage() {
   // Loja do usuário (não-administrador edita estoque apenas dela)
   const ownStoreId = !isAdmin ? authUser?.storeId ?? null : null;
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const productId = searchParams.get("id");
   const manufacturerId = searchParams.get("mf");
   // Lado do item escolhido no estoque (?lado= vazio = sem lado; ausente = primeiro lado do fabricante)
@@ -150,6 +153,8 @@ export function ProductsPage() {
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
   const [manufacturers, setManufacturers] = useState(DEFAULT_MANUFACTURERS);
   const [suppliersList, setSuppliersList] = useState<string[]>([]);
+  // Itens já cadastrados (produto + fabricante + lados), para barrar cadastro repetido
+  const [existingItems, setExistingItems] = useState<ExistingItem[]>([]);
 
   const [dbStores, setDbStores] = useState<any[]>([]);
   const [newProductStoreId, setNewProductStoreId] = useState<string>("");
@@ -183,13 +188,29 @@ export function ProductsPage() {
   useEffect(() => {
     async function fetchOptions() {
       if (!supabase) return;
-      const [{ data: pData }, { data: mfData }, { data: storesData }, { data: suppData }, { data: vehiclesData }] = await Promise.all([
-        supabase.from("products").select("glass_type, feature"),
-        supabase.from("product_manufacturers").select("manufacturer, supplier"),
+      const [{ data: pData }, { data: mfData }, { data: storesData }, { data: suppData }, { data: vehiclesData }, { data: invLados }] = await Promise.all([
+        selectAll("products", "id, name, glass_type, feature, lado"),
+        selectAll("product_manufacturers", "id, product_id, manufacturer, supplier"),
         supabase.from("stores").select("id, name, code"),
         supabase.from("suppliers").select("name"),
         supabase.from("vehicles").select("automaker"),
+        selectAll("product_store_inventory", "manufacturer_id, lado"),
       ]);
+      if (pData && mfData) {
+        const productById = new Map(pData.map((p: any) => [p.id, p]));
+        const ladosByMf = new Map<string, Set<string>>();
+        for (const inv of invLados ?? []) {
+          if (!ladosByMf.has(inv.manufacturer_id)) ladosByMf.set(inv.manufacturer_id, new Set());
+          ladosByMf.get(inv.manufacturer_id)!.add(inv.lado ?? "");
+        }
+        setExistingItems(mfData.flatMap((m: any) => {
+          const p: any = productById.get(m.product_id);
+          if (!p) return [];
+          const lados = ladosByMf.get(m.id) ?? new Set<string>();
+          if (lados.size === 0) lados.add(p.lado ?? "");
+          return [{ productId: p.id, mfId: m.id, name: p.name ?? "", glassType: p.glass_type ?? "", feature: p.feature ?? "", manufacturer: m.manufacturer ?? "", lados: [...lados] }];
+        }));
+      }
       if (pData) {
         const dbTypes = pData.map((r: any) => r.glass_type).filter(Boolean).map((v: string) => v.toUpperCase());
         const dbFeatures = pData.map((r: any) => r.feature).filter(Boolean).map((v: string) => v.toUpperCase());
@@ -239,6 +260,21 @@ export function ProductsPage() {
     resolver: zodResolver(productSchema) as any,
     defaultValues: getEmptyFormValues(),
   });
+
+  // Novo cadastro: itens com o mesmo nome e, entre eles, o que é exatamente igual
+  const [watchName, watchType, watchFeature, watchMf, watchD, watchE, watchA] = form.watch(["name", "glassType", "feature", "manufacturer", "ladoD", "ladoE", "ladoA"]);
+  const sameNameItems = useMemo(() => {
+    if (isEditing || normText(watchName).length < 3) return [];
+    return existingItems.filter((it) => normText(it.name) === normText(watchName));
+  }, [isEditing, watchName, existingItems]);
+  const watchLado = [watchA && "A", watchD && "D", watchE && "E"].filter(Boolean).join("/");
+  const duplicateItem = sameNameItems.find((it) =>
+    !!watchType && !!watchFeature && !!watchMf
+    && normText(it.glassType) === normText(watchType)
+    && normText(it.feature) === normText(watchFeature)
+    && normText(it.manufacturer) === normText(watchMf)
+    && it.lados.includes(watchLado)) ?? null;
+  const openExisting = (it: ExistingItem, lado: string) => setSearchParams({ id: it.productId, mf: it.mfId, lado });
 
   useEffect(() => {
     if (!productId) {
@@ -1037,7 +1073,7 @@ export function ProductsPage() {
               <span className="text-sm font-medium text-rose-600">{saveError}</span>
             )}
             {!isReadOnly && (
-              <Button size="lg" disabled={form.formState.isSubmitting} onClick={form.handleSubmit(handleSaveOnce as any, handleValidationError as any)}>
+              <Button size="lg" disabled={form.formState.isSubmitting || !!duplicateItem} onClick={form.handleSubmit(handleSaveOnce as any, handleValidationError as any)}>
                 Salvar produto
               </Button>
             )}
@@ -1050,6 +1086,29 @@ export function ProductsPage() {
           <FormField label="Nome do produto" error={form.formState.errors.name?.message} className="md:col-span-2 xl:col-span-4">
             <Input {...form.register("name")} placeholder="Ex: Parabrisa Gol G5 2008/2011" />
           </FormField>
+
+          {sameNameItems.length > 0 && (
+            <div className={`md:col-span-2 xl:col-span-4 rounded-xl border px-4 py-3 text-sm ${duplicateItem ? "border-red-300 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
+              <p className={`font-semibold ${duplicateItem ? "text-red-700" : "text-amber-800"}`}>
+                {duplicateItem
+                  ? "Este item já está cadastrado. Não é possível cadastrar de novo — para somar ao estoque use a tela de Entrada."
+                  : `Já existe${sameNameItems.length > 1 ? "m" : ""} ${sameNameItems.length} cadastro${sameNameItems.length > 1 ? "s" : ""} com este nome. Confira antes de continuar:`}
+              </p>
+              <ul className="mt-2 space-y-1">
+                {sameNameItems.flatMap((it) => it.lados.map((lado) => ({ it, lado }))).map(({ it, lado }) => {
+                  const isDup = duplicateItem?.mfId === it.mfId && lado === watchLado;
+                  return (
+                    <li key={`${it.mfId}-${lado}`} className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${isDup ? "font-semibold text-red-700" : "text-slate-700"}`}>
+                      <span>{[it.glassType, it.feature, it.manufacturer, lado && `lado ${lado}`].filter(Boolean).join(" · ")}</span>
+                      <button type="button" onClick={() => openExisting(it, lado)} className="text-xs font-semibold text-primary underline-offset-2 hover:underline">
+                        Abrir cadastro
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
 
           {/* Linha de códigos */}
           <FormField label="Código de barras">
@@ -1123,6 +1182,9 @@ export function ProductsPage() {
         </form>
         </fieldset>
       </SectionCard>
+
+      {/* Item repetido: o restante do cadastro fica travado */}
+      <fieldset disabled={!!duplicateItem} className={`contents ${duplicateItem ? "[&>*]:pointer-events-none [&>*]:opacity-50" : ""}`}>
 
       {/* Estoque */}
       <SectionCard
@@ -1555,6 +1617,8 @@ export function ProductsPage() {
         </div>
       )}
 
+      </fieldset>
+
       {/* Mensagem de erro visível */}
       {saveError && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4">
@@ -1581,7 +1645,7 @@ export function ProductsPage() {
           <Button
             size="lg"
             className="w-full sm:w-auto"
-            disabled={form.formState.isSubmitting}
+            disabled={form.formState.isSubmitting || !!duplicateItem}
             onClick={form.handleSubmit(handleSaveOnce as any, handleValidationError as any)}
           >
             {isEditing ? "Salvar alterações" : "Salvar item no estoque"}
